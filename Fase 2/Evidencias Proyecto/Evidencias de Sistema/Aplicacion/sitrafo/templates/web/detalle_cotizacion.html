@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block titulo %}{{ cotizacion.numero }} — SITRAFO{% endblock %}
+{% block contenido %}
+
+<p class="mb-3"><a href="{% url 'web:mis_cotizaciones' %}">Volver a cotizaciones</a></p>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+
+    <div class="placa mb-3">
+      <div class="placa__cabecera">
+        <span class="placa__codigo">{{ cotizacion.numero }} · V{{ cotizacion.version }}</span>
+        <span class="placa__familia">{{ cotizacion.creado_en|date:"d-m-Y" }}</span>
+      </div>
+      <table class="table mb-0">
+        <thead>
+          <tr style="background:#f4f6f4">
+            <th style="font-size:.78rem;color:var(--acero);font-weight:500;border:0">Modelo</th>
+            <th class="text-end" style="font-size:.78rem;color:var(--acero);font-weight:500;border:0">Unidades</th>
+            <th class="text-end" style="font-size:.78rem;color:var(--acero);font-weight:500;border:0">Precio unitario UF</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in cotizacion.lineas.all %}
+            <tr>
+              <td style="font-size:.9rem">
+                {{ l.modelo.nombre }}
+                <div class="text-secondary" style="font-size:.78rem">{{ l.modelo.codigo }}</div>
+              </td>
+              <td class="text-end" style="font-size:.9rem">{{ l.cantidad }}</td>
+              <td class="text-end" style="font-size:.9rem">{{ l.precio_uf }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr style="background:#f4f6f4">
+            <th colspan="2" class="text-end" style="font-size:.9rem">Total</th>
+            <th class="text-end" style="font-size:.9rem">{{ cotizacion.total_uf }} UF</th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="placa">
+      <div class="placa__cabecera"><span class="placa__codigo">HISTORIAL</span></div>
+      <ul class="etapas-ot">
+        {% for h in cotizacion.historial.all %}
+          <li>
+            <span>
+              {% if h.estado_anterior %}{{ h.estado_anterior.nombre }} a {% endif %}<strong>{{ h.estado_nuevo.nombre }}</strong>
+              {% if h.observacion %}<div class="text-secondary" style="font-size:.8rem">{{ h.observacion }}</div>{% endif %}
+            </span>
+            <span class="text-secondary" style="font-size:.8rem;white-space:nowrap">{{ h.fecha_hora|date:"d-m-Y H:i" }}</span>
+          </li>
+        {% empty %}
+          <li><span class="text-secondary">Sin movimientos registrados.</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="placa mb-3">
+      <div class="placa__cuerpo">
+        <div class="text-secondary" style="font-size:.8rem">Total en pesos</div>
+        <div style="font-size:1.95rem;font-weight:600;line-height:1.1">${{ cotizacion.total_clp|floatformat:0 }}</div>
+        <p class="placa__descripcion mt-2 mb-3">
+          Calculado con la UF del {{ cotizacion.fecha_valor_uf|date:"d-m-Y" }}
+          (${{ cotizacion.valor_uf|floatformat:2 }}). Ese valor queda fijo en
+          este documento y no cambia si la UF varia.
+        </p>
+        <div class="datos">
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Vence</span>
+            <span class="datos__valor">{{ cotizacion.vence_el|date:"d-m-Y" }}</span>
+          </div>
+          {% if cotizacion.plazo_dias_habiles %}
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Plazo de fabricacion</span>
+            <span class="datos__valor">{{ cotizacion.plazo_dias_habiles }} dias habiles</span>
+          </div>
+          {% endif %}
+          {% if cotizacion.fecha_entrega %}
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Entrega comprometida</span>
+            <span class="datos__valor">{{ cotizacion.fecha_entrega|date:"d-m-Y" }}</span>
+          </div>
+          {% endif %}
+          {% if cotizacion.descuento_pct %}
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Descuento</span>
+            <span class="datos__valor">{{ cotizacion.descuento_pct }}%</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if cotizacion.estado.codigo == "emitida" %}
+      {% if cotizacion.esta_vigente %}
+        <div class="placa">
+          <div class="placa__cabecera"><span class="placa__codigo">SU RESPUESTA</span></div>
+          <div class="placa__cuerpo">
+            <p class="placa__descripcion mb-3">
+              Al aceptar, el area comercial emite la orden de compra y comienza
+              la fabricacion.
+            </p>
+            <form method="post" action="{% url 'web:aceptar_cotizacion' cotizacion.pk %}" class="mb-2">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-aceptar w-100"
+                      onclick="return confirm('Se emitira la orden de compra. Confirma?')">
+                Aceptar la cotizacion
+              </button>
+            </form>
+            <button class="btn btn-rechazar w-100" data-bs-toggle="collapse" data-bs-target="#rechazo">
+              Rechazar
+            </button>
+            <div class="collapse mt-3" id="rechazo">
+              <form method="post" action="{% url 'web:rechazar_cotizacion' cotizacion.pk %}">
+                {% csrf_token %}
+                <label class="form-label" for="motivo">Motivo del rechazo</label>
+                <textarea id="motivo" name="motivo" rows="3" class="form-control mb-2" required
+                          placeholder="Ejemplo: el plazo de entrega no alcanza para la obra."></textarea>
+                <button type="submit" class="btn btn-rechazar w-100">Confirmar el rechazo</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <div class="aviso aviso--mal">
+          Esta cotizacion vencio el {{ cotizacion.vence_el|date:"d-m-Y" }} y ya no
+          puede aceptarse. Pida una nueva desde el catalogo.
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

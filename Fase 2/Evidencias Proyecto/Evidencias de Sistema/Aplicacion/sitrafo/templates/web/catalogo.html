@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block titulo %}Catalogo — SITRAFO{% endblock %}
+{% block contenido %}
+
+<div class="seccion">
+  <h1>Catalogo</h1>
+  <p>Cada equipo se fabrica a pedido. Los valores de la placa son de referencia
+     y se ajustan a la especificacion que usted indique.</p>
+</div>
+
+<form method="get" class="row g-2 mb-4">
+  <div class="col-md-5">
+    <input type="search" name="q" value="{{ busqueda }}" class="form-control" placeholder="Buscar por nombre o codigo">
+  </div>
+  <div class="col-md-4">
+    <select name="familia" class="form-select">
+      <option value="">Todas las familias</option>
+      {% for f in familias %}
+        <option value="{{ f.pk }}" {% if familia_seleccionada == f.pk|stringformat:"s" %}selected{% endif %}>{{ f.nombre }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3 d-grid">
+    <button class="btn btn-plano">Filtrar</button>
+  </div>
+</form>
+
+<div class="row g-3">
+  {% for m in modelos %}
+    <div class="col-lg-4 col-md-6">
+      <div class="placa h-100 d-flex flex-column">
+        <div class="placa__cabecera">
+          <span class="placa__codigo">{{ m.codigo }}</span>
+          <span class="placa__familia">{{ m.familia.nombre }}</span>
+        </div>
+        <div class="placa__cuerpo flex-grow-1">
+          <div class="placa__nombre">{{ m.nombre }}</div>
+          {% if m.parametros_asignados.all %}
+            <div class="datos mt-2">
+              {% for mp in m.parametros_asignados.all|slice:":4" %}
+                <div class="datos__fila">
+                  <span class="datos__etiqueta">{{ mp.parametro.nombre }}</span>
+                  <span class="datos__valor {% if not mp.valor_defecto %}datos__valor--vacio{% endif %}">
+                    {% if mp.valor_defecto %}{{ mp.valor_defecto }} {{ mp.parametro.unidad }}{% else %}a definir{% endif %}
+                  </span>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="placa__descripcion">{{ m.descripcion|truncatewords:18|default:"Especificacion a definir en la solicitud." }}</p>
+          {% endif %}
+        </div>
+        <div class="placa__pie">
+          <div class="placa__precio">
+            {% if m.precio_vigente %}
+              <strong>{{ m.precio_vigente }} UF</strong>
+              <span class="text-secondary">referencial</span>
+            {% else %}
+              <span class="text-secondary">Precio segun especificacion</span>
+            {% endif %}
+          </div>
+          <a href="{% url 'web:ficha_modelo' m.pk %}" class="btn btn-plano btn-sm">Ficha</a>
+          <a href="{% url 'web:solicitar' %}?modelo={{ m.pk }}" class="btn btn-principal btn-sm">Cotizar</a>
+        </div>
+      </div>
+    </div>
+  {% empty %}
+    <div class="col-12">
+      <div class="vacio">
+        <p>Ningun modelo coincide con esa busqueda. Pruebe con otro termino o
+           pida un presupuesto describiendo lo que necesita.</p>
+        <a href="{% url 'web:solicitar' %}" class="btn btn-plano">Pedir un presupuesto</a>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

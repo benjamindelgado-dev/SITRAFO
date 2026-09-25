@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titulo %}Cotizaciones — SITRAFO{% endblock %}
+{% block contenido %}
+
+<div class="seccion">
+  <h1>Cotizaciones</h1>
+  <p>Los montos estan en UF con el valor congelado a la fecha de emision.</p>
+</div>
+
+{% if cotizaciones %}
+<div class="tabla-doc">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Cotizacion</th><th>Emitida</th>
+        <th class="text-end">Total UF</th><th class="text-end">Total CLP</th>
+        <th>Vence</th><th>Estado</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in cotizaciones %}
+        <tr>
+          <td class="numero-doc">{{ c.numero }}<span class="text-secondary fw-normal"> v{{ c.version }}</span></td>
+          <td>{{ c.creado_en|date:"d-m-Y" }}</td>
+          <td class="text-end">{{ c.total_uf }}</td>
+          <td class="text-end">${{ c.total_clp|floatformat:0 }}</td>
+          <td>
+            {{ c.vence_el|date:"d-m-Y" }}
+            {% if c.estado.codigo == "emitida" and c.esta_vigente %}
+              <div class="text-secondary" style="font-size:.78rem">quedan {{ c.dias_para_vencer }} dia(s)</div>
+            {% endif %}
+          </td>
+          <td>
+            {% if c.estado.codigo == "emitida" %}<span class="estado estado--espera">Por responder</span>
+            {% elif c.estado.codigo == "aceptada" %}<span class="estado estado--bien">{{ c.estado.nombre }}</span>
+            {% elif c.estado.codigo == "rechazada" or c.estado.codigo == "vencida" %}<span class="estado estado--mal">{{ c.estado.nombre }}</span>
+            {% else %}<span class="estado">{{ c.estado.nombre }}</span>{% endif %}
+          </td>
+          <td class="text-end"><a href="{% url 'web:detalle_cotizacion' c.pk %}">Abrir</a></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="vacio">
+  <p>Aun no hay cotizaciones. Aparecen aqui cuando el area comercial responde
+     una solicitud suya.</p>
+  <a href="{% url 'web:solicitar' %}" class="btn btn-principal">Pedir un presupuesto</a>
+</div>
+{% endif %}
+{% endblock %}

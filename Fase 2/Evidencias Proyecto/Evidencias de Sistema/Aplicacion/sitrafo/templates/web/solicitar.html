@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block titulo %}Pedir un presupuesto — SITRAFO{% endblock %}
+{% block contenido %}
+
+<div class="seccion">
+  <h1>Pedir un presupuesto</h1>
+  <p>Indique la especificacion tecnica del transformador que necesita.
+     El area comercial le hara llegar una cotizacion en UF.</p>
+</div>
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="aviso aviso--mal mb-3">{{ form.non_field_errors|striptags }}</div>
+  {% endif %}
+
+  <div class="row g-4">
+    <div class="col-lg-5">
+      <div class="placa">
+        <div class="placa__cabecera"><span class="placa__codigo">PEDIDO</span></div>
+        <div class="placa__cuerpo">
+          {% for campo in form %}{% if not campo.name|slice:":6" == "param_" %}
+            <div class="mb-3">
+              <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+              {{ campo }}
+              {% if campo.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ campo.errors|striptags }}</div>{% endif %}
+            </div>
+          {% endif %}{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="placa">
+        <div class="placa__cabecera"><span class="placa__codigo">ESPECIFICACION TECNICA</span></div>
+        <div class="placa__cuerpo">
+          <div class="row g-3">
+            {% for parametro, campo in form.campos_especificacion %}
+              <div class="col-md-6">
+                <label class="form-label" for="{{ campo.id_for_label }}">
+                  {{ campo.label }}{% if parametro.obligatorio %} <span class="obligatorio">*</span>{% endif %}
+                </label>
+                {{ campo }}
+                {% if campo.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ campo.errors|striptags }}</div>{% endif %}
+              </div>
+            {% empty %}
+              <div class="col-12 text-secondary">No hay parametros tecnicos configurados.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <button type="submit" class="btn btn-principal">Enviar la solicitud</button>
+    <a href="{% url 'web:catalogo' %}" class="btn btn-plano">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block titulo %}Solicitudes — SITRAFO{% endblock %}
+{% block contenido %}
+
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 seccion">
+  <div>
+    <h1>Solicitudes</h1>
+    <p>Presupuestos que ha pedido y en que estado se encuentran.</p>
+  </div>
+  <a href="{% url 'web:solicitar' %}" class="btn btn-principal">Pedir un presupuesto</a>
+</div>
+
+<div class="row g-3">
+{% for s in solicitudes %}
+  <div class="col-lg-6">
+    <div class="placa h-100">
+      <div class="placa__cabecera">
+        <span class="placa__codigo">{{ s.numero }}</span>
+        <span class="placa__familia">{{ s.creado_en|date:"d-m-Y" }}</span>
+      </div>
+      <div class="placa__cuerpo">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div class="placa__nombre" style="font-size:1rem">
+            {{ s.modelo.nombre|default:"Sin modelo de referencia" }}
+          </div>
+          <span class="estado">{{ s.estado.nombre }}</span>
+        </div>
+        <div class="datos">
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Unidades</span>
+            <span class="datos__valor">{{ s.cantidad }}</span>
+          </div>
+          {% if s.fecha_deseada %}
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Fecha deseada</span>
+            <span class="datos__valor">{{ s.fecha_deseada|date:"d-m-Y" }}</span>
+          </div>
+          {% endif %}
+          {% for e in s.especificaciones.all %}
+            <div class="datos__fila">
+              <span class="datos__etiqueta">{{ e.parametro.nombre }}</span>
+              <span class="datos__valor">{{ e.valor }} {{ e.parametro.unidad }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% empty %}
+  <div class="col-12">
+    <div class="vacio">
+      <p>No ha pedido presupuestos todavia. Indique la especificacion que
+         necesita y el area comercial le respondera con una cotizacion.</p>
+      <a href="{% url 'web:solicitar' %}" class="btn btn-principal">Pedir un presupuesto</a>
+    </div>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

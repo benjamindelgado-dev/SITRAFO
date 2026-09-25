@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block titulo %}{{ documento.numero }} — SITRAFO{% endblock %}
+{% block contenido %}
+
+<p class="mb-3"><a href="{% url 'web:mis_pedidos' %}">Volver a pedidos</a></p>
+
+<div class="seccion">
+  <h1>{{ documento.numero }}</h1>
+  <p>{{ documento.get_tipo_display }} de la orden {{ documento.orden_compra.numero }}</p>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="placa mb-3">
+      <div class="placa__cabecera">
+        <span class="placa__codigo">DOCUMENTO DE COBRO</span>
+        {% if documento.estado == "pagado" %}
+          <span class="estado estado--bien">Pagado</span>
+        {% elif documento.estado == "anulado" %}
+          <span class="estado estado--mal">Anulado</span>
+        {% elif documento.esta_vencido %}
+          <span class="estado estado--mal">Vencido</span>
+        {% else %}
+          <span class="estado estado--espera">Pendiente</span>
+        {% endif %}
+      </div>
+      <div class="placa__cuerpo">
+        <div class="datos">
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Monto</span>
+            <span class="datos__valor">{{ documento.monto_uf }} UF</span>
+          </div>
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Valor UF aplicado</span>
+            <span class="datos__valor">${{ documento.valor_uf|floatformat:2 }}</span>
+          </div>
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Emitido</span>
+            <span class="datos__valor">{{ documento.creado_en|date:"d-m-Y" }}</span>
+          </div>
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Vence</span>
+            <span class="datos__valor">{{ documento.vence_el|date:"d-m-Y" }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="placa">
+      <div class="placa__cabecera"><span class="placa__codigo">INTENTOS DE PAGO</span></div>
+      <ul class="etapas-ot">
+        {% for t in transacciones %}
+          <li>
+            <span>
+              <strong>{{ t.get_estado_display }}</strong>
+              <div class="text-secondary" style="font-size:.8rem">
+                {{ t.pasarela|upper }} · {{ t.monto }} {{ t.moneda }} · ref. {{ t.id_externo }}
+              </div>
+            </span>
+            <span class="text-secondary" style="font-size:.8rem;white-space:nowrap">{{ t.iniciada_en|date:"d-m-Y H:i" }}</span>
+          </li>
+        {% empty %}
+          <li><span class="text-secondary">Aun no hay intentos de pago.</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="placa mb-3">
+      <div class="placa__cuerpo">
+        <div class="text-secondary" style="font-size:.8rem">Total en pesos</div>
+        <div style="font-size:1.95rem;font-weight:600;line-height:1.1">${{ documento.monto_clp|floatformat:0 }}</div>
+        <p class="placa__descripcion mt-2 mb-0">
+          Monto fijado al emitir el documento con la UF del dia. No cambia si
+          la UF varia.
+        </p>
+      </div>
+    </div>
+
+    {% if puede_pagar %}
+      <div class="placa">
+        <div class="placa__cabecera"><span class="placa__codigo">PAGO EN LINEA</span></div>
+        <div class="placa__cuerpo">
+          <div class="datos mb-3">
+            <div class="datos__fila">
+              <span class="datos__etiqueta">Se cobrara</span>
+              <span class="datos__valor">US$ {{ monto_usd }}</span>
+            </div>
+            <div class="datos__fila">
+              <span class="datos__etiqueta">Dolar observado</span>
+              <span class="datos__valor">${{ dolar.valor|floatformat:2 }} ({{ dolar.fecha|date:"d-m-Y" }})</span>
+            </div>
+          </div>
+          <p class="placa__descripcion mb-3">
+            PayPal no opera en pesos chilenos: el cobro se realiza en dolares,
+            convertido con el dolar observado del Banco Central. Sera dirigido a
+            PayPal para aprobar el pago y volvera aqui al terminar.
+          </p>
+          <form method="post" action="{% url 'web:pagar_documento' documento.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-principal w-100">Pagar con PayPal</button>
+          </form>
+        </div>
+      </div>
+    {% elif documento.estado == "pagado" %}
+      <div class="aviso aviso--bien">Este documento esta pagado. Gracias.</div>
+    {% elif motivo_no_pagable %}
+      <div class="aviso aviso--atencion">{{ motivo_no_pagable }}</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

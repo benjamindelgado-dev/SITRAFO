@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block titulo %}Pedidos — SITRAFO{% endblock %}
+{% block contenido %}
+
+<div class="seccion">
+  <h1>Pedidos</h1>
+  <p>Ordenes de compra confirmadas y avance de fabricacion.</p>
+</div>
+
+{% for o in ordenes %}
+  <div class="placa mb-3">
+    <div class="placa__cabecera">
+      <span class="placa__codigo">{{ o.numero }}</span>
+      <span class="placa__familia">desde {{ o.cotizacion.numero }} · {{ o.creado_en|date:"d-m-Y" }}</span>
+    </div>
+    <div class="placa__cuerpo">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div class="datos flex-grow-1 me-4">
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Total</span>
+            <span class="datos__valor">{{ o.total_uf }} UF</span>
+          </div>
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Anticipo</span>
+            <span class="datos__valor">{{ o.monto_anticipo_uf }} UF</span>
+          </div>
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Saldo contra entrega</span>
+            <span class="datos__valor">{{ o.monto_saldo_uf }} UF</span>
+          </div>
+        </div>
+        <span class="estado">{{ o.estado.nombre }}</span>
+      </div>
+    </div>
+
+    {% if o.documentos_cobro.all %}
+      <ul class="etapas-ot" style="border-top:1px solid var(--ansi-tenue)">
+        {% for d in o.documentos_cobro.all %}
+          <li>
+            <span>
+              <strong>{{ d.numero }}</strong>
+              <span class="text-secondary ms-2" style="font-size:.85rem">{{ d.get_tipo_display }} · ${{ d.monto_clp|floatformat:0 }}</span>
+            </span>
+            <span class="d-flex align-items-center gap-3">
+              {% if d.estado == "pagado" %}
+                <span class="estado estado--bien">Pagado</span>
+              {% elif d.estado == "anulado" %}
+                <span class="estado estado--mal">Anulado</span>
+              {% elif d.esta_vencido %}
+                <span class="estado estado--mal">Vencido</span>
+              {% else %}
+                <span class="estado estado--espera">Pendiente</span>
+              {% endif %}
+              <a href="{% url 'web:documento_cobro' d.pk %}">{% if d.estado == "pendiente" and pago_habilitado %}Pagar{% else %}Ver{% endif %}</a>
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if o.ordenes_trabajo.all %}
+      <ul class="etapas-ot" style="border-top:1px solid var(--ansi-tenue)">
+        {% for ot in o.ordenes_trabajo.all %}
+          <li>
+            <span>
+              <strong>{{ ot.numero }}</strong>
+              <span class="estado ms-2">{{ ot.estado.nombre }}</span>
+            </span>
+            <span class="d-flex align-items-center gap-3" style="min-width:230px">
+              <span class="avance flex-grow-1">
+                <span class="avance__relleno" style="width: {{ ot.avance_pct|default:0 }}%"></span>
+              </span>
+              <span class="text-secondary" style="font-size:.8rem;min-width:40px;text-align:right">{{ ot.avance_pct|default:0 }}%</span>
+              <a href="{% url 'web:seguimiento' ot.pk %}">Seguir</a>
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+{% empty %}
+  <div class="vacio">
+    <p>No tiene pedidos en curso. Los pedidos aparecen aqui cuando acepta una
+       cotizacion y el area comercial emite la orden de compra.</p>
+    <a href="{% url 'web:mis_cotizaciones' %}" class="btn btn-plano">Ver mis cotizaciones</a>
+  </div>
+{% endfor %}
+{% endblock %}

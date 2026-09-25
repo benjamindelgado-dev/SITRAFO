@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block titulo %}Mi cuenta — SITRAFO{% endblock %}
+{% block contenido %}
+
+<div class="seccion">
+  <h1>Mi cuenta</h1>
+  <p>Datos de acceso y antecedentes registrados.</p>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="placa h-100">
+      <div class="placa__cabecera"><span class="placa__codigo">ACCESO</span></div>
+      <div class="placa__cuerpo">
+        <div class="datos">
+          <div class="datos__fila"><span class="datos__etiqueta">Usuario</span><span class="datos__valor">{{ user.username }}</span></div>
+          <div class="datos__fila"><span class="datos__etiqueta">Correo</span><span class="datos__valor">{{ user.email }}</span></div>
+          <div class="datos__fila"><span class="datos__etiqueta">Estado</span><span class="datos__valor">{{ user.get_estado_display }}</span></div>
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Ultimo acceso</span>
+            <span class="datos__valor {% if not user.ultimo_acceso %}datos__valor--vacio{% endif %}">
+              {{ user.ultimo_acceso|date:"d-m-Y H:i"|default:"sin registro" }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if cliente %}
+  <div class="col-lg-6">
+    <div class="placa h-100">
+      <div class="placa__cabecera"><span class="placa__codigo">CLIENTE</span></div>
+      <div class="placa__cuerpo">
+        <div class="datos">
+          <div class="datos__fila"><span class="datos__etiqueta">RUT</span><span class="datos__valor">{{ cliente.rut }}</span></div>
+          <div class="datos__fila"><span class="datos__etiqueta">Razon social</span><span class="datos__valor">{{ cliente.razon_social }}</span></div>
+          <div class="datos__fila"><span class="datos__etiqueta">Tipo</span><span class="datos__valor">{{ cliente.get_tipo_persona_display }}</span></div>
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Giro</span>
+            <span class="datos__valor {% if not cliente.giro %}datos__valor--vacio{% endif %}">{{ cliente.giro|default:"sin informar" }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="placa">
+      <div class="placa__cabecera"><span class="placa__codigo">DIRECCIONES</span></div>
+      <ul class="etapas-ot">
+        {% for d in cliente.direcciones.all %}
+          <li>
+            <span>{{ d }}</span>
+            <span class="estado">{{ d.get_tipo_display }}</span>
+          </li>
+        {% empty %}
+          <li><span class="text-secondary">Sin direcciones registradas. El area comercial puede agregarlas.</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

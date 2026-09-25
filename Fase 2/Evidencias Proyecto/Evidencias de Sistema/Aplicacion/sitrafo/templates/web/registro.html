@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block titulo %}Crear cuenta — SITRAFO{% endblock %}
+{% block contenido %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    <div class="seccion">
+      <h1>Crear cuenta</h1>
+      <p>Con su cuenta puede pedir presupuestos, responder cotizaciones y
+         seguir la fabricacion de sus equipos.</p>
+    </div>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="aviso aviso--mal mb-3">{{ form.non_field_errors|striptags }}</div>
+      {% endif %}
+
+      <div class="placa mb-3">
+        <div class="placa__cabecera"><span class="placa__codigo">DATOS DEL CLIENTE</span></div>
+        <div class="placa__cuerpo">
+          <div class="row g-3">
+            {% for campo in form %}{% if campo.name in "rut,razon_social,tipo_persona,giro" %}
+              <div class="col-md-6">
+                <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                {{ campo }}
+                {% if campo.help_text %}<div class="text-secondary mt-1" style="font-size:.78rem">{{ campo.help_text }}</div>{% endif %}
+                {% if campo.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ campo.errors|striptags }}</div>{% endif %}
+              </div>
+            {% endif %}{% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="placa mb-3">
+        <div class="placa__cabecera"><span class="placa__codigo">DATOS DE ACCESO</span></div>
+        <div class="placa__cuerpo">
+          <div class="row g-3">
+            {% for campo in form %}{% if campo.name in "username,email,password1,password2" %}
+              <div class="col-md-6">
+                <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                {{ campo }}
+                {% if campo.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ campo.errors|striptags }}</div>{% endif %}
+              </div>
+            {% endif %}{% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-principal">Crear cuenta</button>
+      <a href="{% url 'web:login' %}" class="btn btn-plano">Ya tengo cuenta</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

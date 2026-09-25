@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block titulo %}Acceso — SITRAFO{% endblock %}
+{% block contenido %}
+<div class="row justify-content-center pt-4">
+  <div class="col-md-5 col-lg-4">
+
+    <div class="mb-4">
+      <div style="font-size:1.95rem;font-weight:700;letter-spacing:.06em">SITRAFO</div>
+      <div style="font-size:.8rem;letter-spacing:.18em;color:var(--acero)">PORTAL DE CLIENTES</div>
+    </div>
+
+    <div class="placa">
+      <div class="placa__cuerpo">
+        <form method="post">
+          {% csrf_token %}
+          {% if form.non_field_errors %}
+            <div class="aviso aviso--mal mb-3">{{ form.non_field_errors|striptags }}</div>
+          {% endif %}
+          {% for campo in form %}
+            <div class="mb-3">
+              <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+              {{ campo }}
+              {% if campo.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ campo.errors|striptags }}</div>{% endif %}
+            </div>
+          {% endfor %}
+          <button type="submit" class="btn btn-principal w-100">Entrar</button>
+        </form>
+      </div>
+    </div>
+
+    {% if autorregistro %}
+      <p class="mt-3" style="font-size:.9rem">
+        Si su empresa aun no tiene cuenta, <a href="{% url 'web:registro' %}">cree una aqui</a>.
+      </p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,5 @@
+# PySide6 6.10.1 es la primera version con soporte para Python 3.14.
+# Se usa un rango en lugar de una version fija para no romper la instalacion
+# cuando el equipo tiene una version de Python mas nueva.
+PySide6>=6.10.1
+requests>=2.32.3

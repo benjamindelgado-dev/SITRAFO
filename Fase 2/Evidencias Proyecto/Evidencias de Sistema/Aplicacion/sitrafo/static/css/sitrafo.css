@@ -1,0 +1,420 @@
+/* ==========================================================================
+   SITRAFO — Portal del cliente
+
+   El lenguaje visual sale del objeto que se fabrica. La placa de
+   caracteristicas remachada a cada transformador, con sus datos grabados en
+   una grilla etiqueta-valor, es el dispositivo que organiza catalogo, fichas
+   y cotizaciones. Las superficies son planas y con borde, como chapa, en
+   lugar de tarjetas con sombra difusa.
+   ========================================================================== */
+
+:root {
+  /* Gris ANSI 70: el color de pintura normalizado de los transformadores
+     de distribucion. Se usa en bordes y separadores. */
+  --ansi:      #a8b0ae;
+  --ansi-tenue:#d5d9d6;
+
+  --grafito:   #1b242b;   /* texto principal y barra superior */
+  --acero:     #4a5760;   /* texto secundario */
+  --placa:     #ffffff;   /* superficie de las placas */
+  --papel:     #eef0ee;   /* fondo de pagina */
+
+  --cobre:     #8a4b24;   /* acento: el material del bobinado */
+  --cobre-luz: #f0e4da;
+  --tension:   #e8b00a;   /* advertencia: senalizacion electrica */
+  --conforme:  #2f6b4f;
+  --falla:     #8c2f39;
+
+  /* Escala tipografica 1.25 */
+  --t-xs:  0.8rem;
+  --t-s:   0.9rem;
+  --t-b:   1rem;
+  --t-m:   1.25rem;
+  --t-l:   1.563rem;
+  --t-xl:  1.953rem;
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+body {
+  background: var(--papel);
+  color: var(--grafito);
+  font-family: "Archivo", system-ui, sans-serif;
+  font-size: var(--t-b);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--grafito);
+}
+
+p { max-width: 68ch; }
+
+a { color: var(--cobre); text-underline-offset: 3px; }
+a:hover { color: #6d3a1b; }
+
+:focus-visible {
+  outline: 2px solid var(--cobre);
+  outline-offset: 2px;
+}
+
+/* Cifras alineadas: en este portal casi todo numero es una magnitud medida */
+table, .cifra, .placa__valor, .metrica__cifra {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   Barra superior
+   -------------------------------------------------------------------------- */
+.barra {
+  background: var(--grafito);
+  border-bottom: 3px solid var(--cobre);
+}
+.barra .navbar-brand {
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.barra .navbar-brand span {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  color: var(--ansi);
+  margin-top: -4px;
+}
+.barra .nav-link {
+  color: #c8cfcd;
+  font-size: var(--t-s);
+  padding: 0.4rem 0.9rem;
+  border-bottom: 2px solid transparent;
+}
+.barra .nav-link:hover { color: #fff; }
+.barra .nav-link.activo {
+  color: #fff;
+  border-bottom-color: var(--cobre);
+}
+
+/* --------------------------------------------------------------------------
+   Placa de caracteristicas
+   Es la unidad de contenido del portal: una chapa con cabecera grabada y
+   una grilla de etiqueta y valor separada por filetes.
+   -------------------------------------------------------------------------- */
+.placa {
+  background: var(--placa);
+  border: 1px solid var(--ansi);
+  border-radius: 2px;
+}
+.placa__cabecera {
+  background: var(--grafito);
+  color: #fff;
+  padding: 0.6rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+.placa__codigo {
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  font-size: var(--t-s);
+}
+.placa__familia {
+  font-size: var(--t-xs);
+  color: var(--ansi);
+}
+.placa__cuerpo { padding: 0.9rem 1rem; }
+.placa__nombre {
+  font-size: var(--t-m);
+  font-weight: 600;
+  line-height: 1.25;
+  margin-bottom: 0.35rem;
+}
+.placa__descripcion {
+  font-size: var(--t-s);
+  color: var(--acero);
+  margin-bottom: 0;
+}
+
+/* Grilla de datos grabados */
+.datos { margin: 0; }
+.datos__fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.42rem 0;
+  border-bottom: 1px dotted var(--ansi-tenue);
+  font-size: var(--t-s);
+}
+.datos__fila:last-child { border-bottom: 0; }
+.datos__etiqueta { color: var(--acero); }
+.datos__valor { font-weight: 600; text-align: right; }
+.datos__valor--vacio { font-weight: 400; color: #8b9490; }
+
+.placa__pie {
+  border-top: 1px solid var(--ansi-tenue);
+  padding: 0.7rem 1rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.placa__precio {
+  margin-right: auto;
+  font-size: var(--t-s);
+}
+.placa__precio strong {
+  font-size: var(--t-m);
+  display: block;
+  line-height: 1.1;
+}
+
+/* --------------------------------------------------------------------------
+   Cadena del proceso
+   El sistema es la cadena de documentos, asi que el inicio la muestra
+   entera y ubica los documentos del cliente en la etapa donde estan.
+   La numeracion es legitima aqui: el contenido si es una secuencia.
+   -------------------------------------------------------------------------- */
+.cadena {
+  background: var(--placa);
+  border: 1px solid var(--ansi);
+  border-radius: 2px;
+  padding: 1.4rem 1.2rem 1.1rem;
+}
+.cadena__rail {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  position: relative;
+}
+.cadena__rail::before {
+  content: "";
+  position: absolute;
+  top: 19px;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: var(--ansi-tenue);
+}
+.etapa {
+  text-align: center;
+  position: relative;
+  padding: 0 0.3rem;
+  text-decoration: none;
+  display: block;
+  color: inherit;
+}
+.etapa__nodo {
+  width: 38px;
+  height: 38px;
+  margin: 0 auto 0.55rem;
+  border: 1px solid var(--ansi);
+  border-radius: 50%;
+  background: var(--placa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: var(--t-s);
+  color: var(--acero);
+  position: relative;
+  z-index: 1;
+}
+.etapa--activa .etapa__nodo {
+  background: var(--cobre);
+  border-color: var(--cobre);
+  color: #fff;
+}
+.etapa__nombre {
+  font-size: var(--t-xs);
+  color: var(--acero);
+  line-height: 1.3;
+}
+.etapa--activa .etapa__nombre {
+  color: var(--grafito);
+  font-weight: 600;
+}
+.etapa__cuenta {
+  margin-top: 0.2rem;
+  font-size: var(--t-xs);
+  color: var(--cobre);
+  font-weight: 600;
+}
+.etapa:hover .etapa__nodo { border-color: var(--cobre); }
+
+@media (max-width: 767px) {
+  .cadena__rail { grid-template-columns: 1fr; gap: 0.35rem; }
+  .cadena__rail::before { display: none; }
+  .etapa {
+    display: grid;
+    grid-template-columns: 38px 1fr;
+    gap: 0.8rem;
+    align-items: center;
+    text-align: left;
+    padding: 0.3rem 0;
+    border-bottom: 1px dotted var(--ansi-tenue);
+  }
+  .etapa__nodo { margin: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   Tablas de documentos
+   -------------------------------------------------------------------------- */
+.tabla-doc {
+  background: var(--placa);
+  border: 1px solid var(--ansi);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.tabla-doc table { margin: 0; }
+.tabla-doc thead th {
+  background: var(--grafito);
+  color: #fff;
+  font-weight: 500;
+  font-size: var(--t-xs);
+  letter-spacing: 0.04em;
+  padding: 0.65rem 0.9rem;
+  border: 0;
+}
+.tabla-doc tbody td {
+  padding: 0.7rem 0.9rem;
+  border-top: 1px solid var(--ansi-tenue);
+  font-size: var(--t-s);
+  vertical-align: middle;
+}
+.tabla-doc tbody tr:hover { background: #f7f8f7; }
+.numero-doc {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+/* --------------------------------------------------------------------------
+   Estados
+   -------------------------------------------------------------------------- */
+.estado {
+  display: inline-block;
+  font-size: var(--t-xs);
+  padding: 0.16rem 0.55rem;
+  border: 1px solid var(--ansi);
+  border-radius: 2px;
+  color: var(--acero);
+  background: #fff;
+  white-space: nowrap;
+}
+.estado--espera { border-color: var(--cobre); color: var(--cobre); background: var(--cobre-luz); }
+.estado--bien   { border-color: var(--conforme); color: var(--conforme); background: #eaf3ee; }
+.estado--mal    { border-color: var(--falla); color: var(--falla); background: #f7ecee; }
+
+/* --------------------------------------------------------------------------
+   Botones
+   -------------------------------------------------------------------------- */
+.btn {
+  border-radius: 2px;
+  font-size: var(--t-s);
+  padding: 0.45rem 1.05rem;
+}
+.btn-principal {
+  background: var(--cobre);
+  border: 1px solid var(--cobre);
+  color: #fff;
+}
+.btn-principal:hover { background: #6d3a1b; border-color: #6d3a1b; color: #fff; }
+.btn-plano {
+  background: transparent;
+  border: 1px solid var(--ansi);
+  color: var(--grafito);
+}
+.btn-plano:hover { background: #fff; border-color: var(--grafito); color: var(--grafito); }
+.btn-aceptar { background: var(--conforme); border: 1px solid var(--conforme); color: #fff; }
+.btn-aceptar:hover { background: #255540; color: #fff; }
+.btn-rechazar { background: transparent; border: 1px solid var(--falla); color: var(--falla); }
+.btn-rechazar:hover { background: var(--falla); color: #fff; }
+
+/* --------------------------------------------------------------------------
+   Formularios
+   -------------------------------------------------------------------------- */
+.form-control, .form-select {
+  border: 1px solid var(--ansi);
+  border-radius: 2px;
+  font-size: var(--t-s);
+  padding: 0.5rem 0.65rem;
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--cobre);
+  box-shadow: none;
+}
+.form-label {
+  font-size: var(--t-xs);
+  color: var(--acero);
+  margin-bottom: 0.2rem;
+}
+.obligatorio { color: var(--falla); }
+
+/* --------------------------------------------------------------------------
+   Avance de fabricacion
+   -------------------------------------------------------------------------- */
+.avance {
+  height: 6px;
+  background: var(--ansi-tenue);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.avance__relleno { height: 100%; background: var(--cobre); }
+
+.etapas-ot { list-style: none; margin: 0; padding: 0; }
+.etapas-ot li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--ansi-tenue);
+  font-size: var(--t-s);
+}
+.etapas-ot li:last-child { border-bottom: 0; }
+.etapas-ot li.terminada { color: var(--acero); }
+
+/* --------------------------------------------------------------------------
+   Vacios y avisos
+   -------------------------------------------------------------------------- */
+.vacio {
+  background: var(--placa);
+  border: 1px dashed var(--ansi);
+  border-radius: 2px;
+  padding: 2.4rem 1.5rem;
+  text-align: center;
+  color: var(--acero);
+}
+.vacio p { margin: 0 auto 0.9rem; max-width: 46ch; }
+
+.aviso {
+  border: 1px solid var(--ansi);
+  border-left: 3px solid var(--acero);
+  border-radius: 2px;
+  background: var(--placa);
+  padding: 0.75rem 1rem;
+  font-size: var(--t-s);
+}
+.aviso--atencion { border-left-color: var(--tension); }
+.aviso--bien     { border-left-color: var(--conforme); }
+.aviso--mal      { border-left-color: var(--falla); }
+
+/* --------------------------------------------------------------------------
+   Encabezado de seccion
+   -------------------------------------------------------------------------- */
+.seccion { margin-bottom: 1.6rem; }
+.seccion h1 { font-size: var(--t-xl); margin-bottom: 0.2rem; }
+.seccion p { color: var(--acero); font-size: var(--t-s); margin: 0; }
+
+.pie {
+  border-top: 1px solid var(--ansi-tenue);
+  color: var(--acero);
+  font-size: var(--t-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

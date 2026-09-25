@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block titulo %}{{ ot.numero }} — SITRAFO{% endblock %}
+{% block contenido %}
+
+<p class="mb-3"><a href="{% url 'web:mis_pedidos' %}">Volver a pedidos</a></p>
+
+<div class="seccion">
+  <h1>{{ ot.numero }}</h1>
+  <p>{{ ot.modelo.nombre }} · {{ ot.cantidad }} unidad(es)</p>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="placa mb-3">
+      <div class="placa__cuerpo">
+        <div class="d-flex justify-content-between mb-2">
+          <span style="font-size:.9rem">Avance de fabricacion</span>
+          <span style="font-weight:600">{{ ot.avance_pct|default:0 }}%</span>
+        </div>
+        <div class="avance" style="height:10px">
+          <div class="avance__relleno" style="width: {{ ot.avance_pct|default:0 }}%"></div>
+        </div>
+        <div class="datos mt-3">
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Estado</span>
+            <span class="datos__valor">{{ ot.estado.nombre }}</span>
+          </div>
+          {% if ot.fecha_inicio %}
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Inicio de fabricacion</span>
+            <span class="datos__valor">{{ ot.fecha_inicio|date:"d-m-Y" }}</span>
+          </div>
+          {% endif %}
+          {% if ot.fecha_cierre %}
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Cierre</span>
+            <span class="datos__valor">{{ ot.fecha_cierre|date:"d-m-Y" }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="placa">
+      <div class="placa__cabecera"><span class="placa__codigo">ETAPAS</span></div>
+      <ul class="etapas-ot">
+        {% for t in ot.tareas.all %}
+          <li class="{% if t.estado == 'terminada' %}terminada{% endif %}">
+            <span>{{ t.secuencia }}. {{ t.nombre }}</span>
+            {% if t.estado == "terminada" %}
+              <span class="estado estado--bien">Terminada</span>
+            {% elif t.estado == "en_ejecucion" %}
+              <span class="estado estado--espera">En ejecucion</span>
+            {% else %}
+              <span class="estado">Pendiente</span>
+            {% endif %}
+          </li>
+        {% empty %}
+          <li><span class="text-secondary">La planificacion aun no se ha cargado.</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="placa">
+      <div class="placa__cabecera"><span class="placa__codigo">HISTORIAL</span></div>
+      <ul class="etapas-ot">
+        {% for h in ot.historial.all %}
+          <li>
+            <span>
+              <strong>{{ h.estado_nuevo.nombre }}</strong>
+              {% if h.observacion %}<div class="text-secondary" style="font-size:.8rem">{{ h.observacion }}</div>{% endif %}
+            </span>
+            <span class="text-secondary" style="font-size:.8rem;white-space:nowrap">{{ h.fecha_hora|date:"d-m-Y H:i" }}</span>
+          </li>
+        {% empty %}
+          <li><span class="text-secondary">Sin movimientos.</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

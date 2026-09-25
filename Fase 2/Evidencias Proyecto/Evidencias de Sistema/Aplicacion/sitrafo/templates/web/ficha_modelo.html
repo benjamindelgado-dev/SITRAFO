@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block titulo %}{{ modelo.nombre }} — SITRAFO{% endblock %}
+{% block contenido %}
+
+<p class="mb-3"><a href="{% url 'web:catalogo' %}">Volver al catalogo</a></p>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="placa">
+      <div class="placa__cabecera">
+        <span class="placa__codigo">{{ modelo.codigo }}</span>
+        <span class="placa__familia">{{ modelo.familia.nombre }}</span>
+      </div>
+      <div class="placa__cuerpo">
+        <div class="placa__nombre">{{ modelo.nombre }}</div>
+        {% if modelo.descripcion %}
+          <p class="placa__descripcion mb-3">{{ modelo.descripcion|linebreaksbr }}</p>
+        {% endif %}
+        <div class="datos">
+          {% for mp in modelo.parametros_asignados.all %}
+            <div class="datos__fila">
+              <span class="datos__etiqueta">
+                {{ mp.parametro.nombre }}{% if mp.obligatorio %} <span class="obligatorio">*</span>{% endif %}
+              </span>
+              <span class="datos__valor {% if not mp.valor_defecto %}datos__valor--vacio{% endif %}">
+                {% if mp.valor_defecto %}{{ mp.valor_defecto }} {{ mp.parametro.unidad }}{% else %}a definir{% endif %}
+              </span>
+            </div>
+          {% empty %}
+            <div class="datos__fila">
+              <span class="datos__etiqueta">Sin parametros configurados</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <p class="mt-2" style="font-size:.8rem;color:var(--acero)">
+      Los valores marcados con <span class="obligatorio">*</span> son obligatorios al pedir el presupuesto.
+    </p>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="placa">
+      <div class="placa__cuerpo">
+        {% if modelo.precio_vigente %}
+          <div class="text-secondary" style="font-size:.8rem">Precio base referencial</div>
+          <div style="font-size:1.95rem;font-weight:600;line-height:1.1">{{ modelo.precio_vigente }} UF</div>
+        {% else %}
+          <div style="font-size:1.25rem;font-weight:600">Precio segun especificacion</div>
+        {% endif %}
+        <p class="placa__descripcion mt-3">
+          El precio definitivo depende de la especificacion tecnica que usted
+          indique y se confirma en la cotizacion, expresado en UF.
+        </p>
+        <a href="{% url 'web:solicitar' %}?modelo={{ modelo.pk }}" class="btn btn-principal w-100 mt-2">
+          Pedir un presupuesto
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

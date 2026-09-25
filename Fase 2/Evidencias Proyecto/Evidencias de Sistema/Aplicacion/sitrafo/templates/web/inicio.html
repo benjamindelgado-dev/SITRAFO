@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block titulo %}Inicio — SITRAFO{% endblock %}
+{% block contenido %}
+
+{% if sin_cliente %}
+  <div class="aviso aviso--atencion">
+    Su cuenta todavia no esta asociada a un cliente. Escriba al area comercial
+    para completar la habilitacion.
+  </div>
+{% else %}
+
+<div class="seccion">
+  <h1>{{ cliente.razon_social }}</h1>
+  <p>RUT {{ cliente.rut }}</p>
+</div>
+
+<div class="cadena mb-4">
+  <div class="cadena__rail">
+    <a class="etapa {% if solicitudes_abiertas %}etapa--activa{% endif %}" href="{% url 'web:mis_solicitudes' %}">
+      <div class="etapa__nodo">1</div>
+      <div class="etapa__nombre">Solicitud de presupuesto</div>
+      {% if solicitudes_abiertas %}<div class="etapa__cuenta">{{ solicitudes_abiertas }} en curso</div>{% endif %}
+    </a>
+    <a class="etapa {% if cotizaciones_por_responder %}etapa--activa{% endif %}" href="{% url 'web:mis_cotizaciones' %}">
+      <div class="etapa__nodo">2</div>
+      <div class="etapa__nombre">Cotizacion</div>
+      {% if cotizaciones_por_responder %}<div class="etapa__cuenta">{{ cotizaciones_por_responder }} por responder</div>{% endif %}
+    </a>
+    <a class="etapa {% if ordenes_activas %}etapa--activa{% endif %}" href="{% url 'web:mis_pedidos' %}">
+      <div class="etapa__nodo">3</div>
+      <div class="etapa__nombre">Orden de compra</div>
+      {% if ordenes_activas %}<div class="etapa__cuenta">{{ ordenes_activas }} activa(s)</div>{% endif %}
+    </a>
+    <a class="etapa {% if en_fabricacion %}etapa--activa{% endif %}" href="{% url 'web:mis_pedidos' %}">
+      <div class="etapa__nodo">4</div>
+      <div class="etapa__nombre">Fabricacion</div>
+      {% if en_fabricacion %}<div class="etapa__cuenta">{{ en_fabricacion }} en taller</div>{% endif %}
+    </a>
+    <a class="etapa {% if terminados %}etapa--activa{% endif %}" href="{% url 'web:mis_pedidos' %}">
+      <div class="etapa__nodo">5</div>
+      <div class="etapa__nombre">Entrega</div>
+      {% if terminados %}<div class="etapa__cuenta">{{ terminados }} terminado(s)</div>{% endif %}
+    </a>
+  </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-4">
+  <a href="{% url 'web:solicitar' %}" class="btn btn-principal">Pedir un presupuesto</a>
+  <a href="{% url 'web:catalogo' %}" class="btn btn-plano">Ver el catalogo</a>
+</div>
+
+{% if ultimas_cotizaciones %}
+<div class="tabla-doc">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Cotizacion</th><th>Emitida</th>
+        <th class="text-end">Total UF</th><th>Vence</th><th>Estado</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in ultimas_cotizaciones %}
+        <tr>
+          <td class="numero-doc">{{ c.numero }}<span class="text-secondary fw-normal"> v{{ c.version }}</span></td>
+          <td>{{ c.creado_en|date:"d-m-Y" }}</td>
+          <td class="text-end">{{ c.total_uf }}</td>
+          <td>{{ c.vence_el|date:"d-m-Y" }}</td>
+          <td>
+            {% if c.estado.codigo == "emitida" %}<span class="estado estado--espera">{{ c.estado.nombre }}</span>
+            {% elif c.estado.codigo == "aceptada" %}<span class="estado estado--bien">{{ c.estado.nombre }}</span>
+            {% elif c.estado.codigo == "rechazada" or c.estado.codigo == "vencida" %}<span class="estado estado--mal">{{ c.estado.nombre }}</span>
+            {% else %}<span class="estado">{{ c.estado.nombre }}</span>{% endif %}
+          </td>
+          <td class="text-end"><a href="{% url 'web:detalle_cotizacion' c.pk %}">Abrir</a></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="vacio">
+  <p>Todavia no hay documentos en su cuenta. Empiece pidiendo un presupuesto:
+     indique la especificacion tecnica que necesita y el area comercial le
+     hara llegar una cotizacion.</p>
+  <a href="{% url 'web:solicitar' %}" class="btn btn-principal">Pedir un presupuesto</a>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}
