@@ -5,11 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
-from apps.common.permissions import (
-    CuentaOperativa,
-    EsUsuarioInterno,
-    SoloLecturaParaCliente,
-)
+from apps.common.permissions import CuentaOperativa, PermisoPorRol
 from apps.seguridad.models import Auditoria
 
 from .models import FamiliaProducto, ModeloProducto, ParametroTecnico
@@ -24,16 +20,18 @@ from .serializers import (
 class FamiliaProductoViewSet(viewsets.ModelViewSet):
     queryset = FamiliaProducto.objects.filter(activo=True)
     serializer_class = FamiliaProductoSerializer
-    permission_classes = [CuentaOperativa, SoloLecturaParaCliente]
+    permission_classes = [CuentaOperativa, PermisoPorRol]
     modulo_permiso = "catalogo"
+    acciones_cliente = ("list", "retrieve")
     search_fields = ["nombre"]
 
 
 class ParametroTecnicoViewSet(viewsets.ModelViewSet):
     queryset = ParametroTecnico.objects.prefetch_related("valores")
     serializer_class = ParametroTecnicoSerializer
-    permission_classes = [CuentaOperativa, SoloLecturaParaCliente]
+    permission_classes = [CuentaOperativa, PermisoPorRol]
     modulo_permiso = "catalogo"
+    acciones_cliente = ("list", "retrieve")
     search_fields = ["codigo", "nombre"]
 
 
@@ -45,8 +43,10 @@ class ModeloProductoViewSet(viewsets.ModelViewSet):
     administra desde la aplicacion de escritorio (RF-ADM-06).
     """
 
-    permission_classes = [CuentaOperativa, SoloLecturaParaCliente]
+    permission_classes = [CuentaOperativa, PermisoPorRol]
     modulo_permiso = "catalogo"
+    acciones_cliente = ("list", "retrieve")
+    permisos_accion = {"publicar": "catalogo.actualizar"}
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["familia", "publicado"]
     search_fields = ["codigo", "nombre", "descripcion"]
@@ -69,8 +69,7 @@ class ModeloProductoViewSet(viewsets.ModelViewSet):
             return ModeloProductoListaSerializer
         return ModeloProductoDetalleSerializer
 
-    @action(detail=True, methods=["post"],
-            permission_classes=[CuentaOperativa, EsUsuarioInterno])
+    @action(detail=True, methods=["post"])
     def publicar(self, request, pk=None):
         """
         Publica o retira el modelo del catalogo web (RF-ADM-06).

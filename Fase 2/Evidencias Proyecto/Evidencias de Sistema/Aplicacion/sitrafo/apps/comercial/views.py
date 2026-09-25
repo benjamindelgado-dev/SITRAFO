@@ -7,7 +7,11 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
 from apps.common.mixins import FiltradoPorClienteMixin
-from apps.common.permissions import CuentaOperativa, EsUsuarioInterno
+from apps.common.permissions import (
+    CuentaOperativa,
+    PermisoPorRol,
+    registrar_acceso_denegado,
+)
 from apps.configuracion.models import ParametroSistema
 from apps.configuracion.services import notificaciones
 from apps.configuracion.services.indicadores import valor_uf
@@ -35,7 +39,8 @@ from .serializers import (
 class EstadoDocumentoViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = EstadoDocumento.objects.all()
     serializer_class = EstadoDocumentoSerializer
-    permission_classes = [CuentaOperativa]
+    permission_classes = [CuentaOperativa, PermisoPorRol]
+    lectura_libre = True
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["tipo_documento"]
     pagination_class = None
@@ -49,15 +54,23 @@ class SolicitudPresupuestoViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet
         .prefetch_related("especificaciones__parametro", "historial")
     )
     serializer_class = SolicitudPresupuestoSerializer
-    permission_classes = [CuentaOperativa]
+    permission_classes = [CuentaOperativa, PermisoPorRol]
     modulo_permiso = "solicitud"
+    acciones_cliente = ("list", "retrieve", "create")
+    permisos_accion = {
+        "asignar": "solicitud.actualizar",
+        "costeo": "cotizacion.crear",
+        "cotizar": "cotizacion.crear",
+        # La solicitud no se edita ni se borra: cambia de estado por el flujo
+        "update": None, "partial_update": None, "destroy": None,
+    }
     campo_cliente = "cliente_id"
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["estado", "cliente", "ejecutivo"]
     search_fields = ["numero"]
     ordering_fields = ["creado_en", "numero"]
 
-    @action(detail=True, methods=["post"], permission_classes=[CuentaOperativa, EsUsuarioInterno])
+    @action(detail=True, methods=["post"])
     def asignar(self, request, pk=None):
         """Asigna la solicitud a un ejecutivo comercial (CU-COM-02)."""
         solicitud = self.get_object()
@@ -79,8 +92,7 @@ class SolicitudPresupuestoViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet
         )
         return Response(self.get_serializer(solicitud).data)
 
-    @action(detail=True, methods=["get"],
-            permission_classes=[CuentaOperativa, EsUsuarioInterno])
+    @action(detail=True, methods=["get"])
     def costeo(self, request, pk=None):
         """
         Costo estimado y precio sugerido para cotizar la solicitud (RF-COM-04).
@@ -120,8 +132,7 @@ class SolicitudPresupuestoViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet
             "plazo_defecto_dias_habiles": services.PLAZO_DEFECTO_DIAS_HABILES,
         })
 
-    @action(detail=True, methods=["post"],
-            permission_classes=[CuentaOperativa, EsUsuarioInterno])
+    @action(detail=True, methods=["post"])
     def cotizar(self, request, pk=None):
         """Elabora la cotizacion en borrador desde la solicitud (CU-COM-03)."""
         solicitud = self.get_object()
@@ -145,8 +156,21 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
         .prefetch_related("lineas__modelo", "historial", "ordenes_compra")
     )
     serializer_class = CotizacionSerializer
-    permission_classes = [CuentaOperativa]
+    permission_classes = [CuentaOperativa, PermisoPorRol]
     modulo_permiso = "cotizacion"
+    acciones_cliente = ("list", "retrieve", "aceptar", "rechazar")
+    permisos_accion = {
+        "aceptar": "cotizacion.actualizar",
+        "rechazar": "cotizacion.actualizar",
+        "emitir": "cotizacion.actualizar",
+        "solicitar_aprobacion": "cotizacion.actualizar",
+        "enviar_correo": "cotizacion.actualizar",
+        "devolver": "cotizacion.aprobar",
+        "generar_orden_compra": "orden_compra.crear",
+        # La cotizacion nace desde una solicitud (accion cotizar) y cambia
+        # solo por las acciones del flujo
+        "create": None, "update": None, "partial_update": None, "destroy": None,
+    }
     campo_cliente = "cliente_id"
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["estado", "cliente"]
@@ -223,8 +247,7 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
         self._cambiar_estado(cotizacion, "rechazada", request.user, motivo)
         return Response(self.get_serializer(cotizacion).data)
 
-    @action(detail=True, methods=["post"],
-            permission_classes=[CuentaOperativa, EsUsuarioInterno])
+    @action(detail=True, methods=["post"])
     def emitir(self, request, pk=None):
         """
         Emision al cliente (CU-COM-07).
@@ -250,6 +273,15 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
                 },
                 status=status.HTTP_409_CONFLICT,
             )
+
+        # Emitir una cotizacion en aprobacion es aprobarla (RN-05): exige el
+        # permiso de aprobacion y que quien aprueba no sea quien la elaboro,
+        # para que el control del descuento lo ejerza otra persona.
+        aprobando = cotizacion.estado.codigo == "en_aprobacion"
+        if aprobando:
+            denegado = self._verificar_aprobador(request, cotizacion)
+            if denegado:
+                return denegado
         if not cotizacion.lineas.exists():
             return Response({"detalle": "La cotizacion no tiene lineas."},
                             status=status.HTTP_409_CONFLICT)
@@ -264,7 +296,8 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
         cotizacion.save(update_fields=["valor_uf", "fecha_valor_uf", "vence_el"])
         cotizacion.recalcular_total()
         self._cambiar_estado(
-            cotizacion, "emitida", request.user, "Emitida al cliente."
+            cotizacion, "emitida", request.user,
+            "Aprobada y emitida al cliente." if aprobando else "Emitida al cliente.",
         )
         # RF-COM-09. Si el correo falla, la emision queda registrada igual.
         enviado = notificaciones.notificar_cotizacion_emitida(cotizacion)
@@ -276,22 +309,58 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
         )
         return Response(datos)
 
-    @action(detail=True, methods=["post"],
-            permission_classes=[CuentaOperativa, EsUsuarioInterno])
+    def _verificar_aprobador(self, request, cotizacion):
+        """Devuelve una respuesta de rechazo, o None si el usuario puede aprobar."""
+        usuario = request.user
+        if not usuario.has_perm("cotizacion.aprobar"):
+            registrar_acceso_denegado(request, self, "aprobar", ["cotizacion.aprobar"])
+            return Response({"detail": "Su rol no autoriza aprobar cotizaciones."},
+                            status=status.HTTP_403_FORBIDDEN)
+        if cotizacion.ejecutivo_id == usuario.pk:
+            registrar_acceso_denegado(request, self, "aprobar_propia", ["cotizacion.aprobar"])
+            return Response(
+                {"detalle": "No puede aprobar una cotizacion elaborada por usted. "
+                            "Debe aprobarla otro ejecutivo."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return None
+
+    @action(detail=True, methods=["post"])
     def solicitar_aprobacion(self, request, pk=None):
         """Envia a aprobacion interna un borrador con descuento sobre el umbral (RN-05)."""
         cotizacion = self.get_object()
         if cotizacion.estado.codigo != "borrador":
             return Response({"detalle": "Solo un borrador puede enviarse a aprobacion."},
                             status=status.HTTP_409_CONFLICT)
+        if not cotizacion.requiere_aprobacion:
+            return Response(
+                {"detalle": "El descuento no supera el umbral: puede emitirse directamente."},
+                status=status.HTTP_409_CONFLICT,
+            )
         self._cambiar_estado(
             cotizacion, "en_aprobacion", request.user,
             f"Descuento de {cotizacion.descuento_pct}% enviado a aprobacion.",
         )
         return Response(self.get_serializer(cotizacion).data)
 
-    @action(detail=True, methods=["post"],
-            permission_classes=[CuentaOperativa, EsUsuarioInterno])
+    @action(detail=True, methods=["post"])
+    def devolver(self, request, pk=None):
+        """El aprobador rechaza el descuento: la cotizacion vuelve a borrador."""
+        cotizacion = self.get_object()
+        if cotizacion.estado.codigo != "en_aprobacion":
+            return Response({"detalle": "Solo una cotizacion en aprobacion puede devolverse."},
+                            status=status.HTTP_409_CONFLICT)
+        denegado = self._verificar_aprobador(request, cotizacion)
+        if denegado:
+            return denegado
+        motivo = (request.data.get("motivo") or "").strip()
+        if not motivo:
+            return Response({"motivo": "Indique por que se devuelve la cotizacion."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        self._cambiar_estado(cotizacion, "borrador", request.user, f"Devuelta: {motivo}")
+        return Response(self.get_serializer(cotizacion).data)
+
+    @action(detail=True, methods=["post"])
     def enviar_correo(self, request, pk=None):
         """Reenvia al cliente una cotizacion ya emitida (RF-COM-09)."""
         cotizacion = self.get_object()
@@ -306,8 +375,7 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
             )
         return Response({"detalle": "Cotizacion enviada por correo."})
 
-    @action(detail=True, methods=["post"],
-            permission_classes=[CuentaOperativa, EsUsuarioInterno])
+    @action(detail=True, methods=["post"])
     def generar_orden_compra(self, request, pk=None):
         """
         Genera la orden de compra desde una cotizacion aceptada (RN-06).
@@ -372,15 +440,20 @@ class OrdenCompraViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
                           "documentos_cobro")
     )
     serializer_class = OrdenCompraSerializer
-    permission_classes = [CuentaOperativa]
+    permission_classes = [CuentaOperativa, PermisoPorRol]
     modulo_permiso = "orden_compra"
+    acciones_cliente = ("list", "retrieve")
+    permisos_accion = {
+        "confirmar": "orden_compra.actualizar",
+        # La orden nace solo desde una cotizacion aceptada (RN-06)
+        "create": None, "update": None, "partial_update": None, "destroy": None,
+    }
     campo_cliente = "cliente_id"
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["estado", "cliente"]
     search_fields = ["numero"]
 
-    @action(detail=True, methods=["post"],
-            permission_classes=[CuentaOperativa, EsUsuarioInterno])
+    @action(detail=True, methods=["post"])
     def confirmar(self, request, pk=None):
         """Confirma la orden, habilitando la generacion de la OT (RN-07)."""
         orden = self.get_object()

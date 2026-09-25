@@ -28,6 +28,7 @@ class ClienteAPI:
         self.token: str | None = None
         self.refresh: str | None = None
         self.usuario: str | None = None
+        self.identidad: dict = {}
 
     # -- Autenticacion ------------------------------------------------------
     def autenticar(self, username: str, password: str) -> None:
@@ -46,10 +47,33 @@ class ClienteAPI:
         self.usuario = username
         self.sesion.headers["Authorization"] = f"Bearer {self.token}"
 
+    def cargar_identidad(self) -> dict:
+        """Roles y permisos efectivos del usuario (GET /auth/yo/)."""
+        self.identidad = self.obtener("auth/yo/")
+        return self.identidad
+
+    def puede(self, permiso: str) -> bool:
+        """
+        Si el rol del usuario autoriza el permiso.
+
+        Solo decide que se muestra en pantalla: la API vuelve a verificar
+        cada operacion y rechaza lo no autorizado aunque la interfaz fallara.
+        """
+        if self.identidad.get("es_superusuario"):
+            return True
+        return permiso in self.identidad.get("permisos", [])
+
+    @property
+    def roles(self) -> list[str]:
+        if self.identidad.get("es_superusuario"):
+            return ["Superusuario"]
+        return self.identidad.get("roles", [])
+
     def cerrar_sesion(self) -> None:
         self.token = None
         self.refresh = None
         self.usuario = None
+        self.identidad = {}
         self.sesion.headers.pop("Authorization", None)
 
     def renovar_token(self) -> bool:
@@ -153,6 +177,9 @@ class ClienteAPI:
 
     def cotizaciones(self, params=None):
         return self.obtener("cotizaciones/", params)
+
+    def devolver_cotizacion(self, id_cotizacion: int, motivo: str):
+        return self.accion(f"cotizaciones/{id_cotizacion}/devolver/", {"motivo": motivo})
 
     def emitir_cotizacion(self, id_cotizacion: int):
         return self.accion(f"cotizaciones/{id_cotizacion}/emitir/")

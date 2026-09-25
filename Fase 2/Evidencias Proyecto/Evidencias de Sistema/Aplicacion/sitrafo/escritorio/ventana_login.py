@@ -1,4 +1,5 @@
 """Ventana de acceso a la aplicacion de escritorio."""
+from cliente_api import ClienteAPI, ErrorAPI
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
@@ -9,8 +10,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
 )
-
-from cliente_api import ClienteAPI, ErrorAPI
 
 
 class VentanaLogin(QDialog):
@@ -71,6 +70,12 @@ class VentanaLogin(QDialog):
         self.clave.returnPressed.connect(self.ingresar)
         self.usuario.setFocus()
 
+    def _rechazar(self, motivo: str):
+        self.cliente.cerrar_sesion()
+        QMessageBox.warning(self, "Acceso denegado", motivo)
+        self.boton.setEnabled(True)
+        self.boton.setText("Ingresar")
+
     def ingresar(self):
         usuario = self.usuario.text().strip()
         clave = self.clave.text()
@@ -91,18 +96,22 @@ class VentanaLogin(QDialog):
             self.boton.setText("Ingresar")
             return
 
-        # La aplicacion de escritorio es exclusiva de usuarios internos
+        # La aplicacion de escritorio es exclusiva de usuarios internos con
+        # rol asignado: sin rol el acceso se deniega por defecto (RN-18)
         try:
-            self.cliente.parametros()
-        except ErrorAPI:
-            self.cliente.cerrar_sesion()
-            QMessageBox.warning(
-                self, "Acceso denegado",
-                "Esta cuenta no tiene permisos de administracion interna.\n\n"
-                "Las cuentas de cliente deben usar el portal web.",
+            identidad = self.cliente.cargar_identidad()
+        except ErrorAPI as error:
+            return self._rechazar(error.mensaje)
+
+        if not identidad.get("es_interno"):
+            return self._rechazar(
+                "Esta cuenta es de cliente. Las cuentas de cliente deben usar "
+                "el portal web."
             )
-            self.boton.setEnabled(True)
-            self.boton.setText("Ingresar")
-            return
+        if not identidad.get("es_superusuario") and not identidad.get("permisos"):
+            return self._rechazar(
+                "Su usuario no tiene un rol asignado. Solicite al administrador "
+                "que le asigne uno."
+            )
 
         self.accept()

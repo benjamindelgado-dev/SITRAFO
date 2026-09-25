@@ -287,10 +287,22 @@ class PanelCotizaciones(PanelBase):
         self.b_correo = QPushButton("Reenviar por correo")
         self.b_correo.setObjectName("secundario")
         self.b_correo.clicked.connect(self._reenviar)
+        self.b_devolver = QPushButton("Devolver al autor")
+        self.b_devolver.setObjectName("peligro")
+        self.b_devolver.clicked.connect(self._devolver)
         self.b_oc = QPushButton("Generar orden de compra")
         self.b_oc.clicked.connect(self._generar_oc)
-        for boton in (self.b_aprobacion, self.b_emitir, self.b_correo, self.b_oc):
+        for boton in (self.b_aprobacion, self.b_emitir, self.b_devolver,
+                      self.b_correo, self.b_oc):
             acciones.addWidget(boton)
+
+        # Con acceso de solo lectura (L en la matriz) no se muestran acciones
+        puede = self.cliente.puede
+        self.b_aprobacion.setVisible(puede("cotizacion.actualizar"))
+        self.b_emitir.setVisible(puede("cotizacion.actualizar") or puede("cotizacion.aprobar"))
+        self.b_devolver.setVisible(puede("cotizacion.aprobar"))
+        self.b_correo.setVisible(puede("cotizacion.actualizar"))
+        self.b_oc.setVisible(puede("orden_compra.crear"))
         acciones.addStretch()
         self.contenedor.addLayout(acciones)
 
@@ -367,8 +379,17 @@ class PanelCotizaciones(PanelBase):
     def _habilitar(self, c):
         """Solo se ofrecen las acciones que el estado permite."""
         codigo = self._codigo(c) if c else ""
+        propia = bool(c) and c.get("ejecutivo") == self.cliente.identidad.get("id_usuario")
         self.b_aprobacion.setEnabled(codigo == "borrador")
-        self.b_emitir.setEnabled(codigo in ("borrador", "en_aprobacion"))
+        # En aprobacion, emitir es aprobar: no la propia (RN-05)
+        self.b_emitir.setEnabled(
+            codigo == "borrador"
+            or (codigo == "en_aprobacion" and self.cliente.puede("cotizacion.aprobar")
+                and not propia)
+        )
+        self.b_emitir.setText("Aprobar y emitir" if codigo == "en_aprobacion"
+                              else "Emitir al cliente")
+        self.b_devolver.setEnabled(codigo == "en_aprobacion" and not propia)
         self.b_correo.setEnabled(codigo in ("emitida", "aceptada"))
         self.b_oc.setEnabled(codigo == "aceptada" and not (c or {}).get("orden_compra"))
 
@@ -397,6 +418,25 @@ class PanelCotizaciones(PanelBase):
             "Se emitira la cotizacion al cliente con la UF de hoy y se le enviara "
             "por correo. ¿Continuar?",
         )
+
+    def _devolver(self):
+        from PySide6.QtWidgets import QInputDialog
+
+        c = self._actual()
+        if c is None:
+            return
+        motivo, ok = QInputDialog.getText(
+            self, "Devolver cotizacion", "Motivo de la devolucion:"
+        )
+        if not ok:
+            return
+        try:
+            self.cliente.devolver_cotizacion(c["id_cotizacion"], motivo.strip())
+        except ErrorAPI as error:
+            return self.manejar_error(error)
+        QMessageBox.information(self, "Devuelta",
+                                f"La cotizacion {c['numero']} volvio a borrador.")
+        self.refrescar()
 
     def _reenviar(self):
         self._ejecutar(self.cliente.enviar_cotizacion,
@@ -431,6 +471,7 @@ class PanelOrdenesCompra(PanelBase):
         self.b_confirmar = QPushButton("Confirmar la orden")
         self.b_confirmar.setObjectName("exito")
         self.b_confirmar.clicked.connect(self._confirmar)
+        self.b_confirmar.setVisible(self.cliente.puede("orden_compra.actualizar"))
         acciones.addWidget(self.b_confirmar)
         recargar = QPushButton("Recargar")
         recargar.setObjectName("secundario")

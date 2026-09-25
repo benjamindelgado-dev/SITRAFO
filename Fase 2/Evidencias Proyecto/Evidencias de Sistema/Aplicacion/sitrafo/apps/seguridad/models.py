@@ -191,9 +191,22 @@ class Usuario(AbstractBaseUser):
         """
         if self.is_superuser:
             return True
-        return RolPermiso.objects.filter(
-            rol__usuarios=self, rol__activo=True, permiso__codigo=perm
-        ).exists()
+        return perm in self.codigos_permiso()
+
+    def codigos_permiso(self) -> set[str]:
+        """
+        Permisos efectivos del usuario segun sus roles activos.
+
+        Se calcula una vez por instancia: en la API cada peticion carga su
+        propio usuario, de modo que un cambio en la matriz rige desde la
+        peticion siguiente.
+        """
+        if not hasattr(self, "_codigos_permiso"):
+            self._codigos_permiso = set(
+                RolPermiso.objects.filter(rol__usuarios=self, rol__activo=True)
+                .values_list("permiso__codigo", flat=True)
+            )
+        return self._codigos_permiso
 
     def has_module_perms(self, app_label) -> bool:
         if self.is_superuser:

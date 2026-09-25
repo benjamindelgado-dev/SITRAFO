@@ -8,10 +8,11 @@ Son exclusivos de usuarios internos.
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
 
-from apps.common.permissions import CuentaOperativa, EsUsuarioInterno
+from apps.common.permissions import CuentaOperativa, PermisoPorRol, registrar_acceso_denegado
 from apps.seguridad.models import Auditoria
 
 from .models import AvisoSitio, Feriado, LogIntegracion, ParametroSistema
@@ -46,14 +47,42 @@ class ParametroSistemaViewSet(viewsets.ModelViewSet):
 
     queryset = ParametroSistema.objects.select_related("usuario")
     serializer_class = ParametroSistemaSerializer
-    permission_classes = [CuentaOperativa, EsUsuarioInterno]
-    modulo_permiso = "configuracion"
+    permission_classes = [CuentaOperativa, PermisoPorRol]
+    # Un mismo endpoint sirve dos modulos de la matriz: el canal web
+    # (Administrador opera, Ejecutivo comercial lee) y los parametros del
+    # sistema (solo Administrador). La lectura exige cualquiera de los dos y
+    # la modificacion se verifica contra el ambito de cada parametro.
+    permisos_alternativos = {
+        "list": ["canal_web.leer", "parametro.leer"],
+        "retrieve": ["canal_web.leer", "parametro.leer"],
+        "update": ["canal_web.actualizar", "parametro.actualizar"],
+        "partial_update": ["canal_web.actualizar", "parametro.actualizar"],
+        "alternar": ["canal_web.actualizar", "parametro.actualizar"],
+    }
+    permisos_accion = {"create": None, "destroy": None}
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["ambito", "tipo_dato"]
     search_fields = ["clave", "descripcion"]
     lookup_field = "clave"
     lookup_value_regex = "[^/]+"
     pagination_class = None
+
+    def get_object(self):
+        parametro = super().get_object()
+        if self.action in ("update", "partial_update", "alternar"):
+            self._verificar_ambito(parametro)
+        return parametro
+
+    def _verificar_ambito(self, parametro):
+        """El ambito canal_web exige canal_web; el resto, parametro."""
+        usuario = self.request.user
+        if usuario.is_superuser:
+            return
+        requerido = ("canal_web.actualizar" if parametro.ambito == "canal_web"
+                     else "parametro.actualizar")
+        if not usuario.has_perm(requerido):
+            registrar_acceso_denegado(self.request, self, self.action, [requerido])
+            raise PermissionDenied("Su rol no autoriza modificar este parametro.")
 
     def perform_update(self, serializer):
         anterior = serializer.instance.valor
@@ -89,8 +118,8 @@ class ParametroSistemaViewSet(viewsets.ModelViewSet):
 class AvisoSitioViewSet(viewsets.ModelViewSet):
     queryset = AvisoSitio.objects.select_related("usuario")
     serializer_class = AvisoSitioSerializer
-    permission_classes = [CuentaOperativa, EsUsuarioInterno]
-    modulo_permiso = "configuracion"
+    permission_classes = [CuentaOperativa, PermisoPorRol]
+    modulo_permiso = "canal_web"
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["tipo", "activo"]
 
@@ -101,7 +130,8 @@ class AvisoSitioViewSet(viewsets.ModelViewSet):
 class FeriadoViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Feriado.objects.all()
     serializer_class = FeriadoSerializer
-    permission_classes = [CuentaOperativa]
+    permission_classes = [CuentaOperativa, PermisoPorRol]
+    lectura_libre = True
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["tipo"]
 
@@ -111,7 +141,8 @@ class LogIntegracionViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = LogIntegracion.objects.all()
     serializer_class = LogIntegracionSerializer
-    permission_classes = [CuentaOperativa, EsUsuarioInterno]
+    permission_classes = [CuentaOperativa, PermisoPorRol]
+    modulo_permiso = "parametro"
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["servicio", "exitoso"]
     search_fields = ["endpoint", "mensaje_error"]

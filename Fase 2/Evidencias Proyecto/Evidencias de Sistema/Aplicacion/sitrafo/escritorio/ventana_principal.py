@@ -1,4 +1,14 @@
 """Ventana principal de la aplicacion de escritorio."""
+from cliente_api import ClienteAPI
+from paneles import (
+    PanelCanalWeb,
+    PanelCatalogo,
+    PanelClientes,
+    PanelInicio,
+    PanelIntegraciones,
+    PanelSolicitudes,
+)
+from paneles_comercial import PanelCotizaciones, PanelOrdenesCompra
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -10,16 +20,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-from cliente_api import ClienteAPI
-from paneles import (
-    PanelCanalWeb,
-    PanelCatalogo,
-    PanelClientes,
-    PanelIntegraciones,
-    PanelSolicitudes,
-)
-from paneles_comercial import PanelCotizaciones, PanelOrdenesCompra
 
 
 class VentanaPrincipal(QMainWindow):
@@ -56,7 +56,9 @@ class VentanaPrincipal(QMainWindow):
         self.menu.setIconSize(QSize(18, 18))
         lateral_layout.addWidget(self.menu)
 
-        usuario = QLabel(f"Sesion: {self.cliente.usuario}")
+        usuario = QLabel(
+            f"Sesion: {self.cliente.usuario}\n{', '.join(self.cliente.roles)}"
+        )
         usuario.setAlignment(Qt.AlignCenter)
         usuario.setStyleSheet("color: #cfe0f5; padding: 14px; font-size: 12px;")
         usuario.setWordWrap(True)
@@ -68,15 +70,21 @@ class VentanaPrincipal(QMainWindow):
         self.contenido = QStackedWidget()
         disposicion.addWidget(self.contenido, 1)
 
-        self.paneles = [
-            ("Catalogo", PanelCatalogo(self.cliente)),
-            ("Clientes", PanelClientes(self.cliente)),
-            ("Solicitudes", PanelSolicitudes(self.cliente)),
-            ("Cotizaciones", PanelCotizaciones(self.cliente)),
-            ("Ordenes de compra", PanelOrdenesCompra(self.cliente)),
-            ("Canal web", PanelCanalWeb(self.cliente)),
-            ("Integraciones", PanelIntegraciones(self.cliente)),
+        # Cada panel se muestra solo si el rol tiene al menos lectura sobre
+        # su modulo (matriz de acceso, ERS-01 seccion 8.2)
+        disponibles = [
+            ("Catalogo", "catalogo.leer", PanelCatalogo),
+            ("Clientes", "cliente.leer", PanelClientes),
+            ("Solicitudes", "solicitud.leer", PanelSolicitudes),
+            ("Cotizaciones", "cotizacion.leer", PanelCotizaciones),
+            ("Ordenes de compra", "orden_compra.leer", PanelOrdenesCompra),
+            ("Canal web", "canal_web.leer", PanelCanalWeb),
+            ("Integraciones", "parametro.leer", PanelIntegraciones),
         ]
+        permitidos = [(n, clase) for n, permiso, clase in disponibles
+                      if self.cliente.puede(permiso)]
+        self.paneles = [("Inicio", PanelInicio(self.cliente, [n for n, _ in permitidos]))]
+        self.paneles += [(nombre, clase(self.cliente)) for nombre, clase in permitidos]
         for nombre, panel in self.paneles:
             self.menu.addItem(nombre)
             self.contenido.addWidget(panel)

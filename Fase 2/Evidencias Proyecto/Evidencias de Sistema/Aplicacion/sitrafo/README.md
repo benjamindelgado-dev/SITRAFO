@@ -87,6 +87,9 @@ docker compose exec web python manage.py sincronizar_feriados
 
 # 9. Emitir los anticipos de ordenes de compra que aun no lo tengan
 docker compose exec web python manage.py emitir_cobros
+
+# 10. Cargar los roles y la matriz de permisos (y un usuario por rol)
+docker compose exec web python manage.py cargar_roles --usuarios-demo
 ```
 
 Los comandos del paso 6 cargan los 21 estados del flujo documental y los 12
@@ -159,6 +162,38 @@ Con estos paneles el flujo comercial completo (solicitud, cotizacion,
 emision, orden de compra) se opera sin usar el admin de Django.
 
 Detalle en `escritorio/README.md`.
+
+## Roles y matriz de permisos
+
+La matriz de acceso de la ERS-01 (seccion 8.2) esta transcrita en
+`apps/seguridad/matriz.py` y se carga en las tablas `rol`, `permiso` y
+`rol_permiso` con `cargar_roles`. Desde ahi es configurable: la API autoriza
+leyendo la tabla, no la constante.
+
+| Rol | Opera | Solo lectura |
+|---|---|---|
+| Administrador | usuarios, roles, parametros, catalogo, precios, empleados, canal web | clientes, solicitudes, ordenes de compra, auditoria |
+| Ejecutivo comercial | clientes, solicitudes, cotizaciones (incluida aprobacion), ordenes de compra | catalogo, precios, canal web |
+| Jefe de produccion | listas de materiales, ordenes de trabajo, taller | clientes, catalogo, solicitudes, cotizaciones, ordenes de compra |
+| Operario de taller | registro de horas y consumos | ordenes de trabajo |
+| Inspector de calidad | protocolos, ensayos, no conformidades | catalogo, ordenes de trabajo |
+| Encargado de bodega | materiales, bodegas, movimientos, kardex | listas de materiales, ordenes de trabajo |
+
+Reglas aplicadas en `apps/common/permissions.py` (`PermisoPorRol`):
+
+- Denegacion por defecto (RN-18): lo que un viewset no declara, no se permite.
+  Un usuario interno sin rol no puede operar ni ingresar al escritorio.
+- Cada acceso denegado queda en la bitacora de auditoria (CU-SEG-07).
+- El cliente web solo usa las acciones que le corresponden (ver, solicitar,
+  aceptar, rechazar) y solo sobre sus documentos (RN-16).
+- Los documentos solo cambian por las acciones del flujo: ni siquiera el
+  superusuario puede crear o editar a mano una cotizacion u orden de compra.
+- Una cotizacion con descuento sobre el umbral la aprueba un ejecutivo
+  distinto del que la elaboro (RN-05).
+
+`cargar_roles --usuarios-demo` crea `administrador`, `comercial`,
+`comercial2`, `produccion`, `operario`, `calidad` y `bodega`, todos con clave
+`Clave123456`. El escritorio muestra a cada uno solo sus paneles y acciones.
 
 ## Diseno de la aplicacion web
 
@@ -279,7 +314,7 @@ clientes ficticios de los datos de demostracion.
 docker compose exec web pytest
 ```
 
-90 pruebas automatizadas con 88% de cobertura sobre `apps/`, por encima del
+103 pruebas automatizadas con 90% de cobertura sobre `apps/`, por encima del
 70% exigido por RNF-13. Las llamadas a servicios externos (incluido PayPal) se
 simulan con dobles de prueba.
 

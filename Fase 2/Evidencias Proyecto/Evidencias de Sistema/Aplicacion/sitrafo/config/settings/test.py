@@ -23,3 +23,13 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 AUTH_PASSWORD_VALIDATORS = []
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+# Las pruebas no dependen del .env de quien las ejecuta: dentro de Docker las
+# variables del .env llegan al proceso, y un desvio de correo o una clave real
+# cambiaria el comportamiento que se esta verificando.
+CORREO_REDIRIGIR_A = ""
+BREVO_API_KEY = ""
+PAYPAL_CLIENT_ID = ""
+PAYPAL_SECRET = ""
+DEFAULT_FROM_EMAIL = "SITRAFO <no-responder@sitrafo.cl>"
+SITIO_URL = "http://localhost:8000"

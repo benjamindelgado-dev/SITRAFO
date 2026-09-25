@@ -4,6 +4,7 @@ Paneles de la aplicacion de escritorio.
 Cada panel consume la API REST a traves de ClienteAPI. Ninguno construye
 consultas ni accede a la base de datos.
 """
+from cliente_api import ClienteAPI, ErrorAPI
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -22,8 +23,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-from cliente_api import ClienteAPI, ErrorAPI
 
 
 class PanelBase(QWidget):
@@ -81,6 +80,50 @@ class PanelBase(QWidget):
         """Las subclases recargan sus datos."""
 
 
+class PanelInicio(PanelBase):
+    """Bienvenida con el rol del usuario y las secciones que puede usar."""
+
+    titulo = "Inicio"
+
+    def __init__(self, cliente: ClienteAPI, secciones: list[str]):
+        self.secciones = secciones
+        super().__init__(cliente)
+
+    def construir(self):
+        identidad = self.cliente.identidad
+        saludo = QLabel(f"Sesion iniciada como <b>{identidad.get('username', '')}</b>")
+        self.contenedor.addWidget(saludo)
+
+        grupo = QGroupBox("Su rol")
+        layout = QVBoxLayout(grupo)
+        roles = QLabel(", ".join(self.cliente.roles) or "Sin rol")
+        roles.setObjectName("cifra")
+        layout.addWidget(roles)
+        nota = QLabel(
+            "Las secciones y acciones disponibles dependen de su rol, segun la "
+            "matriz de acceso del sistema. La API verifica cada operacion."
+        )
+        nota.setObjectName("subtitulo")
+        nota.setWordWrap(True)
+        layout.addWidget(nota)
+        self.contenedor.addWidget(grupo)
+
+        grupo_secciones = QGroupBox("Secciones disponibles")
+        layout_secciones = QVBoxLayout(grupo_secciones)
+        if self.secciones:
+            for seccion in self.secciones:
+                layout_secciones.addWidget(QLabel(f"  •  {seccion}"))
+        else:
+            aviso = QLabel(
+                "Las pantallas de su rol aun no estan disponibles en esta version "
+                "de la aplicacion de escritorio."
+            )
+            aviso.setWordWrap(True)
+            layout_secciones.addWidget(aviso)
+        self.contenedor.addWidget(grupo_secciones)
+        self.contenedor.addStretch()
+
+
 class PanelCatalogo(PanelBase):
     """
     Publicacion de modelos en el catalogo web (RF-ADM-06).
@@ -109,12 +152,14 @@ class PanelCatalogo(PanelBase):
         self.contenedor.addLayout(barra)
 
         self.tabla = self.crear_tabla()
-        self.tabla.doubleClicked.connect(self.alternar)
+        if self.cliente.puede("catalogo.actualizar"):
+            self.tabla.doubleClicked.connect(self.alternar)
         self.contenedor.addWidget(self.tabla)
 
         acciones = QHBoxLayout()
         self.boton = QPushButton("Publicar o retirar el modelo seleccionado")
         self.boton.clicked.connect(self.alternar)
+        self.boton.setVisible(self.cliente.puede("catalogo.actualizar"))
         acciones.addWidget(self.boton)
 
         recargar = QPushButton("Recargar")
@@ -233,9 +278,11 @@ class PanelSolicitudes(PanelBase):
         asignar = QPushButton("Asignarme la solicitud")
         asignar.setObjectName("secundario")
         asignar.clicked.connect(self.asignar)
+        asignar.setVisible(self.cliente.puede("solicitud.actualizar"))
         acciones.addWidget(asignar)
         cotizar = QPushButton("Elaborar cotizacion")
         cotizar.clicked.connect(self.cotizar)
+        cotizar.setVisible(self.cliente.puede("cotizacion.crear"))
         acciones.addWidget(cotizar)
         recargar = QPushButton("Recargar")
         recargar.setObjectName("secundario")
@@ -358,6 +405,9 @@ class PanelCanalWeb(PanelBase):
         layout_texto.addWidget(self.mensaje)
         guardar = QPushButton("Guardar aviso")
         guardar.clicked.connect(self.guardar_mensaje)
+        self.puede_operar = self.cliente.puede("canal_web.actualizar")
+        guardar.setVisible(self.puede_operar)
+        self.mensaje.setReadOnly(not self.puede_operar)
         layout_texto.addWidget(guardar, alignment=Qt.AlignLeft)
         self.contenedor.addWidget(grupo_texto)
 
@@ -388,7 +438,7 @@ class PanelCanalWeb(PanelBase):
             parametro = por_clave.get(clave)
             caja.blockSignals(True)
             caja.setChecked(bool(parametro and parametro["valor_tipado"]))
-            caja.setEnabled(parametro is not None)
+            caja.setEnabled(parametro is not None and self.puede_operar)
             caja.blockSignals(False)
 
         aviso = por_clave.get("web.mensaje_mantencion")

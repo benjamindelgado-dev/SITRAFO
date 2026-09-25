@@ -12,10 +12,9 @@ Uso:
 import argparse
 import sys
 
-from PySide6.QtWidgets import QApplication, QDialog
-
 from cliente_api import ClienteAPI
 from estilos import HOJA
+from PySide6.QtWidgets import QApplication, QDialog
 from ventana_login import VentanaLogin
 from ventana_principal import VentanaPrincipal
 

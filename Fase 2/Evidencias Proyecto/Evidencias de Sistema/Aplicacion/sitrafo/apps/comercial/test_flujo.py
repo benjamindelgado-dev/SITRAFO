@@ -23,6 +23,8 @@ from apps.comercial.models import Cotizacion, EstadoDocumento, SolicitudPresupue
 from apps.inventario.models import CategoriaMaterial, Material, PrecioMaterial
 from apps.pagos.models import DocumentoCobro, IndicadorEconomico
 from apps.produccion.models import Empleado, TarifaHoraHombre
+from apps.seguridad import matriz
+from apps.seguridad.models import Auditoria, Rol, UsuarioRol
 
 HOY = datetime.date.today()
 
@@ -30,11 +32,17 @@ HOY = datetime.date.today()
 @pytest.fixture
 def flujo(db, django_user_model):
     call_command("cargar_estados", verbosity=0)
+    call_command("cargar_roles", verbosity=0)
     IndicadorEconomico.objects.create(codigo="UF", fecha=HOY, valor=Decimal("40000"))
 
     ejecutivo = django_user_model.objects.create_user(
         "ejecutivo", "e@sitrafo.cl", "Clave123456", es_interno=True
     )
+    UsuarioRol.objects.create(usuario=ejecutivo, rol=Rol.objects.get(nombre=matriz.COMERCIAL))
+    aprobador = django_user_model.objects.create_user(
+        "aprobador", "a@sitrafo.cl", "Clave123456", es_interno=True
+    )
+    UsuarioRol.objects.create(usuario=aprobador, rol=Rol.objects.get(nombre=matriz.COMERCIAL))
     cliente = Cliente.objects.create(
         rut="76543210-3", razon_social="Electrica del Maipo SpA", tipo_persona="juridica"
     )
@@ -59,7 +67,9 @@ def flujo(db, django_user_model):
     interno.force_authenticate(ejecutivo)
     externo = APIClient()
     externo.force_authenticate(cuenta)
-    return {"interno": interno, "externo": externo, "modelo": modelo,
+    otro = APIClient()
+    otro.force_authenticate(aprobador)
+    return {"interno": interno, "externo": externo, "aprobador": otro, "modelo": modelo,
             "solicitud": solicitud, "ejecutivo": ejecutivo}
 
 
@@ -146,9 +156,34 @@ def test_descuento_sobre_el_umbral_exige_aprobacion(flujo):
 
     assert flujo["interno"].post(f"{base}/emitir/").status_code == 409
     assert flujo["interno"].post(f"{base}/solicitar_aprobacion/").status_code == 200
-    respuesta = flujo["interno"].post(f"{base}/emitir/")
+
+    # Quien la elaboro no puede aprobarla (control de RN-05)
+    propia = flujo["interno"].post(f"{base}/emitir/")
+    assert propia.status_code == 403
+    assert Auditoria.objects.filter(accion="acceso_denegado",
+                                    valor_nuevo__accion="aprobar_propia").exists()
+
+    respuesta = flujo["aprobador"].post(f"{base}/emitir/")
     assert respuesta.status_code == 200
     assert Decimal(respuesta.data["total_uf"]) == Decimal("306")   # 360 - 15 %
+
+
+def test_el_aprobador_puede_devolver_con_motivo(flujo):
+    cotizacion = _cotizar(flujo, descuento_pct="15")
+    base = f"/api/v1/cotizaciones/{cotizacion['id_cotizacion']}"
+    flujo["interno"].post(f"{base}/solicitar_aprobacion/")
+
+    assert flujo["aprobador"].post(f"{base}/devolver/", {}, format="json").status_code == 400
+    respuesta = flujo["aprobador"].post(f"{base}/devolver/", {"motivo": "Descuento excesivo"},
+                                        format="json")
+    assert respuesta.status_code == 200
+    assert respuesta.data["estado_codigo"] == "borrador"
+
+
+def test_sin_descuento_no_se_envia_a_aprobacion(flujo):
+    cotizacion = _cotizar(flujo)
+    url = f"/api/v1/cotizaciones/{cotizacion['id_cotizacion']}/solicitar_aprobacion/"
+    assert flujo["interno"].post(url).status_code == 409
 
 
 # ---------------------------------------------------------------------------
