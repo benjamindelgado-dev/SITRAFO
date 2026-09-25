@@ -36,6 +36,8 @@ from apps.configuracion.views import (
     LogIntegracionViewSet,
     ParametroSistemaViewSet,
 )
+from apps.inventario.views import BodegaViewSet, MaterialViewSet
+from apps.produccion.views import EmpleadoViewSet, OrdenTrabajoViewSet, TareaViewSet
 from apps.seguridad.views import yo
 
 router = DefaultRouter()
@@ -57,6 +59,13 @@ router.register("estados", EstadoDocumentoViewSet, basename="estado")
 router.register("solicitudes", SolicitudPresupuestoViewSet, basename="solicitud")
 router.register("cotizaciones", CotizacionViewSet, basename="cotizacion")
 router.register("ordenes-compra", OrdenCompraViewSet, basename="orden-compra")
+
+# Produccion e inventario
+router.register("ordenes-trabajo", OrdenTrabajoViewSet, basename="orden-trabajo")
+router.register("tareas", TareaViewSet, basename="tarea")
+router.register("empleados", EmpleadoViewSet, basename="empleado")
+router.register("materiales", MaterialViewSet, basename="material")
+router.register("bodegas", BodegaViewSet, basename="bodega")
 
 # Configuracion y canal web (solo usuarios internos)
 router.register("parametros", ParametroSistemaViewSet, basename="parametro-sistema")

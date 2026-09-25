@@ -173,6 +173,7 @@ class OrdenCompraSerializer(serializers.ModelSerializer):
     cotizacion_numero = serializers.CharField(source="cotizacion.numero", read_only=True)
     anticipo = serializers.SerializerMethodField()
     estado_codigo = serializers.CharField(source="estado.codigo", read_only=True)
+    ordenes_trabajo = serializers.SerializerMethodField()
     historial = HistorialSerializer(many=True, read_only=True)
     estado_nombre = serializers.CharField(source="estado.nombre", read_only=True)
     monto_anticipo_uf = serializers.DecimalField(
@@ -188,8 +189,12 @@ class OrdenCompraSerializer(serializers.ModelSerializer):
                   "cliente", "cliente_nombre", "estado", "estado_nombre", "estado_codigo",
                   "total_uf",
                   "anticipo_pct", "monto_anticipo_uf", "monto_saldo_uf", "anticipo",
+                  "ordenes_trabajo",
                   "creado_en", "lineas", "historial"]
         read_only_fields = ["numero", "creado_en"]
+
+    def get_ordenes_trabajo(self, orden) -> list[str]:
+        return [ot.numero for ot in orden.ordenes_trabajo.all()]
 
     def get_anticipo(self, orden) -> dict | None:
         """Documento de cobro del anticipo y su estado de pago (RN-15)."""

@@ -134,8 +134,8 @@ class PanelCatalogo(PanelBase):
     """
 
     titulo = "Catalogo de productos"
-    subtitulo = ("Controle que modelos son visibles para el cliente en la "
-                 "aplicacion web. El cambio se aplica de inmediato.")
+    subtitulo = ("Cree y edite los modelos del catalogo y controle cuales ve el "
+                 "cliente en la web. La publicacion se aplica de inmediato.")
     columnas = ["Codigo", "Nombre", "Familia", "Precio UF", "En la web"]
 
     def construir(self):
@@ -153,11 +153,21 @@ class PanelCatalogo(PanelBase):
 
         self.tabla = self.crear_tabla()
         if self.cliente.puede("catalogo.actualizar"):
-            self.tabla.doubleClicked.connect(self.alternar)
+            self.tabla.doubleClicked.connect(self.editar)
         self.contenedor.addWidget(self.tabla)
 
         acciones = QHBoxLayout()
-        self.boton = QPushButton("Publicar o retirar el modelo seleccionado")
+        nuevo = QPushButton("Nuevo modelo")
+        nuevo.setObjectName("exito")
+        nuevo.clicked.connect(self.nuevo)
+        nuevo.setVisible(self.cliente.puede("catalogo.crear"))
+        acciones.addWidget(nuevo)
+        editar = QPushButton("Editar")
+        editar.setObjectName("secundario")
+        editar.clicked.connect(self.editar)
+        editar.setVisible(self.cliente.puede("catalogo.actualizar"))
+        acciones.addWidget(editar)
+        self.boton = QPushButton("Publicar o retirar")
         self.boton.clicked.connect(self.alternar)
         self.boton.setVisible(self.cliente.puede("catalogo.actualizar"))
         acciones.addWidget(self.boton)
@@ -191,6 +201,32 @@ class PanelCatalogo(PanelBase):
             ]
             for m in self.datos
         ])
+
+    def nuevo(self):
+        self._abrir(None)
+
+    def editar(self, *_):
+        fila = self.tabla.currentRow()
+        if fila < 0:
+            QMessageBox.information(self, "Seleccione un modelo", "Elija una fila de la tabla.")
+            return
+        self._abrir(self.datos[fila]["id_modelo"])
+
+    def _abrir(self, id_modelo):
+        from paneles_catalogo import DialogoModelo
+
+        try:
+            dialogo = DialogoModelo(self.cliente, id_modelo, self)
+        except ErrorAPI as error:
+            return self.manejar_error(error)
+        if dialogo.exec() and dialogo.resultado:
+            accion = "actualizado" if id_modelo else "creado"
+            QMessageBox.information(
+                self, "Catalogo",
+                f"Modelo {dialogo.resultado['codigo']} {accion}."
+                + ("" if id_modelo else " Esta retirado: publiquelo cuando este listo."),
+            )
+            self.refrescar()
 
     def alternar(self):
         fila = self.tabla.currentRow()

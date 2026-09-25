@@ -90,6 +90,9 @@ docker compose exec web python manage.py emitir_cobros
 
 # 10. Cargar los roles y la matriz de permisos (y un usuario por rol)
 docker compose exec web python manage.py cargar_roles --usuarios-demo
+
+# 11. Datos del taller: materiales con stock, tareas estandar y empleados
+docker compose exec web python manage.py cargar_demo_produccion
 ```
 
 Los comandos del paso 6 cargan los 21 estados del flujo documental y los 12
@@ -150,11 +153,13 @@ Paneles disponibles:
 
 | Panel | Que permite |
 |---|---|
-| Catalogo | Publicar o retirar modelos del catalogo web |
+| Catalogo | Crear y editar modelos (parametros tecnicos y precio base versionado) y publicarlos o retirarlos de la web |
 | Clientes | Consultar clientes, contactos y direcciones |
 | Solicitudes | Tomar una solicitud y elaborar su cotizacion con el costeo calculado |
 | Cotizaciones | Enviar a aprobacion, emitir (con envio por correo), reenviar y generar la orden de compra |
-| Ordenes de compra | Ver el estado del anticipo y confirmar la orden |
+| Ordenes de compra | Ver el estado del anticipo, confirmar la orden y generar sus ordenes de trabajo |
+| Ordenes de trabajo | Asignar responsables, iniciar, registrar por un ausente, costo real contra estimado, enviar a calidad y cerrar |
+| Taller (operario) | Vista propia sin menu, con campos grandes: sus tareas, horas, material y termino de tarea |
 | Canal web | Modo mantencion, pago en linea, autorregistro y parametros |
 | Integraciones | Registro de llamadas a servicios externos |
 
@@ -162,6 +167,26 @@ Con estos paneles el flujo comercial completo (solicitud, cotizacion,
 emision, orden de compra) se opera sin usar el admin de Django.
 
 Detalle en `escritorio/README.md`.
+
+## Ejecucion productiva (HU-07, HU-08)
+
+Reglas en `apps/produccion/services.py`, expuestas en `/api/v1/ordenes-trabajo/`
+y `/api/v1/tareas/`:
+
+- La orden de trabajo nace solo de una orden de compra confirmada (RN-07),
+  una por linea, con las tareas estandar del modelo y el costo estimado de la
+  cotizacion.
+- Las horas se valorizan con la tarifa vigente del empleado a la fecha y
+  respetan el tope diario configurable (RN-10).
+- El consumo de material descuenta stock con un movimiento de inventario y
+  se rechaza si no hay saldo suficiente, informando lo disponible (RN-09).
+- Cada registro actualiza el costo real y el avance; un registro de horas no
+  se edita ni se borra, se anula con motivo y queda auditado (RN-13).
+- El operario registra solo en sus tareas; el jefe de produccion puede
+  registrar por un ausente.
+- La orden pasa a calidad cuando todas sus tareas estan terminadas y no se
+  cierra con controles pendientes o no conformidades abiertas (RN-12). Una
+  desviacion de costo sobre el umbral exige justificacion al cerrar (RN-11).
 
 ## Roles y matriz de permisos
 
@@ -314,7 +339,7 @@ clientes ficticios de los datos de demostracion.
 docker compose exec web pytest
 ```
 
-103 pruebas automatizadas con 90% de cobertura sobre `apps/`, por encima del
+120 pruebas automatizadas con 90% de cobertura sobre `apps/`, por encima del
 70% exigido por RNF-13. Las llamadas a servicios externos (incluido PayPal) se
 simulan con dobles de prueba.
 

@@ -437,7 +437,7 @@ class OrdenCompraViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
     queryset = (
         OrdenCompra.objects.select_related("cliente", "estado", "cotizacion")
         .prefetch_related("lineas__cotizacion_linea__modelo", "historial",
-                          "documentos_cobro")
+                          "documentos_cobro", "ordenes_trabajo")
     )
     serializer_class = OrdenCompraSerializer
     permission_classes = [CuentaOperativa, PermisoPorRol]
@@ -445,6 +445,7 @@ class OrdenCompraViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
     acciones_cliente = ("list", "retrieve")
     permisos_accion = {
         "confirmar": "orden_compra.actualizar",
+        "generar_ordenes_trabajo": "orden_trabajo.crear",
         # La orden nace solo desde una cotizacion aceptada (RN-06)
         "create": None, "update": None, "partial_update": None, "destroy": None,
     }
@@ -475,3 +476,22 @@ class OrdenCompraViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
             observacion="Orden confirmada.",
         )
         return Response(self.get_serializer(orden).data)
+
+    @action(detail=True, methods=["post"])
+    def generar_ordenes_trabajo(self, request, pk=None):
+        """
+        Genera las ordenes de trabajo de una orden confirmada (CU-OT-01, RN-07).
+
+        La ejecuta el jefe de produccion: la orden de compra es del area
+        comercial, pero la planificacion es de produccion.
+        """
+        from apps.produccion import services as produccion
+        from apps.produccion.serializers import OrdenTrabajoSerializer
+
+        orden = self.get_object()
+        try:
+            creadas = produccion.generar_ordenes_trabajo(orden, request.user)
+        except produccion.ErrorProduccion as error:
+            return Response({"detalle": str(error)}, status=status.HTTP_409_CONFLICT)
+        return Response(OrdenTrabajoSerializer(creadas, many=True).data,
+                        status=status.HTTP_201_CREATED)

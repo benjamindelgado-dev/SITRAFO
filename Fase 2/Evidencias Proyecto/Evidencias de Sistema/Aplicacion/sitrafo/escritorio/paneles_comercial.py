@@ -473,6 +473,10 @@ class PanelOrdenesCompra(PanelBase):
         self.b_confirmar.clicked.connect(self._confirmar)
         self.b_confirmar.setVisible(self.cliente.puede("orden_compra.actualizar"))
         acciones.addWidget(self.b_confirmar)
+        self.b_ot = QPushButton("Generar ordenes de trabajo")
+        self.b_ot.clicked.connect(self._generar_ot)
+        self.b_ot.setVisible(self.cliente.puede("orden_trabajo.crear"))
+        acciones.addWidget(self.b_ot)
         recargar = QPushButton("Recargar")
         recargar.setObjectName("secundario")
         recargar.clicked.connect(self.refrescar)
@@ -482,6 +486,7 @@ class PanelOrdenesCompra(PanelBase):
 
         self.datos = []
         self.b_confirmar.setEnabled(False)
+        self.b_ot.setEnabled(False)
 
     def refrescar(self):
         try:
@@ -509,6 +514,32 @@ class PanelOrdenesCompra(PanelBase):
         self.b_confirmar.setEnabled(
             bool(orden) and orden.get("estado_codigo") == "pendiente"
         )
+        self.b_ot.setEnabled(
+            bool(orden) and orden.get("estado_codigo") == "confirmada"
+            and not orden.get("ordenes_trabajo")
+        )
+
+    def _generar_ot(self):
+        fila = self.tabla.currentRow()
+        if not 0 <= fila < len(self.datos):
+            return
+        orden = self.datos[fila]
+        if QMessageBox.question(
+            self, "Generar ordenes de trabajo",
+            f"Se generaran las ordenes de trabajo de {orden['numero']} con las tareas "
+            "estandar de cada modelo. ¿Continuar?",
+        ) != QMessageBox.Yes:
+            return
+        try:
+            creadas = self.cliente.generar_ordenes_trabajo(orden["id_orden_compra"])
+        except ErrorAPI as error:
+            return self.manejar_error(error)
+        QMessageBox.information(
+            self, "Ordenes de trabajo generadas",
+            "Se generaron: " + ", ".join(o["numero"] for o in creadas)
+            + ". Planifiquelas en el panel Ordenes de trabajo.",
+        )
+        self.refrescar()
 
     def _confirmar(self):
         fila = self.tabla.currentRow()

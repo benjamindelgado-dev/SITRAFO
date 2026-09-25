@@ -1,4 +1,6 @@
 """Serializadores del dominio de catalogo."""
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from .models import (
@@ -92,3 +94,34 @@ class ModeloProductoDetalleSerializer(serializers.ModelSerializer):
                   "publicado", "activo", "precio_vigente",
                   "horas_estandar_totales", "parametros_asignados",
                   "materiales", "tareas_estandar"]
+
+
+class ParametroDelModeloEntrada(serializers.Serializer):
+    parametro = serializers.PrimaryKeyRelatedField(queryset=ParametroTecnico.objects.all())
+    valor_defecto = serializers.CharField(required=False, allow_blank=True, default="")
+    obligatorio = serializers.BooleanField(required=False, default=False)
+
+    def to_internal_value(self, datos):
+        valor = super().to_internal_value(datos)
+        valor["parametro"] = valor["parametro"].pk
+        return valor
+
+
+class ModeloProductoEscrituraSerializer(serializers.ModelSerializer):
+    """
+    Alta y edicion del modelo desde la aplicacion de escritorio.
+
+    El precio base es opcional y exige permiso sobre precios: lo verifica la
+    vista, porque en la matriz son modulos distintos.
+    """
+
+    parametros = ParametroDelModeloEntrada(many=True, required=False)
+    precio_base_uf = serializers.DecimalField(
+        max_digits=12, decimal_places=4, required=False, allow_null=True,
+        min_value=Decimal("0"),
+    )
+
+    class Meta:
+        model = ModeloProducto
+        fields = ["familia", "codigo", "nombre", "descripcion", "parametros",
+                  "precio_base_uf"]

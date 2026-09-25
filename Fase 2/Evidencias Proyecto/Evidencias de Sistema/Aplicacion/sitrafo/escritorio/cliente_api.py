@@ -156,6 +156,26 @@ class ClienteAPI:
     def modelos(self, params=None):
         return self.obtener("modelos/", params)
 
+    def modelo(self, id_modelo: int):
+        return self.obtener(f"modelos/{id_modelo}/")
+
+    def crear_modelo(self, datos: dict):
+        return self.crear("modelos/", datos)
+
+    def actualizar_modelo(self, id_modelo: int, datos: dict):
+        return self.actualizar(f"modelos/{id_modelo}/", datos)
+
+    def familias(self):
+        respuesta = self.obtener("familias/", {"page_size": 200})
+        return respuesta.get("results", respuesta)
+
+    def crear_familia(self, nombre: str):
+        return self.crear("familias/", {"nombre": nombre})
+
+    def parametros_tecnicos(self):
+        respuesta = self.obtener("parametros-tecnicos/", {"page_size": 200})
+        return respuesta.get("results", respuesta)
+
     def alternar_publicacion(self, id_modelo: int):
         return self.accion(f"modelos/{id_modelo}/publicar/")
 
@@ -198,6 +218,63 @@ class ClienteAPI:
 
     def confirmar_orden_compra(self, id_orden: int):
         return self.accion(f"ordenes-compra/{id_orden}/confirmar/")
+
+    def generar_ordenes_trabajo(self, id_orden_compra: int):
+        return self.accion(f"ordenes-compra/{id_orden_compra}/generar_ordenes_trabajo/")
+
+    # -- Produccion -------------------------------------------------------
+    def ordenes_trabajo(self, params=None):
+        return self.obtener("ordenes-trabajo/", params)
+
+    def orden_trabajo(self, id_ot: int):
+        return self.obtener(f"ordenes-trabajo/{id_ot}/")
+
+    def iniciar_ot(self, id_ot: int):
+        return self.accion(f"ordenes-trabajo/{id_ot}/iniciar/")
+
+    def enviar_ot_a_calidad(self, id_ot: int):
+        return self.accion(f"ordenes-trabajo/{id_ot}/enviar_calidad/")
+
+    def cerrar_ot(self, id_ot: int, justificacion: str = ""):
+        return self.accion(f"ordenes-trabajo/{id_ot}/cerrar/",
+                           {"justificacion": justificacion})
+
+    def tareas(self, params=None):
+        return self.obtener("tareas/", params)
+
+    def asignar_tarea(self, id_tarea: int, id_empleado: int):
+        return self.accion(f"tareas/{id_tarea}/asignar/", {"empleado": id_empleado})
+
+    def registrar_horas(self, id_tarea: int, horas, empleado=None, fecha=None):
+        datos = {"horas": str(horas)}
+        if empleado:
+            datos["empleado"] = empleado
+        if fecha:
+            datos["fecha"] = fecha
+        return self.accion(f"tareas/{id_tarea}/registrar_horas/", datos)
+
+    def registrar_consumo(self, id_tarea: int, material: int, bodega: int, cantidad,
+                          empleado=None):
+        datos = {"material": material, "bodega": bodega, "cantidad": str(cantidad)}
+        if empleado:
+            datos["empleado"] = empleado
+        return self.accion(f"tareas/{id_tarea}/registrar_consumo/", datos)
+
+    def anular_horas(self, id_tarea: int, id_registro: int, motivo: str):
+        return self.accion(f"tareas/{id_tarea}/anular_horas/",
+                           {"registro": id_registro, "motivo": motivo})
+
+    def terminar_tarea(self, id_tarea: int):
+        return self.accion(f"tareas/{id_tarea}/terminar/")
+
+    def empleados(self):
+        return self.obtener("empleados/")
+
+    def materiales(self):
+        return self.obtener("materiales/")
+
+    def bodegas(self):
+        return self.obtener("bodegas/")
 
     def parametros(self, ambito: str | None = None):
         params = {"ambito": ambito} if ambito else None

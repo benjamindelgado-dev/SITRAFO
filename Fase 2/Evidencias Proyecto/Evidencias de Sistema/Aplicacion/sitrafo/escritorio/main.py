@@ -35,13 +35,29 @@ def main() -> int:
     aplicacion.setStyleSheet(HOJA)
 
     cliente = ClienteAPI(argumentos.api)
+    estado = {"ventana": None}
 
-    login = VentanaLogin(cliente)
-    if login.exec() != QDialog.Accepted:
+    def ingresar() -> bool:
+        """Pide credenciales y abre la ventana que corresponde al rol."""
+        login = VentanaLogin(cliente)
+        if login.exec() != QDialog.Accepted:
+            return False
+        ventana = VentanaPrincipal(cliente)
+        ventana.sesion_cerrada.connect(volver_al_ingreso)
+        estado["ventana"] = ventana
+        ventana.show()
+        return True
+
+    def volver_al_ingreso():
+        # Tras cerrar sesion se vuelve a pedir usuario; si se cancela, se sale
+        if not ingresar():
+            aplicacion.quit()
+
+    # La aplicacion no termina al cerrar la ventana por cerrar sesion: lo
+    # hace la ventana principal al cerrarse con la X, o el ingreso cancelado
+    aplicacion.setQuitOnLastWindowClosed(False)
+    if not ingresar():
         return 0
-
-    ventana = VentanaPrincipal(cliente)
-    ventana.show()
     return aplicacion.exec()
 
 
