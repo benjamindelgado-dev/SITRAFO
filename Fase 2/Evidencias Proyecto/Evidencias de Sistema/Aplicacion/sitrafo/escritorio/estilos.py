@@ -38,8 +38,21 @@ QPushButton#secundario {{
 QPushButton#secundario:hover {{ background-color: #eef2f7; }}
 QPushButton#peligro {{ background-color: #b02a37; }}
 QPushButton#peligro:hover {{ background-color: #c9333f; }}
+QPushButton#exito {{ background-color: #1a7f37; }}
+QPushButton#exito:hover {{ background-color: #1f9442; }}
 
-QLineEdit, QComboBox, QTextEdit, QDateTimeEdit {{
+/* Los botones con variante de color tambien deben verse deshabilitados */
+QPushButton#exito:disabled, QPushButton#peligro:disabled {{
+    background-color: #9aa5b1; color: #eef2f7;
+}}
+QPushButton#secundario:disabled {{
+    background-color: #eef2f7; color: #9aa5b1; border: 1px solid #dde3ea;
+}}
+
+QLabel#cifra {{ font-size: 22px; font-weight: bold; color: {AZUL}; }}
+QLabel#nota {{ color: #6c757d; font-size: 12px; }}
+
+QLineEdit, QComboBox, QTextEdit, QDateTimeEdit, QSpinBox, QDoubleSpinBox {{
     padding: 7px; border: 1px solid {GRIS_BORDE};
     border-radius: 4px; background: white; color: {TEXTO};
 }}

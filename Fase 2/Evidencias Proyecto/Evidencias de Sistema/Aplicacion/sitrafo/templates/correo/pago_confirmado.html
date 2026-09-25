@@ -1,0 +1,12 @@
+{% extends "correo/_base.html" %}
+{% block cuerpo %}
+<p>Recibimos el pago del documento <strong>{{ documento.numero }}</strong>.</p>
+<table role="presentation" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+  <tr><td style="color:#4a5760;">Concepto</td><td>{{ documento.get_tipo_display }} de la orden {{ documento.orden_compra.numero }}</td></tr>
+  <tr><td style="color:#4a5760;">Monto del documento</td><td>{{ documento.monto_uf|floatformat:2 }} UF (${{ documento.monto_clp|floatformat:0 }})</td></tr>
+  <tr><td style="color:#4a5760;">Monto cobrado</td><td>{{ transaccion.monto }} {{ transaccion.moneda }} via {{ transaccion.pasarela|upper }}</td></tr>
+  <tr><td style="color:#4a5760;">Referencia</td><td>{{ transaccion.id_externo }}</td></tr>
+  <tr><td style="color:#4a5760;">Fecha</td><td>{{ transaccion.resuelta_en|date:"d-m-Y H:i" }}</td></tr>
+</table>
+{% include "correo/_boton.html" with texto="Ver el documento" %}
+{% endblock %}

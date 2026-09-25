@@ -19,6 +19,7 @@ from paneles import (
     PanelIntegraciones,
     PanelSolicitudes,
 )
+from paneles_comercial import PanelCotizaciones, PanelOrdenesCompra
 
 
 class VentanaPrincipal(QMainWindow):
@@ -71,6 +72,8 @@ class VentanaPrincipal(QMainWindow):
             ("Catalogo", PanelCatalogo(self.cliente)),
             ("Clientes", PanelClientes(self.cliente)),
             ("Solicitudes", PanelSolicitudes(self.cliente)),
+            ("Cotizaciones", PanelCotizaciones(self.cliente)),
+            ("Ordenes de compra", PanelOrdenesCompra(self.cliente)),
             ("Canal web", PanelCanalWeb(self.cliente)),
             ("Integraciones", PanelIntegraciones(self.cliente)),
         ]

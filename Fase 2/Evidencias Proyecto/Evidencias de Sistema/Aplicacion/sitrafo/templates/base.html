@@ -20,12 +20,13 @@
 <body class="d-flex flex-column min-vh-100">
 
 {% if user.is_authenticated %}
-<nav class="navbar navbar-expand-lg barra">
+<nav class="navbar navbar-expand-md barra" data-bs-theme="dark">
   <div class="container">
     <a class="navbar-brand" href="{% url 'web:inicio' %}">
       SITRAFO<span>Portal de clientes</span>
     </a>
-    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#menu">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu"
+            aria-controls="menu" aria-expanded="false" aria-label="Abrir el menu">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="menu">
@@ -35,7 +36,7 @@
         <li class="nav-item"><a class="nav-link {% if seccion == 'cotizaciones' %}activo{% endif %}" href="{% url 'web:mis_cotizaciones' %}">Cotizaciones</a></li>
         <li class="nav-item"><a class="nav-link {% if seccion == 'pedidos' %}activo{% endif %}" href="{% url 'web:mis_pedidos' %}">Pedidos</a></li>
       </ul>
-      <ul class="navbar-nav align-items-lg-center">
+      <ul class="navbar-nav align-items-md-center">
         <li class="nav-item"><a class="nav-link {% if seccion == 'perfil' %}activo{% endif %}" href="{% url 'web:perfil' %}">{{ user.username }}</a></li>
         <li class="nav-item">
           <form method="post" action="{% url 'web:logout' %}">

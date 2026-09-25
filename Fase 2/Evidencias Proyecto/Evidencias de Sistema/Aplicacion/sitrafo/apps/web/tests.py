@@ -170,6 +170,25 @@ def test_solicitud_captura_la_especificacion_tecnica(escenario):
 
 
 @pytest.mark.django_db
+def test_solicitud_envia_acuse_de_recibo(escenario, django_capture_on_commit_callbacks):
+    """El correo sale solo despues de confirmar la transaccion."""
+    from django.core import mail
+
+    datos = {
+        "modelo": escenario["publicado"].pk,
+        "cantidad": 1,
+        f"param_{escenario['parametro'].id_parametro}": "100",
+    }
+    with django_capture_on_commit_callbacks(execute=True):
+        escenario["client"].post(reverse("web:solicitar"), datos)
+
+    solicitud = SolicitudPresupuesto.objects.get()
+    assert len(mail.outbox) == 1
+    assert solicitud.numero in mail.outbox[0].subject
+    assert mail.outbox[0].to == ["c@c.cl"]
+
+
+@pytest.mark.django_db
 def test_solicitud_se_asigna_al_cliente_de_la_cuenta(escenario):
     """RN-16: el cliente no se toma del formulario."""
     datos = {

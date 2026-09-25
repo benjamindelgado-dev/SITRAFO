@@ -26,6 +26,7 @@ from apps.comercial.models import (
     SolicitudPresupuesto,
 )
 from apps.configuracion.models import AvisoSitio, ParametroSistema
+from apps.configuracion.services import notificaciones
 from apps.pagos.models import DocumentoCobro, TransaccionPago
 from apps.pagos.services import cobros
 from apps.produccion.models import OrdenTrabajo
@@ -225,6 +226,9 @@ def solicitar_presupuesto(request):
                 estado_nuevo=solicitud.estado,
                 usuario=request.user,
                 observacion="Solicitud recibida desde la aplicacion web.",
+            )
+            transaction.on_commit(
+                lambda: notificaciones.notificar_solicitud_recibida(solicitud)
             )
 
         messages.success(

@@ -190,3 +190,38 @@ def test_cargar_demo_es_repetible_y_emite_el_anticipo():
     assert "No se pudo sembrar" not in salida.getvalue()
     assert OrdenCompra.objects.count() == 2
     assert DocumentoCobro.objects.filter(tipo="anticipo").count() == 2
+
+
+@pytest.mark.django_db
+def test_emitir_cotizacion_la_envia_por_correo(datos_base):
+    """RF-COM-09: al emitir desde la API, el cliente recibe la cotizacion."""
+    from django.core import mail
+    from rest_framework.test import APIClient
+
+    from apps.clientes.models import ContactoCliente
+
+    datos_base["usuario"].is_superuser = True
+    datos_base["usuario"].save()
+    ContactoCliente.objects.create(cliente=datos_base["cliente"], nombre="Compras",
+                                   email="compras@maipo.cl", principal=True)
+    cotizacion = _cotizacion(
+        datos_base, datetime.date.today() + datetime.timedelta(days=30)
+    )
+    cotizacion.estado = EstadoDocumento.objects.create(
+        tipo_documento="cotizacion", codigo="borrador", nombre="Borrador"
+    )
+    cotizacion.save()
+    CotizacionLinea.objects.create(
+        cotizacion=cotizacion, modelo=datos_base["modelo"], cantidad=1,
+        precio_uf=Decimal("150.0000"),
+    )
+
+    api = APIClient()
+    api.force_authenticate(datos_base["usuario"])
+    respuesta = api.post(f"/api/v1/cotizaciones/{cotizacion.pk}/emitir/")
+
+    assert respuesta.status_code == 200
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == ["compras@maipo.cl"]
+    assert cotizacion.numero in mail.outbox[0].subject
+    assert "150,00 UF" in mail.outbox[0].body  # formato chileno

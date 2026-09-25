@@ -1,5 +1,7 @@
 """Administracion de Django para el dominio comercial."""
-from django.contrib import admin
+from django.contrib import admin, messages
+
+from apps.configuracion.services import notificaciones
 
 from .models import (
     Cotizacion,
@@ -103,6 +105,24 @@ class CotizacionAdmin(admin.ModelAdmin):
     @admin.display(description="vigente", boolean=True)
     def vigente_display(self, obj):
         return obj.esta_vigente
+
+    actions = ["enviar_por_correo"]
+
+    @admin.action(description="Enviar la cotizacion al cliente por correo")
+    def enviar_por_correo(self, request, queryset):
+        """RF-COM-09. Reenvio manual, por ejemplo si el cliente no la recibio."""
+        enviadas = sum(
+            1 for c in queryset if notificaciones.notificar_cotizacion_emitida(c)
+        )
+        fallidas = queryset.count() - enviadas
+        self.message_user(request, f"{enviadas} cotizacion(es) enviada(s).")
+        if fallidas:
+            self.message_user(
+                request,
+                f"{fallidas} no se pudieron enviar (sin destinatario o servicio "
+                "no disponible). Revise el registro de integraciones.",
+                level=messages.WARNING,
+            )
 
 
 class OrdenCompraLineaInline(admin.TabularInline):

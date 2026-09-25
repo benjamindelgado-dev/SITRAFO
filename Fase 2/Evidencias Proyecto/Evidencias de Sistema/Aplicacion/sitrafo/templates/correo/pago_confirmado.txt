@@ -1,0 +1,13 @@
+{% autoescape off %}Recibimos el pago del documento {{ documento.numero }}.
+
+Concepto: {{ documento.get_tipo_display }} de la orden {{ documento.orden_compra.numero }}
+Monto del documento: {{ documento.monto_uf|floatformat:2 }} UF (${{ documento.monto_clp|floatformat:0 }})
+Monto cobrado: {{ transaccion.monto }} {{ transaccion.moneda }} via {{ transaccion.pasarela|upper }}
+Referencia: {{ transaccion.id_externo }}
+Fecha: {{ transaccion.resuelta_en|date:"d-m-Y H:i" }}
+
+Ver el documento: {{ url }}
+
+--
+Mensaje automatico de SITRAFO. No responda a este correo.
+{% endautoescape %}

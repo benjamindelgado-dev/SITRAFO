@@ -1,0 +1,13 @@
+{% autoescape off %}Hemos recibido su solicitud de presupuesto {{ solicitud.numero }}.
+{% if solicitud.modelo %}
+Modelo: {{ solicitud.modelo.nombre }}{% endif %}
+Cantidad: {{ solicitud.cantidad }}{% if solicitud.fecha_deseada %}
+Fecha deseada: {{ solicitud.fecha_deseada|date:"d-m-Y" }}{% endif %}
+
+El area comercial revisara la especificacion tecnica y le enviara una cotizacion.
+
+Ver mis solicitudes: {{ url }}
+
+--
+Mensaje automatico de SITRAFO. No responda a este correo.
+{% endautoescape %}

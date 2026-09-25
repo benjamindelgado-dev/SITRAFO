@@ -231,8 +231,12 @@ class PanelSolicitudes(PanelBase):
 
         acciones = QHBoxLayout()
         asignar = QPushButton("Asignarme la solicitud")
+        asignar.setObjectName("secundario")
         asignar.clicked.connect(self.asignar)
         acciones.addWidget(asignar)
+        cotizar = QPushButton("Elaborar cotizacion")
+        cotizar.clicked.connect(self.cotizar)
+        acciones.addWidget(cotizar)
         recargar = QPushButton("Recargar")
         recargar.setObjectName("secundario")
         recargar.clicked.connect(self.refrescar)
@@ -251,8 +255,12 @@ class PanelSolicitudes(PanelBase):
         self.datos = respuesta.get("results", respuesta)
         self.llenar(self.tabla, [
             [
-                s["numero"], s.get("cliente", ""), s.get("modelo_nombre") or "sin modelo",
-                s["cantidad"], s.get("estado_nombre", ""), s["creado_en"][:10],
+                s["numero"], s.get("cliente_nombre", ""),
+                s.get("modelo_nombre") or "sin modelo", s["cantidad"],
+                s.get("estado_nombre", "") + (
+                    f" ({s['ejecutivo_nombre']})" if s.get("ejecutivo_nombre") else ""
+                ),
+                s["creado_en"][:10],
             ]
             for s in self.datos
         ])
@@ -286,6 +294,28 @@ class PanelSolicitudes(PanelBase):
             f"La solicitud {resultado['numero']} quedo a su nombre.",
         )
         self.refrescar()
+
+
+    def cotizar(self):
+        """Abre el formulario de cotizacion con el costeo del backend (CU-COM-03)."""
+        from paneles_comercial import DialogoCotizacion
+
+        fila = self.tabla.currentRow()
+        if fila < 0 or fila >= len(self.datos):
+            QMessageBox.information(self, "Seleccione una solicitud", "Elija una fila.")
+            return
+        solicitud = self.datos[fila]
+        try:
+            dialogo = DialogoCotizacion(self.cliente, solicitud, self)
+        except ErrorAPI as error:
+            return self.manejar_error(error)
+        if dialogo.exec() and dialogo.resultado:
+            QMessageBox.information(
+                self, "Cotizacion creada",
+                f"Se creo el borrador {dialogo.resultado['numero']}. Reviselo y "
+                "emitalo desde el panel Cotizaciones.",
+            )
+            self.refrescar()
 
 
 class PanelCanalWeb(PanelBase):

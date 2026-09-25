@@ -353,3 +353,27 @@ def test_detalle_muestra_monto_en_dolares(escenario, documento):
 def test_mis_pedidos_lista_el_cobro(escenario, documento):
     respuesta = escenario["client"].get(reverse("web:mis_pedidos"))
     assert documento.numero in respuesta.content.decode()
+
+
+def test_pago_aprobado_envia_comprobante(escenario, documento,
+                                          django_capture_on_commit_callbacks):
+    from django.core import mail
+
+    with django_capture_on_commit_callbacks(execute=True):
+        _iniciar_y_volver(escenario, documento, PayPalFalso())
+
+    assert len(mail.outbox) == 1
+    correo = mail.outbox[0]
+    assert documento.numero in correo.subject
+    assert correo.to == ["c@c.cl"]            # cuenta web del cliente
+    assert "ORDEN-PP-1" in correo.body
+    assert correo.alternatives[0][1] == "text/html"
+
+
+def test_pago_rechazado_no_envia_comprobante(escenario, documento,
+                                              django_capture_on_commit_callbacks):
+    from django.core import mail
+
+    with django_capture_on_commit_callbacks(execute=True):
+        _iniciar_y_volver(escenario, documento, PayPalFalso(captura_codigo=422))
+    assert mail.outbox == []

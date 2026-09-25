@@ -244,3 +244,100 @@ def test_feriados_formato_nager_omite_regionales():
     assert resultado["exitoso"]
     assert llamada.call_args.args[0].endswith("/PublicHolidays/2026/CL")
     assert list(Feriado.objects.values_list("nombre", flat=True)) == ["Fiestas Patrias"]
+
+
+# ---------------------------------------------------------------------------
+# Correo transaccional (Brevo)
+# ---------------------------------------------------------------------------
+def _mensaje_prueba():
+    from django.core.mail import EmailMultiAlternatives
+
+    mensaje = EmailMultiAlternatives(
+        subject="Cotizacion COT-2026-0001", body="Texto plano",
+        from_email="SITRAFO <ventas@sitrafo.cl>", to=["Cliente <cliente@maipo.cl>"],
+    )
+    mensaje.attach_alternative("<p>HTML</p>", "text/html")
+    return mensaje
+
+
+@pytest.mark.django_db
+def test_brevo_arma_el_mensaje_y_registra_el_envio():
+    from apps.configuracion.services.correo import ClienteBrevo
+
+    with patch("requests.post",
+               return_value=RespuestaFalsa({"messageId": "<abc@smtp>"}, 201)) as llamada:
+        resultado = ClienteBrevo(api_key="clave-prueba").enviar(_mensaje_prueba())
+
+    assert resultado.exitoso
+    url, kwargs = llamada.call_args.args[0], llamada.call_args.kwargs
+    assert url.endswith("/v3/smtp/email")
+    assert kwargs["headers"]["api-key"] == "clave-prueba"
+    cuerpo = kwargs["json"]
+    assert cuerpo["sender"] == {"name": "SITRAFO", "email": "ventas@sitrafo.cl"}
+    assert cuerpo["to"] == [{"name": "Cliente", "email": "cliente@maipo.cl"}]
+    assert cuerpo["htmlContent"] == "<p>HTML</p>"
+    assert cuerpo["textContent"] == "Texto plano"
+
+    log = LogIntegracion.objects.get(servicio="correo")
+    assert log.exitoso and log.metodo == "POST"
+    assert "clave-prueba" not in log.endpoint
+
+
+@pytest.mark.django_db
+def test_brevo_sin_clave_no_llama_al_servicio():
+    from apps.configuracion.services.correo import ClienteBrevo
+
+    with patch("requests.post") as llamada:
+        resultado = ClienteBrevo(api_key="").enviar(_mensaje_prueba())
+    assert resultado.exitoso is False
+    llamada.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_backend_brevo_caido_no_rompe_el_proceso(settings):
+    """RF-INT-03: con fail_silently el fallo se registra y no se propaga."""
+    from apps.configuracion.services.correo import BrevoEmailBackend
+
+    settings.BREVO_API_KEY = "clave-prueba"
+    with patch("requests.post", side_effect=ConnectTimeout("sin conexion")), \
+         patch("time.sleep"):
+        enviados = BrevoEmailBackend(fail_silently=True).send_messages([_mensaje_prueba()])
+
+    assert enviados == 0
+    assert LogIntegracion.objects.filter(servicio="correo", exitoso=False).count() == 2
+
+
+@pytest.mark.django_db
+def test_destinatarios_prefiere_contacto_principal_y_cae_a_cuentas(django_user_model):
+    from apps.clientes.models import Cliente, ContactoCliente
+    from apps.configuracion.services.notificaciones import destinatarios_de
+
+    cliente = Cliente.objects.create(
+        rut="76543210-3", razon_social="Maipo SpA", tipo_persona="juridica"
+    )
+    django_user_model.objects.create_user("maipo", "cuenta@maipo.cl", "x" * 12,
+                                          cliente=cliente)
+    assert destinatarios_de(cliente) == ["cuenta@maipo.cl"]
+
+    ContactoCliente.objects.create(cliente=cliente, nombre="Ana", email="ana@maipo.cl")
+    assert destinatarios_de(cliente) == ["ana@maipo.cl"]
+
+    ContactoCliente.objects.create(cliente=cliente, nombre="Jefe", email="jefe@maipo.cl",
+                                   principal=True)
+    assert destinatarios_de(cliente) == ["jefe@maipo.cl"]
+
+
+@pytest.mark.django_db
+def test_redireccion_de_correos_en_desarrollo(settings):
+    from django.core import mail
+
+    from apps.configuracion.services.notificaciones import enviar
+
+    settings.CORREO_REDIRIGIR_A = "benja@prueba.cl"
+    ok = enviar("solicitud_recibida", "Asunto", ["cliente@maipo.cl"],
+                {"solicitud": type("S", (), {"numero": "SP-1", "cantidad": 1,
+                                             "modelo": None, "fecha_deseada": None})(),
+                 "url": "http://x"})
+    assert ok
+    assert mail.outbox[0].to == ["benja@prueba.cl"]
+    assert "cliente@maipo.cl" in mail.outbox[0].subject

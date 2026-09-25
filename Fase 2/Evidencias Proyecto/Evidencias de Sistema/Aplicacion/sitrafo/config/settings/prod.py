@@ -17,3 +17,5 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
+
+EMAIL_BACKEND = "apps.configuracion.services.correo.BrevoEmailBackend"

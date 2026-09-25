@@ -1,0 +1,11 @@
+{% extends "correo/_base.html" %}
+{% block cuerpo %}
+<p>Hemos recibido su solicitud de presupuesto <strong>{{ solicitud.numero }}</strong>.</p>
+<table role="presentation" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+  {% if solicitud.modelo %}<tr><td style="color:#4a5760;">Modelo</td><td>{{ solicitud.modelo.nombre }}</td></tr>{% endif %}
+  <tr><td style="color:#4a5760;">Cantidad</td><td>{{ solicitud.cantidad }}</td></tr>
+  {% if solicitud.fecha_deseada %}<tr><td style="color:#4a5760;">Fecha deseada</td><td>{{ solicitud.fecha_deseada|date:"d-m-Y" }}</td></tr>{% endif %}
+</table>
+<p>El area comercial revisara la especificacion tecnica y le enviara una cotizacion.</p>
+{% include "correo/_boton.html" with texto="Ver mis solicitudes" %}
+{% endblock %}

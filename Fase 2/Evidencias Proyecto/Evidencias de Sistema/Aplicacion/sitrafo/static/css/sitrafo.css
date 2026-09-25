@@ -99,6 +99,29 @@ table, .cifra, .placa__valor, .metrica__cifra {
   border-bottom-color: var(--cobre);
 }
 
+/* Boton del menu en pantallas angostas: visible sobre la barra oscura */
+.barra .navbar-toggler {
+  border: 1px solid var(--acero);
+  padding: 0.3rem 0.55rem;
+}
+.barra .navbar-toggler:focus { box-shadow: 0 0 0 2px var(--cobre); }
+
+/* Menu desplegado: una opcion por linea, con el activo marcado a la izquierda */
+@media (max-width: 767px) {
+  .barra .navbar-collapse { padding: 0.5rem 0 0.75rem; }
+  .barra .nav-link {
+    border-bottom: 0;
+    border-left: 3px solid transparent;
+    padding: 0.55rem 0.9rem;
+  }
+  .barra .nav-link.activo { border-left-color: var(--cobre); }
+}
+/* Entre tablet y escritorio angosto (por ejemplo, media pantalla) */
+@media (min-width: 768px) and (max-width: 991px) {
+  .barra .navbar-brand span { display: none; }
+  .barra .nav-link { padding: 0.4rem 0.6rem; }
+}
+
 /* --------------------------------------------------------------------------
    Placa de caracteristicas
    Es la unidad de contenido del portal: una chapa con cabecera grabada y
@@ -267,8 +290,9 @@ table, .cifra, .placa__valor, .metrica__cifra {
   background: var(--placa);
   border: 1px solid var(--ansi);
   border-radius: 2px;
-  overflow: hidden;
+  overflow-x: auto;  /* en pantallas angostas la tabla se desplaza, no se corta */
 }
+.tabla-doc table { min-width: 560px; }
 .tabla-doc table { margin: 0; }
 .tabla-doc thead th {
   background: var(--grafito);
@@ -375,6 +399,9 @@ table, .cifra, .placa__valor, .metrica__cifra {
   font-size: var(--t-s);
 }
 .etapas-ot li:last-child { border-bottom: 0; }
+@media (max-width: 575px) {
+  .etapas-ot li { flex-wrap: wrap; }
+}
 .etapas-ot li.terminada { color: var(--acero); }
 
 /* --------------------------------------------------------------------------

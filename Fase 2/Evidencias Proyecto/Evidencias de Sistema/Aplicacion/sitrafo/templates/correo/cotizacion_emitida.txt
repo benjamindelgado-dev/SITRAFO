@@ -1,0 +1,15 @@
+{% autoescape off %}Su cotizacion {{ cotizacion.numero }} ya esta disponible.
+{% for l in cotizacion.lineas.all %}
+- {{ l.cantidad }} x {{ l.modelo.nombre }}: {{ l.precio_uf|floatformat:2 }} UF c/u{% endfor %}
+
+Total: {{ cotizacion.total_uf|floatformat:2 }} UF (${{ cotizacion.total_clp|floatformat:0 }})
+{% if cotizacion.fecha_entrega %}Entrega comprometida: {{ cotizacion.fecha_entrega|date:"d-m-Y" }}
+{% endif %}Valida hasta: {{ cotizacion.vence_el|date:"d-m-Y" }}
+
+El valor en pesos se calculo con la UF del {{ cotizacion.fecha_valor_uf|date:"d-m-Y" }} y queda fijo en el documento.
+
+Revisar, aceptar o rechazar: {{ url }}
+
+--
+Mensaje automatico de SITRAFO. No responda a este correo.
+{% endautoescape %}

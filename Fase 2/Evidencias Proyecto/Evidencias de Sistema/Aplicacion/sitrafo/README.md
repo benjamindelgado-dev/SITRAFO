@@ -143,6 +143,21 @@ politica de ejecucion de scripts de PowerShell.
 Requiere el backend corriendo. Se ingresa con una cuenta interna; las cuentas
 de cliente web son rechazadas.
 
+Paneles disponibles:
+
+| Panel | Que permite |
+|---|---|
+| Catalogo | Publicar o retirar modelos del catalogo web |
+| Clientes | Consultar clientes, contactos y direcciones |
+| Solicitudes | Tomar una solicitud y elaborar su cotizacion con el costeo calculado |
+| Cotizaciones | Enviar a aprobacion, emitir (con envio por correo), reenviar y generar la orden de compra |
+| Ordenes de compra | Ver el estado del anticipo y confirmar la orden |
+| Canal web | Modo mantencion, pago en linea, autorregistro y parametros |
+| Integraciones | Registro de llamadas a servicios externos |
+
+Con estos paneles el flujo comercial completo (solicitud, cotizacion,
+emision, orden de compra) se opera sin usar el admin de Django.
+
 Detalle en `escritorio/README.md`.
 
 ## Diseno de la aplicacion web
@@ -175,7 +190,7 @@ sistema se vea correcto tambien sin conexion a internet.
 | mindicador.cl | Valor diario de UF, UTM y dolar | RF-PAG-05, RF-PAG-06 |
 | Nager.Date | Feriados legales para plazos en dias habiles | RF-COM-08, RN-08 |
 | PayPal (Sandbox) | Pago en linea de anticipos y saldos | RF-PAG-02 |
-| Correo transaccional | Cotizaciones y notificaciones | RF-COM-09 |
+| Brevo | Correo transaccional: cotizaciones, acuses y comprobantes | RF-COM-09 |
 | Geocodificacion | Validacion de direcciones | RF-CLI-05 |
 
 La API REST propia corresponde a la arquitectura del sistema y no se
@@ -236,13 +251,35 @@ Credenciales: crear una app en developer.paypal.com (modo Sandbox) y copiar
 Client ID y Secret en `.env` (`PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`). Para pagar
 se usa la cuenta personal de prueba que PayPal crea en Sandbox Accounts.
 
+### Correo transaccional con Brevo (RF-COM-09)
+
+Codigo en `apps/configuracion/services/correo.py` (cliente y backend de
+correo de Django) y `notificaciones.py` (que correo se envia en cada evento).
+Plantillas en `templates/correo/`, cada una en version HTML y texto plano.
+
+| Evento | Correo |
+|---|---|
+| El cliente envia una solicitud desde la web | Acuse de recibo |
+| Se emite una cotizacion (API o accion del admin) | Cotizacion con detalle y enlace para responder |
+| Se confirma un pago en linea | Comprobante con referencia de PayPal |
+
+Se implementa como backend de correo de Django: el resto del sistema usa las
+herramientas estandar de Django y no depende del proveedor. Sin
+`BREVO_API_KEY`, en desarrollo los correos se imprimen en la consola del
+contenedor. Un fallo del correo nunca revierte la operacion que lo origino, y
+los correos se envian solo despues de confirmada la transaccion.
+
+`CORREO_REDIRIGIR_A` desvia todos los correos a una direccion de prueba
+(indicando en el asunto el destinatario original), para no escribir a los
+clientes ficticios de los datos de demostracion.
+
 ## Pruebas
 
 ```bash
 docker compose exec web pytest
 ```
 
-73 pruebas automatizadas con 87% de cobertura sobre `apps/`, por encima del
+90 pruebas automatizadas con 88% de cobertura sobre `apps/`, por encima del
 70% exigido por RNF-13. Las llamadas a servicios externos (incluido PayPal) se
 simulan con dobles de prueba.
 

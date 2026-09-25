@@ -165,6 +165,15 @@ PAYPAL_API_URL = env("PAYPAL_API_URL", default="https://api-m.sandbox.paypal.com
 PAYPAL_CLIENT_ID = env("PAYPAL_CLIENT_ID", default="")
 PAYPAL_SECRET = env("PAYPAL_SECRET", default="")
 
+# Correo transaccional (Brevo). El remitente debe estar verificado en Brevo.
+BREVO_URL = env("BREVO_URL", default="https://api.brevo.com/v3")
+BREVO_API_KEY = env("BREVO_API_KEY", default="")
+DEFAULT_FROM_EMAIL = env("CORREO_REMITENTE", default="SITRAFO <no-responder@sitrafo.cl>")
+# Solo desarrollo/demostracion: desvia todos los correos a esta direccion
+CORREO_REDIRIGIR_A = env("CORREO_REDIRIGIR_A", default="")
+# Direccion publica del sitio, para los enlaces dentro de los correos
+SITIO_URL = env("SITIO_URL", default="http://localhost:8000")
+
 # --------------------------------------------------------------------------
 # Autenticacion por token (JWT)
 # --------------------------------------------------------------------------

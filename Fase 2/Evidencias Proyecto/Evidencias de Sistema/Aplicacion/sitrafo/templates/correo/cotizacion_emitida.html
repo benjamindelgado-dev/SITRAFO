@@ -1,0 +1,16 @@
+{% extends "correo/_base.html" %}
+{% block cuerpo %}
+<p>Su cotizacion <strong>{{ cotizacion.numero }}</strong> ya esta disponible.</p>
+<table role="presentation" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+  {% for l in cotizacion.lineas.all %}
+  <tr><td style="color:#4a5760;">{{ l.cantidad }} x {{ l.modelo.nombre }}</td><td align="right">{{ l.precio_uf|floatformat:2 }} UF c/u</td></tr>
+  {% endfor %}
+  <tr><td style="border-top:1px solid #d5d9d6;"><strong>Total</strong></td><td align="right" style="border-top:1px solid #d5d9d6;"><strong>{{ cotizacion.total_uf|floatformat:2 }} UF</strong></td></tr>
+  <tr><td style="color:#4a5760;">Equivalente en pesos</td><td align="right">${{ cotizacion.total_clp|floatformat:0 }}</td></tr>
+  {% if cotizacion.fecha_entrega %}<tr><td style="color:#4a5760;">Entrega comprometida</td><td align="right">{{ cotizacion.fecha_entrega|date:"d-m-Y" }}</td></tr>{% endif %}
+  <tr><td style="color:#4a5760;">Valida hasta</td><td align="right">{{ cotizacion.vence_el|date:"d-m-Y" }}</td></tr>
+</table>
+<p style="font-size:13px;color:#4a5760;">El valor en pesos se calculo con la UF del {{ cotizacion.fecha_valor_uf|date:"d-m-Y" }} y queda fijo en el documento.</p>
+<p>Puede revisarla, aceptarla o rechazarla desde el portal.</p>
+{% include "correo/_boton.html" with texto="Revisar la cotizacion" %}
+{% endblock %}

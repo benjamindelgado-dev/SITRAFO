@@ -20,6 +20,7 @@ from django.utils import timezone
 
 from apps.comercial.models import OrdenCompra
 from apps.configuracion.models import ParametroSistema
+from apps.configuracion.services import notificaciones
 from apps.configuracion.services.feriados import plazo_en_dias_habiles
 from apps.configuracion.services.indicadores import ClienteIndicadores, valor_uf
 from apps.pagos.models import DocumentoCobro, IndicadorEconomico, TransaccionPago
@@ -263,6 +264,8 @@ def confirmar_pago(transaccion: TransaccionPago, usuario,
                      "pasarela": PASARELA},
         origen=Auditoria.Origen.WEB,
     )
+    # El comprobante sale solo cuando el pago ya quedo guardado
+    transaction.on_commit(lambda: notificaciones.notificar_pago_confirmado(transaccion))
     return ResultadoPago(True, f"Pago de {documento.numero} registrado.",
                          transaccion=transaccion)
 

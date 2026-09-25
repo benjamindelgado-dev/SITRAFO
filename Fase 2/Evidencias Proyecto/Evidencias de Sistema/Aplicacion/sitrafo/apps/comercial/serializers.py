@@ -1,4 +1,6 @@
 """Serializadores del dominio comercial."""
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from apps.clientes.models import Cliente
@@ -53,14 +55,20 @@ class SolicitudPresupuestoSerializer(serializers.ModelSerializer):
         queryset=Cliente.objects.all(), required=False
     )
     estado_nombre = serializers.CharField(source="estado.nombre", read_only=True)
+    estado_codigo = serializers.CharField(source="estado.codigo", read_only=True)
+    cliente_nombre = serializers.CharField(source="cliente.razon_social", read_only=True)
+    ejecutivo_nombre = serializers.CharField(
+        source="ejecutivo.username", read_only=True, default=None
+    )
     modelo_nombre = serializers.CharField(source="modelo.nombre", read_only=True)
     historial = HistorialSerializer(many=True, read_only=True)
 
     class Meta:
         model = SolicitudPresupuesto
-        fields = ["id_solicitud", "numero", "cliente", "modelo", "modelo_nombre",
-                  "direccion", "cantidad", "fecha_deseada", "estado",
-                  "estado_nombre", "ejecutivo", "creado_en",
+        fields = ["id_solicitud", "numero", "cliente", "cliente_nombre", "modelo",
+                  "modelo_nombre", "direccion", "cantidad", "fecha_deseada", "estado",
+                  "estado_nombre", "estado_codigo", "ejecutivo", "ejecutivo_nombre",
+                  "creado_en",
                   "especificaciones", "historial"]
         read_only_fields = ["numero", "creado_en", "estado", "ejecutivo"]
 
@@ -121,6 +129,7 @@ class CotizacionSerializer(serializers.ModelSerializer):
     lineas = CotizacionLineaSerializer(many=True, read_only=True)
     historial = HistorialSerializer(many=True, read_only=True)
     estado_nombre = serializers.CharField(source="estado.nombre", read_only=True)
+    estado_codigo = serializers.CharField(source="estado.codigo", read_only=True)
     cliente_nombre = serializers.CharField(
         source="cliente.razon_social", read_only=True
     )
@@ -129,14 +138,20 @@ class CotizacionSerializer(serializers.ModelSerializer):
     )
     esta_vigente = serializers.BooleanField(read_only=True)
     dias_para_vencer = serializers.IntegerField(read_only=True)
+    orden_compra = serializers.SerializerMethodField()
+
+    def get_orden_compra(self, cotizacion) -> str | None:
+        """Numero de la orden de compra generada, si existe (RN-06)."""
+        orden = next(iter(cotizacion.ordenes_compra.all()), None)
+        return orden.numero if orden else None
 
     class Meta:
         model = Cotizacion
         fields = ["id_cotizacion", "numero", "version", "solicitud", "cliente",
-                  "cliente_nombre", "estado", "estado_nombre", "ejecutivo",
+                  "cliente_nombre", "estado", "estado_nombre", "estado_codigo", "ejecutivo",
                   "valor_uf", "fecha_valor_uf", "total_uf", "total_clp",
                   "descuento_pct", "plazo_dias_habiles", "fecha_entrega",
-                  "vence_el", "esta_vigente", "dias_para_vencer",
+                  "vence_el", "esta_vigente", "dias_para_vencer", "orden_compra",
                   "creado_en", "lineas", "historial"]
         read_only_fields = ["numero", "version", "total_uf", "creado_en"]
 
@@ -154,6 +169,10 @@ class OrdenCompraLineaSerializer(serializers.ModelSerializer):
 
 class OrdenCompraSerializer(serializers.ModelSerializer):
     lineas = OrdenCompraLineaSerializer(many=True, read_only=True)
+    cliente_nombre = serializers.CharField(source="cliente.razon_social", read_only=True)
+    cotizacion_numero = serializers.CharField(source="cotizacion.numero", read_only=True)
+    anticipo = serializers.SerializerMethodField()
+    estado_codigo = serializers.CharField(source="estado.codigo", read_only=True)
     historial = HistorialSerializer(many=True, read_only=True)
     estado_nombre = serializers.CharField(source="estado.nombre", read_only=True)
     monto_anticipo_uf = serializers.DecimalField(
@@ -165,8 +184,40 @@ class OrdenCompraSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrdenCompra
-        fields = ["id_orden_compra", "numero", "cotizacion", "cliente",
-                  "estado", "estado_nombre", "total_uf", "anticipo_pct",
-                  "monto_anticipo_uf", "monto_saldo_uf", "creado_en",
-                  "lineas", "historial"]
+        fields = ["id_orden_compra", "numero", "cotizacion", "cotizacion_numero",
+                  "cliente", "cliente_nombre", "estado", "estado_nombre", "estado_codigo",
+                  "total_uf",
+                  "anticipo_pct", "monto_anticipo_uf", "monto_saldo_uf", "anticipo",
+                  "creado_en", "lineas", "historial"]
         read_only_fields = ["numero", "creado_en"]
+
+    def get_anticipo(self, orden) -> dict | None:
+        """Documento de cobro del anticipo y su estado de pago (RN-15)."""
+        documento = next(
+            (d for d in orden.documentos_cobro.all()
+             if d.tipo == "anticipo" and d.estado != "anulado"),
+            None,
+        )
+        if documento is None:
+            return None
+        return {"numero": documento.numero, "estado": documento.estado,
+                "monto_clp": str(documento.monto_clp),
+                "vence_el": documento.vence_el.isoformat()}
+
+
+class CotizarSolicitudSerializer(serializers.Serializer):
+    """Datos que el ejecutivo puede ajustar al elaborar la cotizacion."""
+
+    precio_uf = serializers.DecimalField(
+        max_digits=12, decimal_places=4, required=False, allow_null=True, min_value=Decimal("0")
+    )
+    margen_pct = serializers.DecimalField(
+        max_digits=5, decimal_places=2, required=False, allow_null=True, min_value=Decimal("0")
+    )
+    descuento_pct = serializers.DecimalField(
+        max_digits=5, decimal_places=2, required=False, default=0,
+        min_value=Decimal("0"), max_value=Decimal("100"),
+    )
+    plazo_dias_habiles = serializers.IntegerField(
+        required=False, allow_null=True, min_value=1, max_value=365
+    )

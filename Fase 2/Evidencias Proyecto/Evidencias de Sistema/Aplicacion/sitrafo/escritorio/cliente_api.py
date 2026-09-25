@@ -144,8 +144,33 @@ class ClienteAPI:
     def asignar_solicitud(self, id_solicitud: int):
         return self.accion(f"solicitudes/{id_solicitud}/asignar/")
 
+    def costeo_solicitud(self, id_solicitud: int, margen=None):
+        params = {"margen": margen} if margen is not None else None
+        return self.obtener(f"solicitudes/{id_solicitud}/costeo/", params)
+
+    def cotizar_solicitud(self, id_solicitud: int, datos: dict):
+        return self.accion(f"solicitudes/{id_solicitud}/cotizar/", datos)
+
     def cotizaciones(self, params=None):
         return self.obtener("cotizaciones/", params)
+
+    def emitir_cotizacion(self, id_cotizacion: int):
+        return self.accion(f"cotizaciones/{id_cotizacion}/emitir/")
+
+    def solicitar_aprobacion(self, id_cotizacion: int):
+        return self.accion(f"cotizaciones/{id_cotizacion}/solicitar_aprobacion/")
+
+    def enviar_cotizacion(self, id_cotizacion: int):
+        return self.accion(f"cotizaciones/{id_cotizacion}/enviar_correo/")
+
+    def generar_orden_compra(self, id_cotizacion: int):
+        return self.accion(f"cotizaciones/{id_cotizacion}/generar_orden_compra/")
+
+    def ordenes_compra(self, params=None):
+        return self.obtener("ordenes-compra/", params)
+
+    def confirmar_orden_compra(self, id_orden: int):
+        return self.accion(f"ordenes-compra/{id_orden}/confirmar/")
 
     def parametros(self, ambito: str | None = None):
         params = {"ambito": ambito} if ambito else None
