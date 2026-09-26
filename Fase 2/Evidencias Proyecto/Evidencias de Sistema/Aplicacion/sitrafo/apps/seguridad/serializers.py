@@ -57,3 +57,17 @@ class UsuarioEntradaSerializer(serializers.Serializer):
         if existente.exists():
             raise serializers.ValidationError("Ese correo ya esta en uso.")
         return valor
+
+
+class AuditoriaSerializer(serializers.ModelSerializer):
+    usuario_nombre = serializers.CharField(source="usuario.username", read_only=True)
+    accion_nombre = serializers.CharField(source="get_accion_display", read_only=True)
+    origen_nombre = serializers.CharField(source="get_origen_display", read_only=True)
+
+    class Meta:
+        from .models import Auditoria
+
+        model = Auditoria
+        fields = ["id_auditoria", "fecha_hora", "usuario", "usuario_nombre", "entidad",
+                  "id_registro", "accion", "accion_nombre", "origen", "origen_nombre",
+                  "valor_anterior", "valor_nuevo"]

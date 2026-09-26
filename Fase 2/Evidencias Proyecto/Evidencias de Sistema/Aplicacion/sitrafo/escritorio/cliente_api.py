@@ -93,6 +93,9 @@ class ClienteAPI:
 
     # -- Verbos -------------------------------------------------------------
     def obtener(self, ruta: str, params: dict | None = None):
+        # Los listados del escritorio muestran todo en una tabla: se pide el
+        # maximo por pagina para no perder filas cuando hay mas de 25
+        params = {"page_size": 500, **(params or {})}
         return self._peticion("GET", ruta, params=params)
 
     def crear(self, ruta: str, datos: dict):
@@ -297,6 +300,13 @@ class ClienteAPI:
         return self.accion(f"no-conformidades/{id_nc}/cerrar/",
                            {"accion_correctiva": accion})
 
+    # -- Auditoria ----------------------------------------------------------
+    def auditoria(self, params=None):
+        return self.obtener("auditoria/", params)
+
+    def entidades_auditadas(self):
+        return self.obtener("auditoria/entidades/")
+
     # -- Usuarios y roles --------------------------------------------------
     def usuarios(self):
         return self.obtener("usuarios/")
@@ -324,6 +334,41 @@ class ClienteAPI:
 
     def bodegas(self):
         return self.obtener("bodegas/")
+
+    # -- Inventario ----------------------------------------------------------
+    def materiales_bajo_minimo(self):
+        return self.obtener("materiales/", {"bajo_minimo": 1})
+
+    def crear_material(self, datos: dict):
+        return self.crear("materiales/", datos)
+
+    def actualizar_material(self, id_material: int, datos: dict):
+        return self.actualizar(f"materiales/{id_material}/", datos)
+
+    def recepcionar(self, id_material: int, datos: dict):
+        return self.accion(f"materiales/{id_material}/recepcion/", datos)
+
+    def ajustar_stock(self, id_material: int, datos: dict):
+        return self.accion(f"materiales/{id_material}/ajuste/", datos)
+
+    def kardex(self, id_material: int, id_bodega=None):
+        return self.obtener(f"materiales/{id_material}/kardex/",
+                            {"bodega": id_bodega} if id_bodega else None)
+
+    def categorias_material(self):
+        return self.obtener("categorias-material/")
+
+    def crear_categoria_material(self, nombre: str):
+        return self.crear("categorias-material/", {"nombre": nombre})
+
+    def proveedores(self):
+        return self.obtener("proveedores/")
+
+    def crear_proveedor(self, datos: dict):
+        return self.crear("proveedores/", datos)
+
+    def actualizar_proveedor(self, id_proveedor: int, datos: dict):
+        return self.actualizar(f"proveedores/{id_proveedor}/", datos)
 
     def parametros(self, ambito: str | None = None):
         params = {"ambito": ambito} if ambito else None

@@ -1,7 +1,9 @@
 """Serializadores del inventario."""
+from decimal import Decimal
+
 from rest_framework import serializers
 
-from .models import Bodega, Material, MovimientoInventario
+from .models import Bodega, CategoriaMaterial, Material, MovimientoInventario, Proveedor
 
 
 class BodegaSerializer(serializers.ModelSerializer):
@@ -38,3 +40,44 @@ class MaterialSerializer(serializers.ModelSerializer):
 
     def get_bajo_minimo(self, material) -> bool:
         return MovimientoInventario.stock_actual(material) < material.stock_minimo
+
+
+class CategoriaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CategoriaMaterial
+        fields = ["id_categoria", "nombre", "activo"]
+
+
+class ProveedorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Proveedor
+        fields = ["id_proveedor", "rut", "razon_social", "email", "telefono", "activo"]
+
+
+class MaterialEntradaSerializer(serializers.ModelSerializer):
+    """Alta y edicion de materiales; el costo abre una nueva vigencia de precio."""
+
+    costo_uf = serializers.DecimalField(max_digits=12, decimal_places=4, required=False,
+                                        allow_null=True, min_value=Decimal("0"))
+
+    class Meta:
+        model = Material
+        fields = ["categoria", "codigo", "nombre", "unidad_medida", "stock_minimo",
+                  "activo", "costo_uf"]
+
+
+class RecepcionSerializer(serializers.Serializer):
+    bodega = serializers.PrimaryKeyRelatedField(queryset=Bodega.objects.filter(activo=True))
+    cantidad = serializers.DecimalField(max_digits=12, decimal_places=4)
+    costo_unitario_uf = serializers.DecimalField(max_digits=12, decimal_places=4,
+                                                 required=False, allow_null=True)
+    proveedor = serializers.PrimaryKeyRelatedField(
+        queryset=Proveedor.objects.filter(activo=True), required=False, allow_null=True)
+    documento = serializers.CharField(required=False, allow_blank=True, default="")
+    actualizar_precio = serializers.BooleanField(required=False, default=False)
+
+
+class AjusteSerializer(serializers.Serializer):
+    bodega = serializers.PrimaryKeyRelatedField(queryset=Bodega.objects.filter(activo=True))
+    conteo_fisico = serializers.DecimalField(max_digits=12, decimal_places=4)
+    motivo = serializers.CharField()

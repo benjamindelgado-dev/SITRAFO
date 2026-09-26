@@ -9,10 +9,12 @@ no autoexcluirse, empleado unico) las aplica la API.
 from cliente_api import ClienteAPI, ErrorAPI
 from paneles import PanelBase
 from paneles_comercial import fecha
+from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QDateEdit,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -261,3 +263,102 @@ class PanelUsuarios(PanelBase):
         except ErrorAPI as error:
             return self.manejar_error(error)
         mostrar_clave(self, u["username"], respuesta["clave_temporal"])
+
+
+# ---------------------------------------------------------------------------
+# Bitacora de auditoria (HU-12, RF-SEG-06)
+# ---------------------------------------------------------------------------
+class PanelAuditoria(PanelBase):
+    titulo = "Bitacora de auditoria"
+    subtitulo = ("Quien hizo que y cuando: cambios de precios y estados, usuarios, "
+                 "anulaciones y accesos denegados. Es de solo lectura.")
+    columnas = ["Fecha y hora", "Usuario", "Accion", "Entidad", "Registro", "Origen"]
+
+    ACCIONES = [("Todas", ""), ("Creacion", "creacion"), ("Modificacion", "modificacion"),
+                ("Anulacion", "anulacion"), ("Acceso denegado", "acceso_denegado")]
+
+    def construir(self):
+        filtros = QHBoxLayout()
+        self.usuario = QLineEdit()
+        self.usuario.setPlaceholderText("Usuario")
+        self.accion = QComboBox()
+        for nombre, codigo in self.ACCIONES:
+            self.accion.addItem(nombre, codigo)
+        self.entidad = QComboBox()
+        self.entidad.addItem("Todas las entidades", "")
+        self.desde = QDateEdit(QDate.currentDate().addDays(-30))
+        self.desde.setCalendarPopup(True)
+        self.desde.setDisplayFormat("dd-MM-yyyy")
+        self.hasta = QDateEdit(QDate.currentDate())
+        self.hasta.setCalendarPopup(True)
+        self.hasta.setDisplayFormat("dd-MM-yyyy")
+        buscar = QPushButton("Filtrar")
+        buscar.clicked.connect(self.refrescar)
+        for etiqueta, widget in (("", self.usuario), ("", self.accion), ("", self.entidad),
+                                 ("Desde", self.desde), ("Hasta", self.hasta)):
+            if etiqueta:
+                filtros.addWidget(QLabel(etiqueta))
+            filtros.addWidget(widget)
+        filtros.addWidget(buscar)
+        self.contenedor.addLayout(filtros)
+
+        self.tabla = self.crear_tabla()
+        self.tabla.itemSelectionChanged.connect(self._detalle)
+        self.contenedor.addWidget(self.tabla, 1)
+        self.detalle = QLabel("Seleccione un registro para ver el cambio.")
+        self.detalle.setWordWrap(True)
+        self.detalle.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.contenedor.addWidget(self.detalle)
+        self.total = QLabel("")
+        self.total.setObjectName("nota")
+        self.contenedor.addWidget(self.total)
+        self.datos = []
+        self._entidades_cargadas = False
+
+    def refrescar(self):
+        try:
+            if not self._entidades_cargadas:
+                for entidad in self.cliente.entidades_auditadas():
+                    self.entidad.addItem(entidad, entidad)
+                self._entidades_cargadas = True
+            respuesta = self.cliente.auditoria({
+                "usuario": self.usuario.text().strip() or None,
+                "accion": self.accion.currentData() or None,
+                "entidad": self.entidad.currentData() or None,
+                "desde": self.desde.date().toString("yyyy-MM-dd"),
+                "hasta": self.hasta.date().toString("yyyy-MM-dd"),
+                "page_size": 200,
+            })
+        except ErrorAPI as error:
+            return self.manejar_error(error)
+        self.datos = respuesta.get("results", respuesta)
+        cantidad = respuesta.get("count", len(self.datos))
+        self.total.setText(f"{cantidad} registro(s)"
+                           + (" · se muestran los mas recientes" if cantidad > len(self.datos)
+                              else ""))
+        self.llenar(self.tabla, [
+            [fecha(r["fecha_hora"]) + " " + r["fecha_hora"][11:19], r["usuario_nombre"],
+             r["accion_nombre"], r["entidad"], r["id_registro"], r["origen_nombre"]]
+            for r in self.datos
+        ])
+        self._detalle()
+
+    @staticmethod
+    def _valor(valor) -> str:
+        if not valor:
+            return "—"
+        if isinstance(valor, dict):
+            return "<br>".join(f"&nbsp;&nbsp;{k}: <b>{v}</b>" for k, v in valor.items())
+        return str(valor)
+
+    def _detalle(self):
+        fila = self.tabla.currentRow()
+        if not 0 <= fila < len(self.datos):
+            self.detalle.setText("Seleccione un registro para ver el cambio.")
+            return
+        r = self.datos[fila]
+        self.detalle.setText(
+            f"<b>{r['accion_nombre']}</b> sobre {r['entidad']} #{r['id_registro']} por "
+            f"{r['usuario_nombre']}<br><br>Antes:<br>{self._valor(r['valor_anterior'])}"
+            f"<br>Despues:<br>{self._valor(r['valor_nuevo'])}"
+        )

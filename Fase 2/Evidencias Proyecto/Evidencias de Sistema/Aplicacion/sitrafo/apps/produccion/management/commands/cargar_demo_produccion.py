@@ -25,6 +25,7 @@ from apps.inventario.models import (
     Material,
     MovimientoInventario,
     PrecioMaterial,
+    Proveedor,
 )
 from apps.produccion.models import (
     Empleado,
@@ -40,10 +41,10 @@ DESDE = datetime.date(2026, 1, 1)
 MATERIALES = [
     ("ACE-SI", "Acero al silicio grano orientado", "Nucleo", "kg", "0.0850", "500", "2500"),
     ("CU-ESM", "Alambre de cobre esmaltado", "Conductores", "kg", "0.3500", "200", "900"),
-    ("ACT-DIE", "Aceite dielectrico mineral", "Aislantes", "L", "0.0800", "400", "1800"),
-    ("AIS-BT", "Aislador pasatapas BT", "Accesorios", "u", "0.6000", "20", "80"),
-    ("AIS-AT", "Aislador pasatapas AT", "Accesorios", "u", "1.1000", "15", "60"),
-    ("TNQ-01", "Tanque de acero con radiadores", "Estructura", "u", "12.0000", "4", "10"),
+    ("ACT-DIE", "Aceite dielectrico mineral", "Aislantes", "l", "0.0800", "400", "1800"),
+    ("AIS-BT", "Aislador pasatapas BT", "Accesorios", "un", "0.6000", "20", "80"),
+    ("AIS-AT", "Aislador pasatapas AT", "Accesorios", "un", "1.1000", "15", "60"),
+    ("TNQ-01", "Tanque de acero con radiadores", "Estructura", "un", "12.0000", "4", "10"),
 ]
 
 # Cantidad por unidad de producto, para un transformador de 100 kVA; el
@@ -100,9 +101,20 @@ class Command(BaseCommand):
                 "No hay usuarios internos. Ejecute antes cargar_demo."))
             return
 
+        for rut, razon_social, correo in [
+            ("76086428-5", "Cobres del Sur SpA", "ventas@cobresdelsur.cl"),
+            ("77111222-6", "Aceros y Aislantes Andinos Ltda", "contacto@andinos.cl"),
+        ]:
+            if not Proveedor.objects.filter(rut__in=[rut, rut.replace("-", "")]).exists():
+                Proveedor.objects.create(rut=rut, razon_social=razon_social, email=correo)
+
         bodega, _ = Bodega.objects.get_or_create(
             codigo="B1", defaults={"nombre": "Bodega central", "ubicacion": "Planta"}
         )
+
+        # Versiones anteriores usaban "u" y "L", fuera de las unidades validas
+        Material.objects.filter(unidad_medida="u").update(unidad_medida="un")
+        Material.objects.filter(unidad_medida="L").update(unidad_medida="l")
 
         materiales = {}
         for codigo, nombre, categoria, unidad, costo, minimo, inicial in MATERIALES:
@@ -128,7 +140,7 @@ class Command(BaseCommand):
             if not modelo.materiales.exists():
                 for codigo, cantidad in BOM_BASE_100.items():
                     valor = Decimal(cantidad) * factor
-                    if materiales[codigo].unidad_medida == "u":
+                    if materiales[codigo].unidad_medida == "un":
                         valor = max(Decimal("1"), valor.to_integral_value())
                     BomModelo.objects.create(modelo=modelo, material=materiales[codigo],
                                              cantidad=valor)

@@ -137,3 +137,29 @@ def test_ingreso_registra_acceso_y_bloquea_por_intentos(base):
     assert api.post("/api/v1/auth/token/", correcta, format="json").status_code == 200
     operario.refresh_from_db()
     assert operario.ultimo_acceso is not None and operario.intentos_fallidos == 0
+
+
+# ---------------------------------------------------------------------------
+# Bitacora de auditoria (HU-12)
+# ---------------------------------------------------------------------------
+def test_el_administrador_consulta_la_bitacora_con_filtros(base):
+    comercial = _api(_interno("comercial", matriz.COMERCIAL))
+    comercial.get("/api/v1/usuarios/")          # acceso denegado: queda auditado
+    base["api"].post("/api/v1/usuarios/", {
+        "username": "nuevo", "email": "n@sitrafo.cl", "roles": [base["operario"].pk]},
+        format="json")
+
+    todo = base["api"].get("/api/v1/auditoria/").data["results"]
+    assert {r["accion"] for r in todo} >= {"acceso_denegado", "creacion"}
+    denegados = base["api"].get("/api/v1/auditoria/?accion=acceso_denegado&usuario=comercial")
+    assert [r["usuario_nombre"] for r in denegados.data["results"]] == ["comercial"]
+    assert "usuario" in base["api"].get("/api/v1/auditoria/entidades/").data
+
+
+def test_la_bitacora_es_de_solo_lectura_y_solo_para_el_administrador(base):
+    registro = base["api"].get("/api/v1/auditoria/").data
+    # No existe ninguna via para borrar: la API lo rechaza
+    assert base["api"].delete("/api/v1/auditoria/1/").status_code in (403, 405)
+    comercial = _api(_interno("comercial", matriz.COMERCIAL))
+    assert comercial.get("/api/v1/auditoria/").status_code == 403
+    assert registro is not None

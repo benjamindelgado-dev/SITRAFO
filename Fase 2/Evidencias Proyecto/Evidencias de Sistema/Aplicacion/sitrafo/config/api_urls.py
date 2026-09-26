@@ -36,9 +36,20 @@ from apps.configuracion.views import (
     LogIntegracionViewSet,
     ParametroSistemaViewSet,
 )
-from apps.inventario.views import BodegaViewSet, MaterialViewSet
+from apps.inventario.views import (
+    BodegaViewSet,
+    CategoriaViewSet,
+    MaterialViewSet,
+    ProveedorViewSet,
+)
 from apps.produccion.views import EmpleadoViewSet, OrdenTrabajoViewSet, TareaViewSet
-from apps.seguridad.views import IngresoConControl, RolViewSet, UsuarioViewSet, yo
+from apps.seguridad.views import (
+    AuditoriaViewSet,
+    IngresoConControl,
+    RolViewSet,
+    UsuarioViewSet,
+    yo,
+)
 
 router = DefaultRouter()
 
@@ -66,6 +77,8 @@ router.register("tareas", TareaViewSet, basename="tarea")
 router.register("empleados", EmpleadoViewSet, basename="empleado")
 router.register("materiales", MaterialViewSet, basename="material")
 router.register("bodegas", BodegaViewSet, basename="bodega")
+router.register("categorias-material", CategoriaViewSet, basename="categoria-material")
+router.register("proveedores", ProveedorViewSet, basename="proveedor")
 
 # Calidad
 router.register("protocolos", ProtocoloViewSet, basename="protocolo")
@@ -75,6 +88,7 @@ router.register("no-conformidades", NoConformidadViewSet, basename="no-conformid
 # Seguridad
 router.register("usuarios", UsuarioViewSet, basename="usuario")
 router.register("roles", RolViewSet, basename="rol")
+router.register("auditoria", AuditoriaViewSet, basename="auditoria")
 
 # Configuracion y canal web (solo usuarios internos)
 router.register("parametros", ParametroSistemaViewSet, basename="parametro-sistema")

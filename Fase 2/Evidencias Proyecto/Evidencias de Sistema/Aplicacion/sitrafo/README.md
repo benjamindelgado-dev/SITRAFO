@@ -165,6 +165,9 @@ Paneles disponibles:
 | Control de calidad | El inspector ejecuta los ensayos de las ordenes en calidad; el sistema evalua la conformidad y abre las no conformidades |
 | No conformidades | Seguimiento y cierre con accion correctiva |
 | Protocolos de calidad | Ensayos por modelo con su rango de aceptacion, versionados |
+| Inventario | Stock por material con alerta bajo el minimo, recepcion de compras, ajuste por conteo fisico, kardex y alta de materiales |
+| Proveedores | Registro de proveedores de materiales |
+| Auditoria | Bitacora de solo lectura con filtros por usuario, accion, entidad y fechas |
 | Usuarios y roles | Crear usuarios internos, asignar roles, asociar empleados del taller, suspender, reactivar y restablecer claves (solo Administrador) |
 
 Con estos paneles el flujo comercial completo (solicitud, cotizacion,
@@ -230,6 +233,27 @@ Las tareas estandar de la demostracion estiman como maximo 2 horas cada una,
 para poder recorrer el flujo completo en una sesion de pruebas.
 `cargar_demo_produccion` acota a ese valor las tareas cargadas por versiones
 anteriores. En operacion real se registran las horas propias del taller.
+
+## Inventario (HU-10)
+
+Reglas en `apps/inventario/services.py`, expuestas en `/api/v1/materiales/`
+(acciones `recepcion`, `ajuste` y `kardex`), `/api/v1/proveedores/` y
+`/api/v1/bodegas/`:
+
+- El stock no se guarda: es la suma de los movimientos (RN-09). Recepciones,
+  consumos del taller y ajustes son movimientos con fecha, usuario y motivo,
+  y el kardex muestra el saldo despues de cada uno.
+- La recepcion registra proveedor, documento y costo; puede abrir una nueva
+  vigencia del precio de compra sin perder la anterior.
+- El ajuste parte del conteo fisico, registra la diferencia con motivo
+  obligatorio y queda auditado. Ningun movimiento deja saldo negativo.
+- `?bajo_minimo=1` lista los materiales bajo su stock minimo.
+
+## Bitacora de auditoria (HU-12)
+
+`/api/v1/auditoria/` expone la bitacora en solo lectura, con filtros por
+usuario, accion, entidad, origen y rango de fechas. No existe ninguna via en
+la API para modificar o borrar un registro. Solo el Administrador la consulta.
 
 ## Roles y matriz de permisos
 
@@ -393,7 +417,7 @@ clientes ficticios de los datos de demostracion.
 docker compose exec web pytest
 ```
 
-138 pruebas automatizadas con 91% de cobertura sobre `apps/`, por encima del
+148 pruebas automatizadas con 91% de cobertura sobre `apps/`, por encima del
 70% exigido por RNF-13. Las llamadas a servicios externos (incluido PayPal) se
 simulan con dobles de prueba.
 

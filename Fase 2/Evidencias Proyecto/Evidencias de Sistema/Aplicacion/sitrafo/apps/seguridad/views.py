@@ -1,4 +1,5 @@
 """Vistas de la API para el dominio de seguridad."""
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -10,8 +11,13 @@ from apps.common.permissions import CuentaOperativa, PermisoPorRol
 from apps.configuracion.models import ParametroSistema
 
 from . import services
-from .models import Permiso, Rol, Usuario
-from .serializers import RolSerializer, UsuarioEntradaSerializer, UsuarioInternoSerializer
+from .models import Auditoria, Permiso, Rol, Usuario
+from .serializers import (
+    AuditoriaSerializer,
+    RolSerializer,
+    UsuarioEntradaSerializer,
+    UsuarioInternoSerializer,
+)
 
 
 @api_view(["GET"])
@@ -186,3 +192,44 @@ class IngresoConControl(TokenObtainPairView):
         if usuario:
             usuario.registrar_acceso_exitoso()
         return respuesta
+
+
+# ---------------------------------------------------------------------------
+# Bitacora de auditoria (HU-12, RF-SEG-06)
+# ---------------------------------------------------------------------------
+class AuditoriaViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Consulta de la bitacora. Es de solo lectura por diseno: la API no ofrece
+    ninguna via para modificar o borrar un registro de auditoria.
+
+    Filtros: usuario (nombre), accion, entidad, origen, desde y hasta
+    (AAAA-MM-DD) y buscar (texto en entidad o id del registro).
+    """
+
+    serializer_class = AuditoriaSerializer
+    permission_classes = [CuentaOperativa, PermisoPorRol]
+    modulo_permiso = "auditoria"
+    permisos_accion = {"entidades": "auditoria.leer"}
+
+    def get_queryset(self):
+        consulta = Auditoria.objects.select_related("usuario").order_by("-fecha_hora")
+        p = self.request.query_params
+        if p.get("usuario"):
+            consulta = consulta.filter(usuario__username__iexact=p["usuario"])
+        for campo in ("accion", "entidad", "origen"):
+            if p.get(campo):
+                consulta = consulta.filter(**{campo: p[campo]})
+        if p.get("desde"):
+            consulta = consulta.filter(fecha_hora__date__gte=p["desde"])
+        if p.get("hasta"):
+            consulta = consulta.filter(fecha_hora__date__lte=p["hasta"])
+        if p.get("buscar"):
+            consulta = consulta.filter(
+                Q(entidad__icontains=p["buscar"]) | Q(id_registro__icontains=p["buscar"])
+            )
+        return consulta
+
+    @action(detail=False, methods=["get"])
+    def entidades(self, request):
+        """Entidades presentes en la bitacora, para el filtro de la interfaz."""
+        return Response(sorted(Auditoria.objects.values_list("entidad", flat=True).distinct()))
