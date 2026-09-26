@@ -285,6 +285,7 @@ def terminar_tarea(tarea: TareaOT, usuario) -> TareaOT:
         raise ErrorProduccion("Registre al menos las horas trabajadas antes de terminar.")
     tarea.estado = TareaOT.Estado.TERMINADA
     tarea.save(update_fields=["estado"])
+    tarea.orden_trabajo.recalcular_avance()
     return tarea
 
 
@@ -322,4 +323,12 @@ def cerrar(ot: OrdenTrabajo, usuario, justificacion: str = "") -> OrdenTrabajo:
     if justificacion.strip():
         observacion += f" Desviacion justificada: {justificacion.strip()}"
     _cambiar_estado_ot(ot, "cerrada", usuario, observacion)
+
+    # Si era la ultima orden de trabajo de la compra, se cobra el saldo
+    from apps.pagos.services.cobros import ErrorCobro, emitir_saldo
+
+    try:
+        emitir_saldo(ot.orden_compra)
+    except ErrorCobro:
+        pass   # sin UF: se emite despues con el comando emitir_cobros
     return ot

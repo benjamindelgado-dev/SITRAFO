@@ -188,17 +188,25 @@ def test_registro_anulado_no_suma_al_costo(taller):
 
 
 @pytest.mark.django_db
-def test_avance_se_calcula_sobre_horas_estimadas(taller):
-    tarea = TareaOT.objects.create(
+def test_avance_se_calcula_sobre_tareas_terminadas(taller):
+    """Las horas consumidas no mueven el avance; terminar tareas si."""
+    bobinado = TareaOT.objects.create(
         orden_trabajo=taller["ot"], nombre="Bobinado", secuencia=1,
         horas_estimadas=Decimal("20"),
     )
+    TareaOT.objects.create(
+        orden_trabajo=taller["ot"], nombre="Ensamble", secuencia=2,
+        horas_estimadas=Decimal("10"),
+    )
     RegistroHoraHombre.objects.create(
-        tarea=tarea, empleado=taller["empleado"], fecha=datetime.date(2026, 9, 20),
+        tarea=bobinado, empleado=taller["empleado"], fecha=datetime.date(2026, 9, 20),
         horas=Decimal("10"), valor_hora_uf=Decimal("0.2000"),
         usuario_registro=taller["usuario"],
     )
+    assert taller["ot"].recalcular_avance() == Decimal("0.00")
 
+    bobinado.estado = TareaOT.Estado.TERMINADA
+    bobinado.save()
     assert taller["ot"].recalcular_avance() == Decimal("50.00")
 
 

@@ -1,0 +1,11 @@
+{% extends "correo/_base.html" %}
+{% block cuerpo %}
+<p>Su pedido <strong>{{ documento.orden_compra.numero }}</strong> termino su fabricacion y aprobo el control de calidad.</p>
+<table role="presentation" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+  <tr><td style="color:#4a5760;">Documento</td><td>{{ documento.numero }} (saldo)</td></tr>
+  <tr><td style="color:#4a5760;">Monto</td><td>{{ documento.monto_uf|floatformat:2 }} UF (${{ documento.monto_clp|floatformat:0 }})</td></tr>
+  <tr><td style="color:#4a5760;">Vence</td><td>{{ documento.vence_el|date:"d-m-Y" }}</td></tr>
+</table>
+<p>Al registrarse el pago del saldo coordinaremos la entrega.</p>
+{% include "correo/_boton.html" with texto="Pagar el saldo" %}
+{% endblock %}

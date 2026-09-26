@@ -162,6 +162,10 @@ Paneles disponibles:
 | Taller (operario) | Vista propia sin menu, con campos grandes: sus tareas, horas, material y termino de tarea |
 | Canal web | Modo mantencion, pago en linea, autorregistro y parametros |
 | Integraciones | Registro de llamadas a servicios externos |
+| Control de calidad | El inspector ejecuta los ensayos de las ordenes en calidad; el sistema evalua la conformidad y abre las no conformidades |
+| No conformidades | Seguimiento y cierre con accion correctiva |
+| Protocolos de calidad | Ensayos por modelo con su rango de aceptacion, versionados |
+| Usuarios y roles | Crear usuarios internos, asignar roles, asociar empleados del taller, suspender, reactivar y restablecer claves (solo Administrador) |
 
 Con estos paneles el flujo comercial completo (solicitud, cotizacion,
 emision, orden de compra) se opera sin usar el admin de Django.
@@ -180,13 +184,52 @@ y `/api/v1/tareas/`:
   respetan el tope diario configurable (RN-10).
 - El consumo de material descuenta stock con un movimiento de inventario y
   se rechaza si no hay saldo suficiente, informando lo disponible (RN-09).
-- Cada registro actualiza el costo real y el avance; un registro de horas no
-  se edita ni se borra, se anula con motivo y queda auditado (RN-13).
+- Cada registro actualiza el costo real; un registro de horas no se edita ni
+  se borra, se anula con motivo y queda auditado (RN-13).
+- El avance es el porcentaje de tareas terminadas, no de horas consumidas:
+  una tarea hecha en menos horas de las estimadas cuenta completa. La
+  diferencia de horas se refleja en el costo real y su desviacion.
 - El operario registra solo en sus tareas; el jefe de produccion puede
   registrar por un ausente.
 - La orden pasa a calidad cuando todas sus tareas estan terminadas y no se
   cierra con controles pendientes o no conformidades abiertas (RN-12). Una
   desviacion de costo sobre el umbral exige justificacion al cerrar (RN-11).
+
+## Control de calidad (HU-09)
+
+Reglas en `apps/calidad/services.py`, expuestas en `/api/v1/protocolos/`,
+`/api/v1/controles-calidad/` y `/api/v1/no-conformidades/`:
+
+- Cada modelo tiene un protocolo de ensayos con su rango de aceptacion. Un
+  protocolo ya aplicado no se modifica: se crea una version nueva y la
+  anterior queda retirada, conservando el criterio historico.
+- El inspector registra el valor medido; la conformidad la calcula el
+  sistema contra el rango. Un resultado fuera de rango abre una no
+  conformidad con su severidad.
+- Mientras la no conformidad este abierta no se repite el ensayo; se cierra
+  solo registrando la accion correctiva, y luego se repite. Todas las
+  mediciones se conservan.
+- La orden de trabajo se cierra solo con todos los ensayos obligatorios
+  ejecutados y sin no conformidades abiertas (RN-12).
+
+`cargar_demo_produccion` carga un protocolo de ensayos de rutina (IEC 60076-1)
+para cada modelo de la demostracion.
+
+## Saldo y entrega (RN-15)
+
+- Al cerrar la ultima orden de trabajo de una orden de compra se emite el
+  cobro del saldo, con la UF del dia de emision, y se avisa al cliente por
+  correo. El cliente lo paga desde la web con PayPal, igual que el anticipo.
+- La entrega del pedido se registra desde el escritorio (panel Ordenes de
+  compra) solo con la fabricacion terminada y el saldo pagado; la orden de
+  compra queda entregada y el flujo documental termina.
+
+## Horas de demostracion
+
+Las tareas estandar de la demostracion estiman como maximo 2 horas cada una,
+para poder recorrer el flujo completo en una sesion de pruebas.
+`cargar_demo_produccion` acota a ese valor las tareas cargadas por versiones
+anteriores. En operacion real se registran las horas propias del taller.
 
 ## Roles y matriz de permisos
 
@@ -215,6 +258,17 @@ Reglas aplicadas en `apps/common/permissions.py` (`PermisoPorRol`):
   superusuario puede crear o editar a mano una cotizacion u orden de compra.
 - Una cotizacion con descuento sobre el umbral la aprueba un ejecutivo
   distinto del que la elaboro (RN-05).
+
+Administracion de cuentas (`apps/seguridad/services.py`):
+
+- Solo el Administrador crea usuarios y asigna roles; todo usuario interno
+  requiere al menos un rol.
+- Nadie se suspende a si mismo ni se quita el rol de Administrador, y una
+  cuenta de superusuario solo la modifica otro superusuario.
+- La clave temporal se genera y se muestra una sola vez.
+- Al ingresar, cada clave incorrecta suma un intento; al llegar al maximo
+  configurado (`sistema.intentos_fallidos_max`) la cuenta se bloquea hasta
+  que el Administrador la reactive (RF-SEG-04). Se registra el ultimo acceso.
 
 `cargar_roles --usuarios-demo` crea `administrador`, `comercial`,
 `comercial2`, `produccion`, `operario`, `calidad` y `bodega`, todos con clave
@@ -339,7 +393,7 @@ clientes ficticios de los datos de demostracion.
 docker compose exec web pytest
 ```
 
-120 pruebas automatizadas con 90% de cobertura sobre `apps/`, por encima del
+138 pruebas automatizadas con 91% de cobertura sobre `apps/`, por encima del
 70% exigido por RNF-13. Las llamadas a servicios externos (incluido PayPal) se
 simulan con dobles de prueba.
 

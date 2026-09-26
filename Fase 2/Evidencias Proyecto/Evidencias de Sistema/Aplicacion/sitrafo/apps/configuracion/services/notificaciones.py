@@ -109,3 +109,13 @@ def notificar_pago_confirmado(transaccion) -> bool:
         {"transaccion": transaccion, "documento": documento,
          "url": url_sitio("web:documento_cobro", documento.pk)},
     )
+
+
+def notificar_saldo_emitido(documento) -> bool:
+    """Aviso de pedido terminado con el saldo por pagar (RN-15)."""
+    return enviar(
+        "saldo_emitido",
+        f"SITRAFO: su pedido {documento.orden_compra.numero} esta listo",
+        destinatarios_de(documento.orden_compra.cliente),
+        {"documento": documento, "url": url_sitio("web:documento_cobro", documento.pk)},
+    )

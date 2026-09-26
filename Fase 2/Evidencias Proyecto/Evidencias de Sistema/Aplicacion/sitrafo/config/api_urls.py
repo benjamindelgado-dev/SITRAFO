@@ -7,11 +7,11 @@ aplicacion web consumen estos mismos endpoints (RNF-05).
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
     TokenRefreshView,
     TokenVerifyView,
 )
 
+from apps.calidad.views import ControlCalidadViewSet, NoConformidadViewSet, ProtocoloViewSet
 from apps.catalogo.views import (
     FamiliaProductoViewSet,
     ModeloProductoViewSet,
@@ -38,7 +38,7 @@ from apps.configuracion.views import (
 )
 from apps.inventario.views import BodegaViewSet, MaterialViewSet
 from apps.produccion.views import EmpleadoViewSet, OrdenTrabajoViewSet, TareaViewSet
-from apps.seguridad.views import yo
+from apps.seguridad.views import IngresoConControl, RolViewSet, UsuarioViewSet, yo
 
 router = DefaultRouter()
 
@@ -67,6 +67,15 @@ router.register("empleados", EmpleadoViewSet, basename="empleado")
 router.register("materiales", MaterialViewSet, basename="material")
 router.register("bodegas", BodegaViewSet, basename="bodega")
 
+# Calidad
+router.register("protocolos", ProtocoloViewSet, basename="protocolo")
+router.register("controles-calidad", ControlCalidadViewSet, basename="control-calidad")
+router.register("no-conformidades", NoConformidadViewSet, basename="no-conformidad")
+
+# Seguridad
+router.register("usuarios", UsuarioViewSet, basename="usuario")
+router.register("roles", RolViewSet, basename="rol")
+
 # Configuracion y canal web (solo usuarios internos)
 router.register("parametros", ParametroSistemaViewSet, basename="parametro-sistema")
 router.register("avisos", AvisoSitioViewSet, basename="aviso")
@@ -74,7 +83,7 @@ router.register("feriados", FeriadoViewSet, basename="feriado")
 router.register("log-integraciones", LogIntegracionViewSet, basename="log-integracion")
 
 urlpatterns = [
-    path("auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("auth/token/", IngresoConControl.as_view(), name="token_obtain_pair"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("auth/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
     path("auth/yo/", yo, name="yo"),

@@ -8,8 +8,10 @@ from paneles import (
     PanelIntegraciones,
     PanelSolicitudes,
 )
+from paneles_calidad import PanelControlCalidad, PanelNoConformidades, PanelProtocolos
 from paneles_comercial import PanelCotizaciones, PanelOrdenesCompra
 from paneles_produccion import PanelOrdenesTrabajo, VistaTaller
+from paneles_seguridad import PanelUsuarios
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QApplication,
@@ -106,8 +108,12 @@ class VentanaPrincipal(QMainWindow):
             ("Cotizaciones", "cotizacion.leer", PanelCotizaciones),
             ("Ordenes de compra", "orden_compra.leer", PanelOrdenesCompra),
             ("Ordenes de trabajo", "orden_trabajo.leer", PanelOrdenesTrabajo),
+            ("Control de calidad", "ensayo.leer", PanelControlCalidad),
+            ("No conformidades", "no_conformidad.leer", PanelNoConformidades),
+            ("Protocolos de calidad", "protocolo_calidad.leer", PanelProtocolos),
             ("Canal web", "canal_web.leer", PanelCanalWeb),
             ("Integraciones", "parametro.leer", PanelIntegraciones),
+            ("Usuarios y roles", "usuario.leer", PanelUsuarios),
         ]
         permitidos = [(n, clase) for n, permiso, clase in disponibles
                       if self.cliente.puede(permiso)]

@@ -270,6 +270,55 @@ class ClienteAPI:
     def empleados(self):
         return self.obtener("empleados/")
 
+    # -- Calidad ---------------------------------------------------------------
+    def protocolos(self, params=None):
+        return self.obtener("protocolos/", params)
+
+    def crear_protocolo(self, datos: dict):
+        return self.crear("protocolos/", datos)
+
+    def actualizar_protocolo(self, id_protocolo: int, datos: dict):
+        return self._peticion("PUT", f"protocolos/{id_protocolo}/", json=datos)
+
+    def controles_calidad(self, params=None):
+        return self.obtener("controles-calidad/", params)
+
+    def iniciar_control(self, id_ot: int, id_protocolo: int):
+        return self.crear("controles-calidad/", {"orden_trabajo": id_ot,
+                                                 "protocolo": id_protocolo})
+
+    def registrar_resultado(self, id_control: int, datos: dict):
+        return self.accion(f"controles-calidad/{id_control}/registrar_resultado/", datos)
+
+    def no_conformidades(self, params=None):
+        return self.obtener("no-conformidades/", params)
+
+    def cerrar_no_conformidad(self, id_nc: int, accion: str):
+        return self.accion(f"no-conformidades/{id_nc}/cerrar/",
+                           {"accion_correctiva": accion})
+
+    # -- Usuarios y roles --------------------------------------------------
+    def usuarios(self):
+        return self.obtener("usuarios/")
+
+    def roles_disponibles(self):
+        return self.obtener("roles/")
+
+    def crear_usuario(self, datos: dict):
+        return self.crear("usuarios/", datos)
+
+    def actualizar_usuario(self, id_usuario: int, datos: dict):
+        return self.actualizar(f"usuarios/{id_usuario}/", datos)
+
+    def suspender_usuario(self, id_usuario: int):
+        return self.accion(f"usuarios/{id_usuario}/suspender/")
+
+    def reactivar_usuario(self, id_usuario: int):
+        return self.accion(f"usuarios/{id_usuario}/reactivar/")
+
+    def restablecer_clave(self, id_usuario: int):
+        return self.accion(f"usuarios/{id_usuario}/restablecer_clave/")
+
     def materiales(self):
         return self.obtener("materiales/")
 

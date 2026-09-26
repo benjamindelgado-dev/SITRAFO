@@ -446,6 +446,7 @@ class OrdenCompraViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
     permisos_accion = {
         "confirmar": "orden_compra.actualizar",
         "generar_ordenes_trabajo": "orden_trabajo.crear",
+        "registrar_entrega": "orden_compra.actualizar",
         # La orden nace solo desde una cotizacion aceptada (RN-06)
         "create": None, "update": None, "partial_update": None, "destroy": None,
     }
@@ -495,3 +496,34 @@ class OrdenCompraViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
             return Response({"detalle": str(error)}, status=status.HTTP_409_CONFLICT)
         return Response(OrdenTrabajoSerializer(creadas, many=True).data,
                         status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def registrar_entrega(self, request, pk=None):
+        """
+        Entrega del pedido al cliente: cierra el flujo documental.
+
+        Exige la fabricacion terminada (todas las ordenes de trabajo cerradas,
+        es decir, con calidad aprobada) y el saldo pagado (RN-15).
+        """
+        from apps.pagos.services.cobros import fabricacion_terminada, saldo_pagado
+
+        orden = self.get_object()
+        if orden.estado.codigo != "en_produccion":
+            return Response({"detalle": f"La orden esta {orden.estado.nombre.lower()}."},
+                            status=status.HTTP_409_CONFLICT)
+        if not fabricacion_terminada(orden):
+            return Response({"detalle": "Aun hay ordenes de trabajo sin cerrar."},
+                            status=status.HTTP_409_CONFLICT)
+        if not saldo_pagado(orden):
+            return Response({"detalle": "El saldo aun no esta pagado."},
+                            status=status.HTTP_409_CONFLICT)
+        anterior = orden.estado
+        orden.estado = EstadoDocumento.objects.get(tipo_documento="orden_compra",
+                                                   codigo="entregada")
+        orden.save(update_fields=["estado"])
+        OrdenCompraHistorial.objects.create(
+            orden_compra=orden, estado_anterior=anterior, estado_nuevo=orden.estado,
+            usuario=request.user,
+            observacion=(request.data.get("observacion") or "Pedido entregado al cliente.")[:300],
+        )
+        return Response(self.get_serializer(orden).data)

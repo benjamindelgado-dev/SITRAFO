@@ -206,23 +206,23 @@ class OrdenTrabajo(TimeStampedModel):
 
     # -- Avance -------------------------------------------------------------
     def recalcular_avance(self, guardar: bool = True) -> Decimal:
-        """Horas registradas sobre horas estimadas del total de tareas."""
-        estimadas = sum((t.horas_estimadas for t in self.tareas.all()), Decimal("0"))
-        if not estimadas:
+        """
+        Porcentaje de tareas terminadas sobre el total de tareas.
+
+        El avance mide cuanto del trabajo esta hecho, no cuantas horas se
+        consumieron: una tarea puede terminarse en menos horas de las
+        estimadas, o requerir mas, y en ambos casos cuenta como terminada.
+        La comparacion de horas reales con estimadas se refleja en el costo
+        real y su desviacion (RN-11), no en el avance.
+        """
+        tareas = list(self.tareas.all())
+        if not tareas:
             self.avance_pct = Decimal("0")
         else:
-            reales = sum(
-                (
-                    r.horas
-                    for t in self.tareas.all()
-                    for r in t.registros_hora.filter(anulado=False)
-                ),
-                Decimal("0"),
-            )
-            self.avance_pct = min(
-                (reales / estimadas * Decimal("100")).quantize(Decimal("0.01")),
-                Decimal("100"),
-            )
+            terminadas = sum(1 for t in tareas if t.estado == TareaOT.Estado.TERMINADA)
+            self.avance_pct = (
+                Decimal(terminadas) / Decimal(len(tareas)) * Decimal("100")
+            ).quantize(Decimal("0.01"))
         if guardar:
             self.save(update_fields=["avance_pct"])
         return self.avance_pct
@@ -244,19 +244,13 @@ class OrdenTrabajo(TimeStampedModel):
         if pendientes:
             impedimentos.append(f"{pendientes} tarea(s) sin terminar.")
 
-        from apps.calidad.models import NoConformidad, ResultadoControl
+        from apps.calidad.models import NoConformidad
 
-        controles_obligatorios = ResultadoControl.objects.filter(
-            control__orden_trabajo=self, punto__obligatorio=True
-        ).count()
-        esperados = sum(
-            c.protocolo.puntos.filter(obligatorio=True).count()
-            for c in self.controles_calidad.all()
-        )
+        # Un punto repetido cuenta una sola vez: importa que tenga resultado
+        faltantes = sum(c.puntos_pendientes.count() for c in self.controles_calidad.all())
         if not self.controles_calidad.exists():
             impedimentos.append("No se ha ejecutado ningun control de calidad.")
-        elif controles_obligatorios < esperados:
-            faltantes = esperados - controles_obligatorios
+        elif faltantes:
             impedimentos.append(f"{faltantes} punto(s) de control obligatorio(s) sin ejecutar.")
 
         abiertas = NoConformidad.objects.filter(

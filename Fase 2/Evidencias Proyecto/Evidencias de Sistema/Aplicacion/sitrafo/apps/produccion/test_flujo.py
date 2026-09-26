@@ -185,7 +185,7 @@ def test_operario_registra_horas_en_su_tarea_con_la_tarifa_vigente(planta):
     assert _horas(planta["juan"], bobinado, 4).status_code == 200
     ot.refresh_from_db()
     assert ot.costo_real_uf == Decimal("2")               # 4 h x 0,5 UF
-    assert ot.avance_pct == Decimal("16.67")              # 4 de 24 h
+    assert ot.avance_pct == Decimal("0")                  # ninguna tarea terminada
     bobinado.refresh_from_db()
     assert bobinado.estado == TareaOT.Estado.EN_EJECUCION
 
@@ -289,7 +289,21 @@ def test_cargar_demo_produccion_es_repetible(db):
     call_command("cargar_demo_produccion", stdout=salida)
 
     assert Material.objects.count() == 6
+    from apps.calidad.models import ProtocoloCalidad
+
+    assert ProtocoloCalidad.objects.count() == 0   # sin modelos de demo no hay protocolos
     assert Empleado.objects.count() == 3
     assert Empleado.objects.get(nombre="Juan Soto").usuario.username == "operario"
     cobre = Material.objects.get(codigo="CU-ESM")
     assert MovimientoInventario.stock_actual(cobre) == Decimal("900")   # una sola recepcion
+
+
+
+def test_el_avance_se_mide_por_tareas_terminadas_no_por_horas(planta):
+    """Una tarea terminada en menos horas de las estimadas cuenta completa."""
+    ot, bobinado, _ = _en_ejecucion(planta)
+    _horas(planta["juan"], bobinado, 1)                   # estimadas: 16 h
+    planta["juan"].post(f"/api/v1/tareas/{bobinado.pk}/terminar/")
+
+    ot.refresh_from_db()
+    assert ot.avance_pct == Decimal("50")                 # 1 de 2 tareas

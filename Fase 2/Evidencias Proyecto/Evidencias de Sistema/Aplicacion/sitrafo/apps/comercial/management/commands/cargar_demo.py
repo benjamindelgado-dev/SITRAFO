@@ -66,11 +66,12 @@ MODELOS = [
 ]
 
 TAREAS = [
-    ("Corte y armado de nucleo", 8, TareaOT.Estado.TERMINADA),
-    ("Bobinado de baja tension", 16, TareaOT.Estado.TERMINADA),
-    ("Bobinado de alta tension", 18, TareaOT.Estado.EN_EJECUCION),
-    ("Ensamble y llenado de aceite", 12, TareaOT.Estado.PENDIENTE),
-    ("Ensayos de rutina", 6, TareaOT.Estado.PENDIENTE),
+    # Horas reducidas para que la demostracion se recorra en poco tiempo
+    ("Corte y armado de nucleo", 2, TareaOT.Estado.TERMINADA),
+    ("Bobinado de baja tension", 2, TareaOT.Estado.TERMINADA),
+    ("Bobinado de alta tension", 2, TareaOT.Estado.EN_EJECUCION),
+    ("Ensamble y llenado de aceite", 2, TareaOT.Estado.PENDIENTE),
+    ("Ensayos de rutina", 1, TareaOT.Estado.PENDIENTE),
 ]
 
 DESCRIPCION = (

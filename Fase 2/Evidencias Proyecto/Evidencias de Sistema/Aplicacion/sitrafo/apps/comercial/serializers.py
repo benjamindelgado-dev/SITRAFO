@@ -172,6 +172,7 @@ class OrdenCompraSerializer(serializers.ModelSerializer):
     cliente_nombre = serializers.CharField(source="cliente.razon_social", read_only=True)
     cotizacion_numero = serializers.CharField(source="cotizacion.numero", read_only=True)
     anticipo = serializers.SerializerMethodField()
+    saldo = serializers.SerializerMethodField()
     estado_codigo = serializers.CharField(source="estado.codigo", read_only=True)
     ordenes_trabajo = serializers.SerializerMethodField()
     historial = HistorialSerializer(many=True, read_only=True)
@@ -188,7 +189,7 @@ class OrdenCompraSerializer(serializers.ModelSerializer):
         fields = ["id_orden_compra", "numero", "cotizacion", "cotizacion_numero",
                   "cliente", "cliente_nombre", "estado", "estado_nombre", "estado_codigo",
                   "total_uf",
-                  "anticipo_pct", "monto_anticipo_uf", "monto_saldo_uf", "anticipo",
+                  "anticipo_pct", "monto_anticipo_uf", "monto_saldo_uf", "anticipo", "saldo",
                   "ordenes_trabajo",
                   "creado_en", "lineas", "historial"]
         read_only_fields = ["numero", "creado_en"]
@@ -196,11 +197,11 @@ class OrdenCompraSerializer(serializers.ModelSerializer):
     def get_ordenes_trabajo(self, orden) -> list[str]:
         return [ot.numero for ot in orden.ordenes_trabajo.all()]
 
-    def get_anticipo(self, orden) -> dict | None:
-        """Documento de cobro del anticipo y su estado de pago (RN-15)."""
+    @staticmethod
+    def _cobro(orden, tipo) -> dict | None:
         documento = next(
             (d for d in orden.documentos_cobro.all()
-             if d.tipo == "anticipo" and d.estado != "anulado"),
+             if d.tipo == tipo and d.estado != "anulado"),
             None,
         )
         if documento is None:
@@ -208,6 +209,14 @@ class OrdenCompraSerializer(serializers.ModelSerializer):
         return {"numero": documento.numero, "estado": documento.estado,
                 "monto_clp": str(documento.monto_clp),
                 "vence_el": documento.vence_el.isoformat()}
+
+    def get_anticipo(self, orden) -> dict | None:
+        """Documento de cobro del anticipo y su estado de pago (RN-15)."""
+        return self._cobro(orden, "anticipo")
+
+    def get_saldo(self, orden) -> dict | None:
+        """Cobro del saldo: se emite al cerrar la ultima orden de trabajo."""
+        return self._cobro(orden, "saldo")
 
 
 class CotizarSolicitudSerializer(serializers.Serializer):

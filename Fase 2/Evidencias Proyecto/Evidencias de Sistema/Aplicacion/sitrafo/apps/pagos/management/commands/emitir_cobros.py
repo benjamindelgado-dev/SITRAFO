@@ -1,6 +1,7 @@
 """
-Emite el documento de cobro del anticipo para las ordenes de compra que aun
-no lo tienen (RN-15).
+Emite los documentos de cobro que falten (RN-15): el anticipo de las ordenes
+de compra que aun no lo tienen y el saldo de las que ya terminaron su
+fabricacion.
 
 La emision ocurre automaticamente al generar la orden de compra desde la API.
 Este comando cubre las ordenes creadas antes de que existiera esa regla o
@@ -12,11 +13,11 @@ Uso:
 from django.core.management.base import BaseCommand
 
 from apps.comercial.models import OrdenCompra
-from apps.pagos.services.cobros import ErrorCobro, emitir_anticipo
+from apps.pagos.services.cobros import ErrorCobro, emitir_anticipo, emitir_saldo
 
 
 class Command(BaseCommand):
-    help = "Emite el anticipo de las ordenes de compra que no lo tienen."
+    help = "Emite los anticipos y saldos pendientes de emision."
 
     def handle(self, *args, **options):
         emitidos = 0
@@ -30,6 +31,15 @@ class Command(BaseCommand):
             except ErrorCobro as error:
                 self.stdout.write(self.style.ERROR(f"  {orden.numero}: {error}"))
                 return
+            if orden.estado.codigo == "en_produccion":
+                try:
+                    saldo, creado_saldo = emitir_saldo(orden)
+                except ErrorCobro:
+                    creado_saldo = False
+                if creado_saldo:
+                    emitidos += 1
+                    self.stdout.write(f"  {orden.numero} -> {saldo.numero}: saldo "
+                                      f"{saldo.monto_uf} UF")
             if creado:
                 emitidos += 1
                 self.stdout.write(

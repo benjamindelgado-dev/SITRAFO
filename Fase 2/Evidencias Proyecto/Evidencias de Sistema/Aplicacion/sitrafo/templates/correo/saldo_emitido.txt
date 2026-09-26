@@ -1,0 +1,13 @@
+{% autoescape off %}Su pedido {{ documento.orden_compra.numero }} termino su fabricacion y aprobo el control de calidad.
+
+Documento: {{ documento.numero }} (saldo)
+Monto: {{ documento.monto_uf|floatformat:2 }} UF (${{ documento.monto_clp|floatformat:0 }})
+Vence: {{ documento.vence_el|date:"d-m-Y" }}
+
+Al registrarse el pago del saldo coordinaremos la entrega.
+
+Pagar el saldo: {{ url }}
+
+--
+Mensaje automatico de SITRAFO. No responda a este correo.
+{% endautoescape %}

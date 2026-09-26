@@ -2,8 +2,8 @@
 Datos de demostracion del area productiva.
 
 Complementa a cargar_demo con lo necesario para operar el taller:
-materiales con precio y stock, lista de materiales y tareas estandar de cada
-modelo, empleados con tarifa y la asociacion del usuario "operario" a un
+materiales con precio y stock, lista de materiales, tareas estandar y
+protocolo de ensayos de rutina de cada modelo, empleados con tarifa y la asociacion del usuario "operario" a un
 empleado. Es idempotente: se puede ejecutar varias veces.
 
 Uso:
@@ -17,6 +17,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
+from apps.calidad.models import ProtocoloCalidad, PuntoControl
 from apps.catalogo.models import BomModelo, ModeloProducto, TareaEstandarModelo
 from apps.inventario.models import (
     Bodega,
@@ -52,14 +53,31 @@ BOM_BASE_100 = {"ACE-SI": 180, "CU-ESM": 60, "ACT-DIE": 150, "AIS-BT": 4, "AIS-A
 ESCALA = {"TD-050": Decimal("0.6"), "TD-100": Decimal("1"), "TD-250": Decimal("2"),
           "TM-025": Decimal("0.35")}
 
-# nombre, secuencia, horas para 100 kVA
-TAREAS_BASE_100 = [
-    ("Corte y armado de nucleo", 1, 8),
-    ("Bobinado de baja tension", 2, 12),
-    ("Bobinado de alta tension", 3, 14),
-    ("Ensamble y llenado de aceite", 4, 8),
-    ("Ensayos de rutina", 5, 4),
+# nombre, secuencia, horas por unidad. Son horas de demostracion, reducidas
+# a proposito (maximo 2 por tarea) para poder recorrer el flujo completo en
+# una sesion de pruebas; en operacion real se cargan las horas del taller.
+TAREAS_DEMO = [
+    ("Corte y armado de nucleo", 1, 2),
+    ("Bobinado de baja tension", 2, 2),
+    ("Bobinado de alta tension", 3, 2),
+    ("Ensamble y llenado de aceite", 4, 2),
+    ("Ensayos de rutina", 5, 1),
 ]
+HORAS_MAXIMAS_DEMO = Decimal("2")
+
+# Ensayos de rutina segun IEC 60076-1: nombre, unidad, nominal, minimo,
+# maximo, obligatorio. Las perdidas en vacio dependen de la potencia.
+ENSAYOS = [
+    ("Resistencia de aislamiento AT-BT y a tierra", "MOhm", None, "1000", None, True),
+    ("Relacion de transformacion (desviacion)", "%", "0", "-0.5", "0.5", True),
+    ("Resistencia de devanados (desbalance entre fases)", "%", "0", None, "2", True),
+    ("Tension aplicada durante 60 s", "kV", "34", "34", None, True),
+    ("Corriente de vacio", "%", None, None, "2.5", True),
+    ("Perdidas en vacio", "W", None, None, "{perdidas}", True),
+    ("Rigidez dielectrica del aceite", "kV", None, "30", None, True),
+    ("Nivel de ruido", "dB", None, None, "60", False),
+]
+PERDIDAS_VACIO_W = {"TD-050": 190, "TD-100": 320, "TD-250": 650, "TM-025": 110}
 
 # rut, nombre, cargo, tarifa UF/hora, usuario del sistema
 EMPLEADOS = [
@@ -70,7 +88,7 @@ EMPLEADOS = [
 
 
 class Command(BaseCommand):
-    help = "Carga materiales, stock, tareas estandar y empleados de demostracion."
+    help = "Carga materiales, stock, tareas estandar, protocolos de calidad y empleados."
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -115,11 +133,46 @@ class Command(BaseCommand):
                     BomModelo.objects.create(modelo=modelo, material=materiales[codigo],
                                              cantidad=valor)
             if not modelo.tareas_estandar.exists():
-                for nombre, secuencia, horas in TAREAS_BASE_100:
+                for nombre, secuencia, horas in TAREAS_DEMO:
                     TareaEstandarModelo.objects.create(
                         modelo=modelo, nombre=nombre, secuencia=secuencia,
-                        horas_estimadas=(Decimal(horas) * factor).quantize(Decimal("0.5")),
+                        horas_estimadas=Decimal(horas),
                     )
+
+        # Bases cargadas con versiones anteriores de este comando tenian horas
+        # de taller reales (hasta 28 h por tarea): se acotan para las pruebas
+        TareaEstandarModelo.objects.filter(
+            modelo__codigo__in=ESCALA, horas_estimadas__gt=HORAS_MAXIMAS_DEMO
+        ).update(horas_estimadas=HORAS_MAXIMAS_DEMO)
+        acotadas = 0
+        for tarea in TareaOT.objects.filter(
+            orden_trabajo__estado__codigo__in=["planificada", "en_ejecucion"]
+        ).select_related("orden_trabajo"):
+            maximo = HORAS_MAXIMAS_DEMO * tarea.orden_trabajo.cantidad
+            if tarea.horas_estimadas > maximo:
+                tarea.horas_estimadas = maximo
+                tarea.save(update_fields=["horas_estimadas"])
+                acotadas += 1
+
+        for modelo in ModeloProducto.objects.filter(codigo__in=ESCALA):
+            if modelo.protocolos.exists():
+                continue
+            protocolo = ProtocoloCalidad.objects.create(
+                modelo=modelo, nombre="Ensayos de rutina", norma_referencia="IEC 60076-1"
+            )
+            for secuencia, (nombre, unidad, nominal, minimo, maximo, obligatorio) in enumerate(
+                ENSAYOS, start=1
+            ):
+                if maximo == "{perdidas}":
+                    maximo = str(PERDIDAS_VACIO_W[modelo.codigo])
+                PuntoControl.objects.create(
+                    protocolo=protocolo, secuencia=secuencia, nombre=nombre,
+                    tipo_ensayo="Rutina", unidad=unidad,
+                    valor_esperado=Decimal(nominal) if nominal else None,
+                    tolerancia_inf=Decimal(minimo) if minimo else None,
+                    tolerancia_sup=Decimal(maximo) if maximo else None,
+                    obligatorio=obligatorio,
+                )
 
         empleados = []
         for rut, nombre, cargo, tarifa, username in EMPLEADOS:
@@ -164,13 +217,17 @@ class Command(BaseCommand):
                 )
                 restantes -= horas
 
-        for ot in OrdenTrabajo.objects.filter(estado__codigo="en_ejecucion"):
+        # Recalcula costo y avance de todas las ordenes (el avance se mide por
+        # tareas terminadas; las ordenes previas a ese cambio se actualizan aqui)
+        for ot in OrdenTrabajo.objects.all():
             ot.recalcular_costo_real()
             ot.recalcular_avance()
 
         juan = empleados[0]
         self.stdout.write(self.style.SUCCESS(
             f"Materiales: {Material.objects.count()}. Empleados: {Empleado.objects.count()}. "
+            f"Protocolos: {ProtocoloCalidad.objects.count()}. "
+            f"Tareas acotadas a 2 h: {acotadas}. "
             f"Tareas asignadas: {len(pendientes)}."
         ))
         if juan.usuario_id:

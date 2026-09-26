@@ -84,6 +84,54 @@ def emitir_anticipo(orden: OrdenCompra) -> tuple[DocumentoCobro, bool]:
     return documento, True
 
 
+def fabricacion_terminada(orden: OrdenCompra) -> bool:
+    """Todas las ordenes de trabajo de la orden de compra estan cerradas."""
+    ordenes = orden.ordenes_trabajo.exclude(estado__codigo="anulada")
+    return ordenes.exists() and not ordenes.exclude(estado__codigo="cerrada").exists()
+
+
+def emitir_saldo(orden: OrdenCompra) -> tuple[DocumentoCobro | None, bool]:
+    """
+    Emite el cobro del saldo cuando termina la fabricacion (RN-15).
+
+    El saldo se valoriza con la UF del dia en que se emite: el anticipo y el
+    saldo son documentos distintos, cada uno con su UF congelada (RN-03).
+    Es idempotente. Devuelve (documento, creado); (None, False) si aun no
+    corresponde o no hay saldo que cobrar.
+    """
+    existente = orden.documentos_cobro.filter(
+        tipo=DocumentoCobro.Tipo.SALDO
+    ).exclude(estado=DocumentoCobro.Estado.ANULADO).first()
+    if existente:
+        return existente, False
+    if not fabricacion_terminada(orden) or orden.monto_saldo_uf <= 0:
+        return None, False
+
+    valor, _fecha, _exacto = valor_uf()
+    if valor is None:
+        raise ErrorCobro("No hay valor de UF disponible para congelar el saldo.")
+
+    vence, _ = plazo_en_dias_habiles(timezone.localdate(), DIAS_HABILES_VENCIMIENTO_ANTICIPO)
+    documento = DocumentoCobro(
+        numero=DocumentoCobro.generar_numero(),
+        orden_compra=orden,
+        tipo=DocumentoCobro.Tipo.SALDO,
+        monto_uf=orden.monto_saldo_uf,
+        valor_uf=valor,
+        vence_el=vence,
+    )
+    documento.calcular_monto_clp()
+    documento.save()
+    transaction.on_commit(lambda: notificaciones.notificar_saldo_emitido(documento))
+    return documento, True
+
+
+def saldo_pagado(orden: OrdenCompra) -> bool:
+    return orden.documentos_cobro.filter(
+        tipo=DocumentoCobro.Tipo.SALDO, estado=DocumentoCobro.Estado.PAGADO
+    ).exists()
+
+
 # ----------------------------------------------------------------------
 # Conversion de moneda
 # ----------------------------------------------------------------------

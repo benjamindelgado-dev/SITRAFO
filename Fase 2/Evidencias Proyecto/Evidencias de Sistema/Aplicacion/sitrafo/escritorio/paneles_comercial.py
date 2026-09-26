@@ -456,9 +456,10 @@ class PanelCotizaciones(PanelBase):
 # ---------------------------------------------------------------------------
 class PanelOrdenesCompra(PanelBase):
     titulo = "Ordenes de compra"
-    subtitulo = ("Ordenes generadas desde cotizaciones aceptadas, con el estado de "
-                 "pago del anticipo. Confirme la orden para habilitar la fabricacion.")
-    columnas = ["Numero", "Cliente", "Cotizacion", "Total", "Anticipo", "Estado"]
+    subtitulo = ("Ordenes generadas desde cotizaciones aceptadas. El anticipo se cobra "
+                 "al generarla y el saldo al terminar la fabricacion; la entrega se "
+                 "registra con el saldo pagado.")
+    columnas = ["Numero", "Cliente", "Cotizacion", "Total", "Anticipo", "Saldo", "Estado"]
 
     ESTADO_ANTICIPO = {"pendiente": "Pendiente", "pagado": "Pagado", "anulado": "Anulado"}
 
@@ -477,6 +478,11 @@ class PanelOrdenesCompra(PanelBase):
         self.b_ot.clicked.connect(self._generar_ot)
         self.b_ot.setVisible(self.cliente.puede("orden_trabajo.crear"))
         acciones.addWidget(self.b_ot)
+        self.b_entrega = QPushButton("Registrar entrega")
+        self.b_entrega.setObjectName("exito")
+        self.b_entrega.clicked.connect(self._entregar)
+        self.b_entrega.setVisible(self.cliente.puede("orden_compra.actualizar"))
+        acciones.addWidget(self.b_entrega)
         recargar = QPushButton("Recargar")
         recargar.setObjectName("secundario")
         recargar.clicked.connect(self.refrescar)
@@ -487,6 +493,7 @@ class PanelOrdenesCompra(PanelBase):
         self.datos = []
         self.b_confirmar.setEnabled(False)
         self.b_ot.setEnabled(False)
+        self.b_entrega.setEnabled(False)
 
     def refrescar(self):
         try:
@@ -495,15 +502,16 @@ class PanelOrdenesCompra(PanelBase):
             return self.manejar_error(error)
         self.datos = respuesta.get("results", respuesta)
 
-        def anticipo(o):
-            a = o.get("anticipo")
+        def cobro(o, tipo, sin):
+            a = o.get(tipo)
             if not a:
-                return "sin emitir"
+                return sin
             return f"{self.ESTADO_ANTICIPO.get(a['estado'], a['estado'])} · {clp(a['monto_clp'])}"
 
         self.llenar(self.tabla, [
             [o["numero"], o.get("cliente_nombre", ""), o.get("cotizacion_numero", ""),
-             uf(o["total_uf"]), anticipo(o), o.get("estado_nombre", "")]
+             uf(o["total_uf"]), cobro(o, "anticipo", "sin emitir"),
+             cobro(o, "saldo", "al terminar la fabricacion"), o.get("estado_nombre", "")]
             for o in self.datos
         ])
         self._seleccion()
@@ -518,6 +526,28 @@ class PanelOrdenesCompra(PanelBase):
             bool(orden) and orden.get("estado_codigo") == "confirmada"
             and not orden.get("ordenes_trabajo")
         )
+        # La entrega exige la fabricacion terminada (hay saldo emitido) y pagada
+        self.b_entrega.setEnabled(
+            bool(orden) and orden.get("estado_codigo") == "en_produccion"
+            and (orden.get("saldo") or {}).get("estado") == "pagado"
+        )
+
+    def _entregar(self):
+        fila = self.tabla.currentRow()
+        if not 0 <= fila < len(self.datos):
+            return
+        orden = self.datos[fila]
+        if QMessageBox.question(self, "Registrar entrega",
+                                f"¿Confirma la entrega de {orden['numero']} al cliente?"
+                                ) != QMessageBox.Yes:
+            return
+        try:
+            self.cliente.accion(f"ordenes-compra/{orden['id_orden_compra']}/registrar_entrega/")
+        except ErrorAPI as error:
+            return self.manejar_error(error)
+        QMessageBox.information(self, "Pedido entregado",
+                                f"{orden['numero']} quedo como entregada.")
+        self.refrescar()
 
     def _generar_ot(self):
         fila = self.tabla.currentRow()

@@ -182,7 +182,10 @@ class PanelOrdenesTrabajo(PanelBase):
         self.b_consumo = QPushButton("Registrar consumo")
         self.b_consumo.setObjectName("secundario")
         self.b_consumo.clicked.connect(lambda: self._registrar("consumo"))
-        for boton in (self.b_asignar, self.b_horas, self.b_consumo):
+        self.b_terminar = QPushButton("Terminar tarea")
+        self.b_terminar.setObjectName("secundario")
+        self.b_terminar.clicked.connect(self._terminar_tarea)
+        for boton in (self.b_asignar, self.b_horas, self.b_consumo, self.b_terminar):
             acciones_tarea.addWidget(boton)
         acciones_tarea.addStretch()
         gt.addLayout(acciones_tarea)
@@ -224,7 +227,7 @@ class PanelOrdenesTrabajo(PanelBase):
         self.registra = self.cliente.puede("taller.crear")
         for boton in (self.b_iniciar, self.b_calidad, self.b_cerrar, self.b_asignar):
             boton.setVisible(self.planifica)
-        for boton in (self.b_horas, self.b_consumo):
+        for boton in (self.b_horas, self.b_consumo, self.b_terminar):
             boton.setVisible(self.planifica and self.registra)
 
         self.datos = []
@@ -315,6 +318,7 @@ class PanelOrdenesTrabajo(PanelBase):
         self.b_asignar.setEnabled(activa and codigo in ("planificada", "en_ejecucion"))
         self.b_horas.setEnabled(activa and codigo == "en_ejecucion")
         self.b_consumo.setEnabled(activa and codigo == "en_ejecucion")
+        self.b_terminar.setEnabled(activa and codigo == "en_ejecucion")
 
     # -- Acciones ------------------------------------------------------------
     def _ejecutar(self, operacion, *args, exito: str):
@@ -356,6 +360,15 @@ class PanelOrdenesTrabajo(PanelBase):
         if dialogo.exec():
             self.refrescar()
 
+    def _terminar_tarea(self):
+        """El jefe cierra una tarea, por ejemplo la de un operario sin usuario."""
+        tarea = self._tarea()
+        if not tarea or QMessageBox.question(
+            self, "Terminar tarea", f"¿Confirma que «{tarea['nombre']}» esta terminada?"
+        ) != QMessageBox.Yes:
+            return
+        self._ejecutar(self.cliente.terminar_tarea, tarea["id_tarea"], exito="")
+
     def _iniciar(self):
         ot = self._actual()
         sin_responsable = [t["nombre"] for t in ot["tareas"] if not t.get("empleado")]
@@ -384,7 +397,9 @@ class PanelOrdenesTrabajo(PanelBase):
             if not ok:
                 return
         self._ejecutar(self.cliente.cerrar_ot, ot["id_orden_trabajo"], justificacion,
-                       exito=f"{ot['numero']} cerrada.")
+                       exito=f"{ot['numero']} cerrada. Si era la ultima orden de trabajo de "
+                             f"{ot['orden_compra_numero']}, se emitio el cobro del saldo "
+                             "y se aviso al cliente.")
 
 
 # ---------------------------------------------------------------------------
