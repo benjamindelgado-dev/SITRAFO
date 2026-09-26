@@ -36,7 +36,7 @@ env:
 jobs:
   verificar:
     name: Lint, migraciones y pruebas
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # version fija para resultados reproducibles
     timeout-minutes: 15
     defaults:
       run:
@@ -44,10 +44,10 @@ jobs:
 
     steps:
       - name: Obtener el codigo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Preparar Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -94,7 +94,7 @@ jobs:
 
       - name: Guardar reporte de cobertura
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cobertura-html
           path: ${{ env.APP }}/htmlcov
