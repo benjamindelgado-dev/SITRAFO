@@ -4,9 +4,9 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.db import transaction
 
 from apps.catalogo.models import ModeloProducto, ParametroTecnico
-from apps.clientes.models import Cliente, Comuna, DireccionCliente
-from apps.common.validators import limpiar_rut, validar_rut
+from apps.clientes.models import Cliente, DireccionCliente
 from apps.comercial.models import SolicitudPresupuesto
+from apps.common.validators import limpiar_rut, validar_rut
 from apps.seguridad.models import Usuario
 
 

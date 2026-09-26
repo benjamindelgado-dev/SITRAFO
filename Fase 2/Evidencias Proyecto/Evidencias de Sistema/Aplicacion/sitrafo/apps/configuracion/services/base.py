@@ -12,7 +12,7 @@ Concentra el comportamiento exigido por los requerimientos de integracion:
 """
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import requests

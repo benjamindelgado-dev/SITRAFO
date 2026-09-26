@@ -7,7 +7,6 @@ from apps.clientes.models import Cliente
 
 from .models import (
     Cotizacion,
-    CotizacionHistorial,
     CotizacionLinea,
     EstadoDocumento,
     OrdenCompra,

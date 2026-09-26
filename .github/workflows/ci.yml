@@ -1,0 +1,101 @@
+# Integracion continua de SITRAFO
+#
+# En cada push o pull request que toque la aplicacion se verifica:
+#   1. Estilo y errores estaticos del codigo (ruff).
+#   2. Que los modelos y las migraciones esten sincronizados.
+#   3. Que la aplicacion de escritorio compile sin errores de sintaxis.
+#   4. Las pruebas automatizadas, con cobertura minima de 70 % (RNF-13).
+#
+# Las pruebas usan SQLite en memoria y simulan todos los servicios externos
+# (PayPal, Brevo, mindicador, feriados), de modo que no requieren base de
+# datos, red ni credenciales.
+
+name: CI SITRAFO
+
+on:
+  push:
+    paths:
+      - "Fase 2/Evidencias Proyecto/Evidencias de Sistema/Aplicacion/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "Fase 2/Evidencias Proyecto/Evidencias de Sistema/Aplicacion/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP: "Fase 2/Evidencias Proyecto/Evidencias de Sistema/Aplicacion/sitrafo"
+
+jobs:
+  verificar:
+    name: Lint, migraciones y pruebas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ env.APP }}
+
+    steps:
+      - name: Obtener el codigo
+        uses: actions/checkout@v4
+
+      - name: Preparar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            ${{ env.APP }}/requirements/base.txt
+            ${{ env.APP }}/requirements/dev.txt
+
+      - name: Instalar dependencias
+        run: pip install -r requirements/dev.txt
+
+      - name: Revisar el codigo (ruff)
+        run: ruff check . --output-format=github
+
+      - name: Verificar migraciones pendientes
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Compilar la aplicacion de escritorio
+        run: python -m compileall -q escritorio
+
+      - name: Ejecutar las pruebas
+        run: >
+          pytest --cov-fail-under=70 --cov-report=term --cov-report=html
+          --junitxml=reporte-pruebas.xml
+
+      - name: Resumen en GitHub
+        if: always()
+        run: |
+          python - <<'PY'
+          import os, xml.etree.ElementTree as ET
+          try:
+              suite = ET.parse("reporte-pruebas.xml").getroot()
+              suite = suite if suite.tag == "testsuite" else suite[0]
+              total = int(suite.get("tests", 0))
+              fallas = int(suite.get("failures", 0)) + int(suite.get("errors", 0))
+              texto = (f"## Pruebas SITRAFO\n\n| Total | Aprobadas | Fallidas |\n"
+                       f"|---|---|---|\n| {total} | {total - fallas} | {fallas} |\n")
+          except FileNotFoundError:
+              texto = "## Pruebas SITRAFO\n\nNo se generaron resultados.\n"
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write(texto)
+          PY
+
+      - name: Guardar reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-html
+          path: ${{ env.APP }}/htmlcov
+          retention-days: 14

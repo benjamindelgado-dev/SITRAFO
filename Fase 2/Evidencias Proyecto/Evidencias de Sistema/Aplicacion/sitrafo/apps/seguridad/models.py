@@ -8,7 +8,7 @@ from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
 
-from apps.common.models import ActivableModel, TimeStampedModel
+from apps.common.models import ActivableModel
 
 
 class Rol(ActivableModel):

@@ -26,3 +26,6 @@ db.sqlite3
 htmlcov/
 .pytest_cache/
 htmlcov/
+
+# Resultados de pruebas generados por la CI
+reporte-pruebas.xml

@@ -411,6 +411,22 @@ los correos se envian solo despues de confirmada la transaccion.
 (indicando en el asunto el destinatario original), para no escribir a los
 clientes ficticios de los datos de demostracion.
 
+## Integracion continua
+
+El archivo `.github/workflows/ci.yml` (en la raiz del repositorio) ejecuta en
+GitHub Actions, en cada push que toque la aplicacion: ruff, verificacion de
+migraciones pendientes, compilacion de la aplicacion de escritorio y la suite
+de pruebas con cobertura minima de 70 % (RNF-13). El reporte de cobertura
+queda como artefacto descargable de cada ejecucion.
+
+Para reproducir la verificacion en local:
+
+```bash
+docker compose exec web ruff check .
+docker compose exec web python manage.py makemigrations --check --dry-run
+docker compose exec web pytest --cov-fail-under=70
+```
+
 ## Pruebas
 
 ```bash

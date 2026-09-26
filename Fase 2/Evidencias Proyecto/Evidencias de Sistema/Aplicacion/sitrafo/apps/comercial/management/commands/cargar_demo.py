@@ -202,7 +202,7 @@ class Command(BaseCommand):
                     "publicado": True,
                 },
             )
-            for (clave, *_), valor in zip(PARAMETROS, valores):
+            for (clave, *_), valor in zip(PARAMETROS, valores, strict=False):
                 ModeloParametro.objects.get_or_create(
                     modelo=modelo, parametro=parametros[clave],
                     defaults={"valor_defecto": valor},

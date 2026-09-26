@@ -257,7 +257,7 @@ def test_punto_de_control_evalua_la_tolerancia(taller):
 @pytest.mark.django_db
 def test_no_cierra_con_no_conformidad_abierta(taller):
     """RN-12: la no conformidad abierta bloquea el cierre."""
-    tarea = TareaOT.objects.create(
+    TareaOT.objects.create(
         orden_trabajo=taller["ot"], nombre="Bobinado", secuencia=1,
         horas_estimadas=Decimal("24"), estado="terminada",
     )
