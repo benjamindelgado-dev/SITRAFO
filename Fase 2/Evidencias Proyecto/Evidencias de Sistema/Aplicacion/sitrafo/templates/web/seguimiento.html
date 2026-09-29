@@ -51,7 +51,8 @@
       <ul class="etapas-ot">
         {% for t in ot.tareas.all %}
           <li class="{% if t.estado == 'terminada' %}terminada{% endif %}">
-            <span>{{ t.secuencia }}. {{ t.nombre }}</span>
+            <span>{{ t.secuencia }}. {{ t.nombre }}
+              {% if t.estado != "terminada" %}<span class="text-secondary" style="font-size:.8rem"> · termino estimado {{ t.fecha_estimada_termino|date:"d-m-Y" }}</span>{% endif %}</span>
             {% if t.estado == "terminada" %}
               <span class="estado estado--bien">Terminada</span>
             {% elif t.estado == "en_ejecucion" %}

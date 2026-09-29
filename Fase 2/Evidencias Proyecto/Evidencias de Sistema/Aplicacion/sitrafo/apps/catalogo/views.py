@@ -54,6 +54,9 @@ class ModeloProductoViewSet(viewsets.ModelViewSet):
     acciones_cliente = ("list", "retrieve")
     permisos_accion = {
         "publicar": "catalogo.actualizar",
+        "receta": "bom.leer",
+        "guardar_receta": "bom.actualizar",
+        "costeo": "cotizacion.crear",
         # Un modelo con cotizaciones no se borra: se retira del catalogo
         "destroy": None,
     }
@@ -133,3 +136,59 @@ class ModeloProductoViewSet(viewsets.ModelViewSet):
             origen=Auditoria.Origen.ESCRITORIO,
         )
         return Response(ModeloProductoDetalleSerializer(modelo).data)
+
+    @action(detail=True, methods=["get"])
+    def receta(self, request, pk=None):
+        """Lista de materiales y tareas estandar del modelo, con su costeo."""
+        from apps.comercial.services import costear_modelo
+
+        modelo = self.get_object()
+        costeo = costear_modelo(modelo)
+        return Response({
+            "modelo": modelo.codigo,
+            "materiales": [
+                {"material": b.material_id, "codigo": b.material.codigo,
+                 "nombre": b.material.nombre, "unidad": b.material.unidad_medida,
+                 "cantidad": str(b.cantidad), "observacion": b.observacion,
+                 "costo_unitario_uf": str(b.material.costo_vigente or "")}
+                for b in modelo.materiales.select_related("material").order_by("material__codigo")
+            ],
+            "tareas": [
+                {"nombre": t.nombre, "secuencia": t.secuencia,
+                 "horas_estimadas": str(t.horas_estimadas)}
+                for t in modelo.tareas_estandar.order_by("secuencia")
+            ],
+            "costo_material_uf": str(costeo.costo_material_uf),
+            "costo_hh_uf": str(costeo.costo_hh_uf),
+            "horas_estandar": str(costeo.horas_estandar),
+            "tarifa_referencia_uf": str(costeo.tarifa_referencia_uf or ""),
+        })
+
+    @action(detail=True, methods=["post"])
+    def guardar_receta(self, request, pk=None):
+        """Reemplaza la receta completa del modelo (RF-CAT-04, 05)."""
+        modelo = self.get_object()
+        try:
+            services.guardar_receta(modelo, request.user,
+                                    materiales=request.data.get("materiales", []),
+                                    tareas=request.data.get("tareas", []))
+        except (services.ErrorCatalogo, KeyError, ArithmeticError, ValueError) as error:
+            mensaje = str(error) if isinstance(error, services.ErrorCatalogo) else \
+                "Datos incompletos o no numericos en la receta."
+            return Response({"detalle": mensaje}, status=status.HTTP_409_CONFLICT)
+        return self.receta(request, pk)
+
+    @action(detail=True, methods=["get"])
+    def costeo(self, request, pk=None):
+        """Costo unitario y precio sugerido, para agregar lineas a una cotizacion."""
+        from apps.comercial.services import costear_modelo
+
+        modelo = self.get_object()
+        c = costear_modelo(modelo, request.query_params.get("margen"))
+        return Response({
+            "modelo": modelo.nombre, "costo_material_uf": str(c.costo_material_uf),
+            "costo_hh_uf": str(c.costo_hh_uf), "costo_estimado_uf": str(c.costo_estimado_uf),
+            "margen_pct": str(c.margen_pct), "precio_base_uf": str(c.precio_base_uf or ""),
+            "precio_sugerido_uf": str(c.precio_sugerido_uf or ""),
+            "origen_precio": c.origen_precio,
+        })

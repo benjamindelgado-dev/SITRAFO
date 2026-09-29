@@ -22,12 +22,15 @@ class MaterialSerializer(serializers.ModelSerializer):
     stock_total = serializers.SerializerMethodField()
     stock_por_bodega = serializers.SerializerMethodField()
     bajo_minimo = serializers.SerializerMethodField()
+    costo_promedio_uf = serializers.SerializerMethodField()
+    valor_inventario_uf = serializers.SerializerMethodField()
 
     class Meta:
         model = Material
         fields = ["id_material", "codigo", "nombre", "categoria", "categoria_nombre",
                   "unidad_medida", "stock_minimo", "costo_vigente_uf", "stock_total",
-                  "stock_por_bodega", "bajo_minimo", "activo"]
+                  "stock_por_bodega", "bajo_minimo", "costo_promedio_uf",
+                  "valor_inventario_uf", "activo"]
 
     def get_stock_total(self, material) -> str:
         return str(MovimientoInventario.stock_actual(material))
@@ -37,6 +40,20 @@ class MaterialSerializer(serializers.ModelSerializer):
             str(b.pk): str(MovimientoInventario.stock_actual(material, b))
             for b in Bodega.objects.filter(activo=True)
         }
+
+    def get_costo_promedio_uf(self, material) -> str | None:
+        from .services import costo_promedio
+
+        valor = costo_promedio(material)
+        return str(valor) if valor is not None else None
+
+    def get_valor_inventario_uf(self, material) -> str:
+        """Saldo valorizado a costo promedio ponderado (RF-INV-08)."""
+        from .services import costo_promedio
+
+        costo = costo_promedio(material) or 0
+        return str((MovimientoInventario.stock_actual(material) * costo).quantize(
+            Decimal("0.0001")))
 
     def get_bajo_minimo(self, material) -> bool:
         return MovimientoInventario.stock_actual(material) < material.stock_minimo
@@ -81,3 +98,12 @@ class AjusteSerializer(serializers.Serializer):
     bodega = serializers.PrimaryKeyRelatedField(queryset=Bodega.objects.filter(activo=True))
     conteo_fisico = serializers.DecimalField(max_digits=12, decimal_places=4)
     motivo = serializers.CharField()
+
+
+class DevolucionSerializer(serializers.Serializer):
+    bodega = serializers.PrimaryKeyRelatedField(queryset=Bodega.objects.filter(activo=True))
+    cantidad = serializers.DecimalField(max_digits=12, decimal_places=4)
+    sentido = serializers.ChoiceField(choices=["desde_taller", "a_proveedor"])
+    motivo = serializers.CharField()
+    proveedor = serializers.PrimaryKeyRelatedField(
+        queryset=Proveedor.objects.filter(activo=True), required=False, allow_null=True)

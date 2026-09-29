@@ -1,4 +1,6 @@
 """Vistas de la API para el inventario (HU-10)."""
+import datetime
+
 from django.db import IntegrityError, transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -13,6 +15,7 @@ from .serializers import (
     AjusteSerializer,
     BodegaSerializer,
     CategoriaSerializer,
+    DevolucionSerializer,
     MaterialEntradaSerializer,
     MaterialSerializer,
     ProveedorSerializer,
@@ -42,6 +45,7 @@ class MaterialViewSet(viewsets.ModelViewSet):
     permisos_accion = {
         "recepcion": "bodega.crear",
         "ajuste": "bodega.actualizar",
+        "devolucion": "bodega.crear",
         # Un material con movimientos no se borra: se desactiva
         "destroy": None, "update": None,
     }
@@ -119,13 +123,36 @@ class MaterialViewSet(viewsets.ModelViewSet):
         respuesta["ajustado"] = movimiento is not None
         return Response(respuesta)
 
+    @action(detail=True, methods=["post"])
+    def devolucion(self, request, pk=None):
+        material = self.get_object()
+        entrada = DevolucionSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        datos = entrada.validated_data
+        try:
+            services.devolver(material, datos["bodega"], datos["cantidad"], request.user,
+                              sentido=datos["sentido"], motivo=datos["motivo"],
+                              proveedor=datos.get("proveedor"))
+        except services.ErrorInventario as error:
+            return _conflicto(error)
+        return Response(MaterialSerializer(material).data)
+
     @action(detail=True, methods=["get"])
     def kardex(self, request, pk=None):
+        """Kardex con saldo acumulado; ?desde y ?hasta filtran las filas (RF-INV-07)."""
         material = self.get_object()
         bodega = None
         if request.query_params.get("bodega"):
             bodega = Bodega.objects.filter(pk=request.query_params["bodega"]).first()
-        datos = services.kardex(material, bodega)
+        try:
+            desde = (datetime.date.fromisoformat(request.query_params["desde"])
+                     if request.query_params.get("desde") else None)
+            hasta = (datetime.date.fromisoformat(request.query_params["hasta"])
+                     if request.query_params.get("hasta") else None)
+        except ValueError:
+            return Response({"detalle": "Fechas con formato AAAA-MM-DD."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        datos = services.kardex(material, bodega, desde=desde, hasta=hasta)
         return Response({
             **datos,
             "saldo": str(datos["saldo"]),

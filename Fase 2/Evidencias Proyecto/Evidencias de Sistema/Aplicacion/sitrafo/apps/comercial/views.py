@@ -1,4 +1,5 @@
 """Vistas de la API para el dominio comercial."""
+from django.db import transaction
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
@@ -185,6 +186,8 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
         "enviar_correo": "cotizacion.actualizar",
         "devolver": "cotizacion.aprobar",
         "anular": "cotizacion.anular",
+        "lineas": "cotizacion.actualizar",
+        "nueva_version": "cotizacion.crear",
         "generar_orden_compra": "orden_compra.crear",
         # La cotizacion nace desde una solicitud (accion cotizar) y cambia
         # solo por las acciones del flujo
@@ -210,6 +213,13 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
             observacion=observacion,
         )
         return cotizacion
+
+    def get_queryset(self):
+        consulta = super().get_queryset()
+        if not self.request.user.es_interno:
+            # Borradores y cotizaciones en aprobacion son trabajo interno
+            consulta = consulta.exclude(estado__codigo__in=["borrador", "en_aprobacion"])
+        return consulta
 
     @action(detail=True, methods=["post"])
     def aceptar(self, request, pk=None):
@@ -361,6 +371,30 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
             f"Descuento de {cotizacion.descuento_pct}% enviado a aprobacion.",
         )
         return Response(self.get_serializer(cotizacion).data)
+
+    @action(detail=True, methods=["post"])
+    def lineas(self, request, pk=None):
+        """Reemplaza las lineas de un borrador (RF-COM-03)."""
+        cotizacion = self.get_object()
+        try:
+            services.guardar_lineas(cotizacion, request.user, request.data.get("lineas", []))
+        except (services.ErrorComercial, ArithmeticError, ValueError, TypeError) as error:
+            mensaje = str(error) if isinstance(error, services.ErrorComercial) else \
+                "Revise cantidades y precios de las lineas."
+            return Response({"detalle": mensaje}, status=status.HTTP_409_CONFLICT)
+        return Response(self.get_serializer(self.get_queryset().get(pk=cotizacion.pk)).data)
+
+    @action(detail=True, methods=["post"])
+    def nueva_version(self, request, pk=None):
+        """Crea la version siguiente conservando la anterior (RF-COM-10)."""
+        cotizacion = self.get_object()
+        try:
+            copia = services.nueva_version(cotizacion, request.user,
+                                           request.data.get("motivo", ""))
+        except services.ErrorComercial as error:
+            return Response({"detalle": str(error)}, status=status.HTTP_409_CONFLICT)
+        return Response(self.get_serializer(self.get_queryset().get(pk=copia.pk)).data,
+                        status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
     def anular(self, request, pk=None):
@@ -516,6 +550,9 @@ class OrdenCompraViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
             usuario=request.user,
             observacion="Orden confirmada.",
         )
+        transaction.on_commit(lambda: notificaciones.notificar_estado_pedido(
+            orden, "Pedido confirmado",
+            "Confirmamos su orden de compra. Le avisaremos cuando comience la fabricacion."))
         return Response(self.get_serializer(orden).data)
 
     @action(detail=True, methods=["post"])
@@ -571,4 +608,7 @@ class OrdenCompraViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
             usuario=request.user,
             observacion=(request.data.get("observacion") or "Pedido entregado al cliente.")[:300],
         )
+        transaction.on_commit(lambda: notificaciones.notificar_estado_pedido(
+            orden, "Pedido entregado",
+            "Registramos la entrega de su pedido. Gracias por su compra."))
         return Response(self.get_serializer(orden).data)

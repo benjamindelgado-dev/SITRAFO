@@ -131,3 +131,14 @@ def notificar_saldo_emitido(documento) -> bool:
         destinatarios_de(documento.orden_compra.cliente),
         {"documento": documento, "url": url_sitio("web:documento_cobro", documento.pk)},
     )
+
+
+def notificar_estado_pedido(orden, titulo: str, mensaje: str) -> bool:
+    """Hitos del pedido: confirmado, en fabricacion y entregado (RF-COM-17)."""
+    return enviar(
+        "pedido_estado",
+        f"SITRAFO: {titulo} ({orden.numero})",
+        destinatarios_de(orden.cliente),
+        {"orden": orden, "titulo": titulo, "mensaje": mensaje,
+         "url": url_sitio("web:mis_pedidos")},
+    )

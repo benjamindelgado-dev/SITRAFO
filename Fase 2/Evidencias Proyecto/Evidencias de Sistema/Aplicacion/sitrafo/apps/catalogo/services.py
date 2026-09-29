@@ -121,3 +121,59 @@ def guardar_modelo(datos: dict, usuario, modelo: ModeloProducto | None = None
     if precio is not None:
         fijar_precio(modelo, precio, usuario)
     return modelo
+
+
+# ----------------------------------------------------------------------
+# Receta del modelo: lista de materiales y tareas estandar (RF-CAT-04, 05)
+# ----------------------------------------------------------------------
+MAXIMO_HORAS_TAREA = Decimal("200")
+
+
+@transaction.atomic
+def guardar_receta(modelo: ModeloProducto, usuario, *, materiales: list[dict],
+                   tareas: list[dict]) -> ModeloProducto:
+    """
+    Reemplaza la lista de materiales y las tareas estandar del modelo.
+
+    Es la base del costeo de cotizaciones (RF-COM-04) y de las tareas que se
+    copian a cada orden de trabajo (CU-OT-01). Las ordenes ya generadas no
+    cambian: conservan la copia que se hizo al crearlas.
+    """
+    from apps.inventario.models import Material
+
+    from .models import BomModelo, TareaEstandarModelo
+
+    vistos = set()
+    for item in materiales:
+        material = Material.objects.filter(pk=item["material"], activo=True).first()
+        if material is None:
+            raise ErrorCatalogo("Uno de los materiales no existe o esta inactivo.")
+        if material.pk in vistos:
+            raise ErrorCatalogo(f"{material.nombre} esta repetido en la lista de materiales.")
+        vistos.add(material.pk)
+        if Decimal(str(item["cantidad"])) <= 0:
+            raise ErrorCatalogo(f"La cantidad de {material.nombre} debe ser mayor que cero.")
+    nombres = [str(t.get("nombre", "")).strip() for t in tareas]
+    if any(not n for n in nombres):
+        raise ErrorCatalogo("Todas las tareas deben tener nombre.")
+    for t in tareas:
+        horas = Decimal(str(t["horas_estimadas"]))
+        if horas <= 0 or horas > MAXIMO_HORAS_TAREA:
+            raise ErrorCatalogo(f"«{t['nombre']}»: las horas deben estar entre 0 y "
+                                f"{MAXIMO_HORAS_TAREA}.")
+
+    anterior = {"materiales": modelo.materiales.count(),
+                "tareas": modelo.tareas_estandar.count()}
+    modelo.materiales.all().delete()
+    modelo.tareas_estandar.all().delete()
+    for item in materiales:
+        BomModelo.objects.create(modelo=modelo, material_id=item["material"],
+                                 cantidad=Decimal(str(item["cantidad"])),
+                                 observacion=str(item.get("observacion", ""))[:200])
+    for secuencia, t in enumerate(tareas, start=1):
+        TareaEstandarModelo.objects.create(modelo=modelo, nombre=t["nombre"].strip()[:120],
+                                           secuencia=secuencia,
+                                           horas_estimadas=Decimal(str(t["horas_estimadas"])))
+    _auditar(usuario, modelo, Auditoria.Accion.MODIFICACION, anterior,
+             {"materiales": len(materiales), "tareas": len(tareas)})
+    return modelo

@@ -47,6 +47,9 @@ from .forms import (
     SolicitudPresupuestoForm,
 )
 
+# Estados de trabajo interno: el cliente no ve estas cotizaciones
+ESTADOS_INTERNOS_COTIZACION = ("borrador", "en_aprobacion")
+
 
 # ---------------------------------------------------------------------------
 # Utilidades
@@ -171,7 +174,26 @@ def catalogo(request):
     if familia:
         modelos = modelos.filter(familia_id=familia)
 
-    from apps.catalogo.models import FamiliaProducto
+    from apps.catalogo.models import FamiliaProducto, ParametroTecnico
+
+    # Filtros por especificacion (RF-CAT-08): cada parametro de lista usado en
+    # modelos publicados (potencia, tension, refrigeracion...) es un filtro
+    filtros = []
+    for parametro in (ParametroTecnico.objects
+                      .filter(tipo_dato="lista",
+                              modelos_asignados__modelo__publicado=True)
+                      .distinct().order_by("nombre")):
+        valores = sorted(set(parametro.modelos_asignados.filter(modelo__publicado=True)
+                             .exclude(valor_defecto="")
+                             .values_list("valor_defecto", flat=True)))
+        if not valores:
+            continue
+        elegido = request.GET.get(f"p_{parametro.codigo}", "")
+        if elegido:
+            modelos = modelos.filter(parametros_asignados__parametro=parametro,
+                                     parametros_asignados__valor_defecto=elegido)
+        filtros.append({"codigo": parametro.codigo, "nombre": parametro.nombre,
+                        "unidad": parametro.unidad, "valores": valores, "elegido": elegido})
 
     contexto = _contexto_base(request)
     contexto.update(
@@ -180,6 +202,7 @@ def catalogo(request):
             "familias": FamiliaProducto.objects.filter(activo=True),
             "busqueda": busqueda,
             "familia_seleccionada": familia,
+            "filtros": filtros,
         }
     )
     return render(request, "web/catalogo.html", contexto)
@@ -278,7 +301,9 @@ def mis_solicitudes(request):
 def mis_cotizaciones(request):
     cliente = _cliente_de(request)
     cotizaciones = (
+        # Borradores y cotizaciones en aprobacion son internos: el cliente no los ve
         Cotizacion.objects.filter(cliente=cliente)
+        .exclude(estado__codigo__in=ESTADOS_INTERNOS_COTIZACION)
         .select_related("estado")
         .prefetch_related("lineas__modelo")
         .order_by("-creado_en")
@@ -292,7 +317,8 @@ def mis_cotizaciones(request):
 def detalle_cotizacion(request, pk):
     cliente = _cliente_de(request)
     cotizacion = get_object_or_404(
-        Cotizacion.objects.select_related("estado", "solicitud")
+        Cotizacion.objects.exclude(estado__codigo__in=ESTADOS_INTERNOS_COTIZACION)
+        .select_related("estado", "solicitud")
         .prefetch_related("lineas__modelo", "historial__estado_nuevo"),
         pk=pk,
         cliente=cliente,

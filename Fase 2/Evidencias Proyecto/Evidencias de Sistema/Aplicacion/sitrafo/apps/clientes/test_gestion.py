@@ -77,3 +77,37 @@ def test_ficha_tecnica_en_pdf(base):
     respuesta = navegador.get(f"/catalogo/{modelo.pk}/ficha.pdf")
     assert respuesta.status_code == 200
     assert respuesta.content.startswith(b"%PDF")
+
+
+def test_direccion_se_geocodifica_y_sin_servicio_queda_sin_validar(base):
+    from unittest.mock import patch
+
+    from apps.clientes.models import Comuna, DireccionCliente, Region
+    from apps.configuracion.models import LogIntegracion
+
+    cliente = Cliente.objects.create(rut="76543210-3", razon_social="Maipo SpA",
+                                     tipo_persona="juridica")
+    comuna = Comuna.objects.create(nombre="Puente Alto",
+                                   region=Region.objects.create(nombre="Metropolitana",
+                                                                codigo="RM"))
+    datos = {"cliente": cliente.pk, "tipo": "despacho", "comuna": comuna.pk,
+             "calle": "Av. Concha y Toro", "numero": "1820"}
+
+    class Respuesta:
+        ok, status_code = True, 200
+
+        def json(self):
+            return [{"lat": "-33.6117", "lon": "-70.5756"}]
+
+    with patch("requests.get", return_value=Respuesta()):
+        creada = base["api"].post("/api/v1/direcciones/", datos, format="json")
+    assert creada.status_code == 201
+    direccion = DireccionCliente.objects.get()
+    assert direccion.validada and str(direccion.latitud) == "-33.611700"
+    assert LogIntegracion.objects.filter(servicio="geocodificacion", exitoso=True).exists()
+
+    # Sin red: se guarda igual, sin validar (RF-INT-03)
+    sin_red = base["api"].post("/api/v1/direcciones/", {**datos, "numero": "99"},
+                               format="json")
+    assert sin_red.status_code == 201
+    assert DireccionCliente.objects.filter(validada=False).count() == 1

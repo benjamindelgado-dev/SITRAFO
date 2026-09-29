@@ -170,6 +170,9 @@ MINDICADOR_URL = env("MINDICADOR_URL", default="https://mindicador.cl/api")
 # feriadito.cl aun no publica su API y apis.digital.gob.cl fue descontinuada
 FERIADOS_URL = env("FERIADOS_URL", default="https://date.nager.at/api/v3/PublicHolidays")
 
+# Geocodificacion de direcciones (RF-CLI-05)
+GEOCODIFICACION_URL = env("GEOCODIFICACION_URL", default="https://nominatim.openstreetmap.org")
+
 # Pasarela de pago. Por defecto apunta al entorno de pruebas (Sandbox).
 PAYPAL_API_URL = env("PAYPAL_API_URL", default="https://api-m.sandbox.paypal.com")
 PAYPAL_CLIENT_ID = env("PAYPAL_CLIENT_ID", default="")

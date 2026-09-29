@@ -34,6 +34,10 @@ PARAMETROS = [
      "Intentos fallidos antes de bloquear la cuenta (RF-SEG-04)."),
     ("sistema.minutos_inactividad", "30", "numerico", "sistema",
      "Minutos de inactividad antes de cerrar sesion (RF-SEG-07)."),
+    ("sistema.minutos_bloqueo", "15", "numerico", "sistema",
+     "Minutos de bloqueo temporal tras superar los intentos fallidos (RF-SEG-04)."),
+    ("produccion.costo_indirecto_pct", "10", "numerico", "produccion",
+     "Recargo por costos indirectos sobre materiales y horas hombre (RN-11)."),
 ]
 
 

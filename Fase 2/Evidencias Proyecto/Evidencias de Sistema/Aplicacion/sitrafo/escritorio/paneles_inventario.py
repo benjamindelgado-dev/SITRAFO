@@ -11,10 +11,12 @@ queda en el kardex (RN-09). Administracion y produccion ven en lectura.
 from cliente_api import ClienteAPI, ErrorAPI
 from paneles import PanelBase
 from paneles_comercial import _decimal, fecha, uf
+from PySide6.QtCore import QDate
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDateEdit,
     QDialog,
     QDialogButtonBox,
     QDoubleSpinBox,
@@ -161,6 +163,94 @@ class DialogoAjuste(_DialogoMovimiento):
         })
 
 
+class DialogoDevolucion(_DialogoMovimiento):
+    """Devolucion desde el taller o al proveedor (RF-INV-04)."""
+
+    def __init__(self, cliente, material, parent=None):
+        super().__init__(cliente, material, "Devolucion", parent)
+        self.sentido = QComboBox()
+        self.sentido.addItem("Sobrante que vuelve del taller (suma stock)", "desde_taller")
+        self.sentido.addItem("Devolucion al proveedor (resta stock)", "a_proveedor")
+        self.cantidad = QDoubleSpinBox()
+        self.cantidad.setRange(0.01, 1_000_000)
+        self.cantidad.setDecimals(2)
+        self.cantidad.setSuffix(f" {material['unidad_medida']}")
+        self.proveedor = QComboBox()
+        self.proveedor.addItem("Sin indicar", None)
+        for p in cliente.proveedores():
+            if p["activo"]:
+                self.proveedor.addItem(p["razon_social"], p["id_proveedor"])
+        self.motivo = QLineEdit()
+        self.motivo.setPlaceholderText("Ej.: sobrante de bobinado, material fuera de norma")
+        self.formulario.addRow("Tipo:", self.sentido)
+        self.formulario.addRow("Cantidad:", self.cantidad)
+        self.formulario.addRow("Proveedor:", self.proveedor)
+        self.formulario.addRow("Motivo:", self.motivo)
+        botones = _botones(self, "Registrar devolucion")
+        botones.accepted.connect(self._aceptar)
+        self.formulario.addRow(botones)
+
+    def _aceptar(self):
+        self.ejecutar(self.cliente.devolucion, {
+            "bodega": self.bodega.currentData(), "cantidad": f"{self.cantidad.value():.4f}",
+            "sentido": self.sentido.currentData(), "motivo": self.motivo.text(),
+            "proveedor": self.proveedor.currentData()})
+
+
+class DialogoBodegas(QDialog):
+    """Bodegas registradas y alta de una nueva (RF-INV-03)."""
+
+    def __init__(self, cliente: ClienteAPI, parent=None):
+        super().__init__(parent)
+        self.cliente = cliente
+        self.setWindowTitle("Bodegas")
+        self.resize(560, 380)
+        capa = QVBoxLayout(self)
+        self.tabla = QTableWidget(0, 3)
+        self.tabla.setHorizontalHeaderLabels(["Codigo", "Nombre", "Ubicacion"])
+        self.tabla.verticalHeader().setVisible(False)
+        self.tabla.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        capa.addWidget(self.tabla, 1)
+        formulario = QFormLayout()
+        self.codigo, self.nombre, self.ubicacion = QLineEdit(), QLineEdit(), QLineEdit()
+        formulario.addRow("Codigo:", self.codigo)
+        formulario.addRow("Nombre:", self.nombre)
+        formulario.addRow("Ubicacion:", self.ubicacion)
+        capa.addLayout(formulario)
+        fila = QHBoxLayout()
+        agregar = QPushButton("Agregar bodega")
+        agregar.setObjectName("exito")
+        agregar.clicked.connect(self._agregar)
+        agregar.setVisible(cliente.puede("bodega.crear"))
+        cerrar = QPushButton("Cerrar")
+        cerrar.setObjectName("secundario")
+        cerrar.clicked.connect(self.accept)
+        fila.addWidget(agregar)
+        fila.addStretch()
+        fila.addWidget(cerrar)
+        capa.addLayout(fila)
+        self._cargar()
+
+    def _cargar(self):
+        bodegas = self.cliente.bodegas()
+        self.tabla.setRowCount(len(bodegas))
+        for i, b in enumerate(bodegas):
+            for j, v in enumerate([b["codigo"], b["nombre"], b["ubicacion"]]):
+                self.tabla.setItem(i, j, QTableWidgetItem(v))
+
+    def _agregar(self):
+        try:
+            self.cliente.crear_bodega({"codigo": self.codigo.text().strip(),
+                                       "nombre": self.nombre.text().strip(),
+                                       "ubicacion": self.ubicacion.text().strip()})
+        except ErrorAPI as error:
+            QMessageBox.warning(self, "No se pudo crear", error.mensaje)
+            return
+        for campo in (self.codigo, self.nombre, self.ubicacion):
+            campo.clear()
+        self._cargar()
+
+
 class DialogoKardex(QDialog):
     """Movimientos del material con saldo acumulado (CU-INV-05)."""
 
@@ -169,13 +259,51 @@ class DialogoKardex(QDialog):
 
     def __init__(self, cliente: ClienteAPI, material: dict, parent=None):
         super().__init__(parent)
-        datos = cliente.kardex(material["id_material"])
+        self.cliente, self.material = cliente, material
         self.setWindowTitle(f"Kardex — {material['codigo']} {material['nombre']}")
-        self.resize(980, 520)
+        self.resize(980, 540)
         capa = QVBoxLayout(self)
-        capa.addWidget(QLabel(f"Saldo actual: <b>{_num(datos['saldo'])} {datos['unidad']}</b>"
-                              f" · minimo {_num(material['stock_minimo'])}"))
-        tabla = QTableWidget(len(datos["movimientos"]), len(self.COLUMNAS))
+        filtro = QHBoxLayout()
+        self.desde = QDateEdit(QDate.currentDate().addDays(-90))
+        self.hasta = QDateEdit(QDate.currentDate())
+        for campo in (self.desde, self.hasta):
+            campo.setCalendarPopup(True)
+            campo.setDisplayFormat("dd-MM-yyyy")
+        filtrar = QPushButton("Filtrar")
+        filtrar.clicked.connect(self._cargar)
+        filtro.addWidget(QLabel("Desde"))
+        filtro.addWidget(self.desde)
+        filtro.addWidget(QLabel("Hasta"))
+        filtro.addWidget(self.hasta)
+        filtro.addWidget(filtrar)
+        filtro.addStretch()
+        capa.addLayout(filtro)
+        self.encabezado = QLabel("")
+        capa.addWidget(self.encabezado)
+        self.tabla = QTableWidget(0, len(self.COLUMNAS))
+        capa.addWidget(self.tabla, 1)
+        cerrar = QPushButton("Cerrar")
+        cerrar.setObjectName("secundario")
+        cerrar.clicked.connect(self.accept)
+        fila = QHBoxLayout()
+        fila.addStretch()
+        fila.addWidget(cerrar)
+        capa.addLayout(fila)
+        self._cargar()
+
+    def _cargar(self):
+        material = self.material
+        datos = self.cliente.kardex(material["id_material"],
+                                    desde=self.desde.date().toString("yyyy-MM-dd"),
+                                    hasta=self.hasta.date().toString("yyyy-MM-dd"))
+        self.encabezado.setText(
+            f"Saldo actual: <b>{_num(datos['saldo'])} {datos['unidad']}</b> · minimo "
+            f"{_num(material['stock_minimo'])} · {len(datos['movimientos'])} movimiento(s) "
+            "en el periodo")
+        tabla = self.tabla
+        tabla.clear()
+        tabla.setColumnCount(len(self.COLUMNAS))
+        tabla.setRowCount(len(datos["movimientos"]))
         tabla.setHorizontalHeaderLabels(self.COLUMNAS)
         tabla.verticalHeader().setVisible(False)
         tabla.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -189,14 +317,6 @@ class DialogoKardex(QDialog):
                        m["referencia"], m["usuario"]]
             for j, valor in enumerate(valores):
                 tabla.setItem(i, j, QTableWidgetItem(valor))
-        capa.addWidget(tabla, 1)
-        cerrar = QPushButton("Cerrar")
-        cerrar.setObjectName("secundario")
-        cerrar.clicked.connect(self.accept)
-        fila = QHBoxLayout()
-        fila.addStretch()
-        fila.addWidget(cerrar)
-        capa.addLayout(fila)
 
 
 class DialogoMaterial(QDialog):
@@ -290,7 +410,8 @@ class PanelInventario(PanelBase):
     titulo = "Inventario"
     subtitulo = ("Stock por material, calculado desde sus movimientos. Las filas en rojo "
                  "estan bajo su stock minimo y requieren reposicion.")
-    columnas = ["Codigo", "Material", "Categoria", "Stock", "Minimo", "Costo UF", "Estado"]
+    columnas = ["Codigo", "Material", "Categoria", "Stock", "Minimo", "Costo prom. UF",
+                "Valor UF", "Estado"]
 
     def construir(self):
         barra = QHBoxLayout()
@@ -315,6 +436,12 @@ class PanelInventario(PanelBase):
         self.b_recepcion.clicked.connect(lambda: self._dialogo(DialogoRecepcion))
         self.b_ajuste = QPushButton("Ajuste por conteo")
         self.b_ajuste.clicked.connect(lambda: self._dialogo(DialogoAjuste))
+        self.b_devolucion = QPushButton("Devolucion")
+        self.b_devolucion.setObjectName("secundario")
+        self.b_devolucion.clicked.connect(lambda: self._dialogo(DialogoDevolucion))
+        self.b_bodegas = QPushButton("Bodegas")
+        self.b_bodegas.setObjectName("secundario")
+        self.b_bodegas.clicked.connect(lambda: DialogoBodegas(self.cliente, self).exec())
         self.b_kardex = QPushButton("Ver kardex")
         self.b_kardex.setObjectName("secundario")
         self.b_kardex.clicked.connect(self._kardex)
@@ -324,8 +451,8 @@ class PanelInventario(PanelBase):
         self.b_editar = QPushButton("Editar")
         self.b_editar.setObjectName("secundario")
         self.b_editar.clicked.connect(lambda: self._material(self._actual()))
-        for boton in (self.b_recepcion, self.b_ajuste, self.b_kardex, self.b_nuevo,
-                      self.b_editar):
+        for boton in (self.b_recepcion, self.b_ajuste, self.b_devolucion, self.b_kardex,
+                      self.b_nuevo, self.b_editar, self.b_bodegas):
             acciones.addWidget(boton)
         acciones.addStretch()
         recargar = QPushButton("Recargar")
@@ -337,6 +464,7 @@ class PanelInventario(PanelBase):
         puede = self.cliente.puede
         self.b_recepcion.setVisible(puede("bodega.crear"))
         self.b_ajuste.setVisible(puede("bodega.actualizar"))
+        self.b_devolucion.setVisible(puede("bodega.crear"))
         self.b_kardex.setVisible(puede("kardex.leer") or puede("bodega.leer"))
         self.b_nuevo.setVisible(puede("material.crear"))
         self.b_editar.setVisible(puede("material.actualizar"))
@@ -349,9 +477,11 @@ class PanelInventario(PanelBase):
         except ErrorAPI as error:
             return self.manejar_error(error)
         alertas = sum(1 for m in self.todos if m["bajo_minimo"])
-        self.resumen.setText(
-            f"<span style='color:#b42318'><b>{alertas} material(es) bajo el stock minimo."
-            "</b></span>" if alertas else "Todos los materiales sobre su stock minimo.")
+        valor = sum(_decimal(m["valor_inventario_uf"]) for m in self.todos)
+        estado = (f"<span style='color:#b42318'><b>{alertas} material(es) bajo el stock "
+                  "minimo.</b></span>" if alertas else "Todos los materiales sobre su minimo.")
+        self.resumen.setText(f"{estado} &nbsp;·&nbsp; Inventario valorizado a costo promedio: "
+                             f"<b>{uf(valor, 2)}</b>")
         self._filtrar()
 
     def _filtrar(self):
@@ -362,7 +492,8 @@ class PanelInventario(PanelBase):
         self.llenar(self.tabla, [
             [m["codigo"], m["nombre"], m["categoria_nombre"],
              f"{_num(m['stock_total'])} {m['unidad_medida']}", _num(m["stock_minimo"]),
-             uf(m["costo_vigente_uf"], 4) if m["costo_vigente_uf"] else "sin precio",
+             uf(m["costo_promedio_uf"], 4) if m["costo_promedio_uf"] else "sin precio",
+             uf(m["valor_inventario_uf"], 2),
              "REPONER" if m["bajo_minimo"] else "OK"]
             for m in self.datos
         ])
@@ -378,7 +509,8 @@ class PanelInventario(PanelBase):
 
     def _seleccion(self):
         hay = self._actual() is not None
-        for boton in (self.b_recepcion, self.b_ajuste, self.b_kardex, self.b_editar):
+        for boton in (self.b_recepcion, self.b_ajuste, self.b_devolucion, self.b_kardex,
+                      self.b_editar):
             boton.setEnabled(hay)
 
     def _dialogo(self, clase):

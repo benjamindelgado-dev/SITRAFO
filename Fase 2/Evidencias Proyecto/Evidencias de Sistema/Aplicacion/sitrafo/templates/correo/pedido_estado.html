@@ -1,0 +1,7 @@
+{% extends "correo/_base.html" %}
+{% block cuerpo %}
+<p><strong>{{ titulo }}</strong></p>
+<p>{{ mensaje }}</p>
+<p style="font-size:13px;color:#4a5760;">Orden de compra {{ orden.numero }}.</p>
+{% include "correo/_boton.html" with texto="Ver mis pedidos" %}
+{% endblock %}

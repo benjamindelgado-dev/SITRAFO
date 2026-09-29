@@ -153,7 +153,7 @@ Paneles disponibles:
 
 | Panel | Que permite |
 |---|---|
-| Catalogo | Crear y editar modelos (parametros tecnicos y precio base versionado) y publicarlos o retirarlos de la web |
+| Catalogo | Crear y editar modelos, su receta (materiales y tareas) y precio base versionado; publicarlos o retirarlos de la web |
 | Clientes | Consultar clientes, contactos y direcciones |
 | Solicitudes | Tomar una solicitud y elaborar su cotizacion con el costeo calculado |
 | Cotizaciones | Enviar a aprobacion, emitir (con envio por correo), reenviar y generar la orden de compra |
@@ -161,6 +161,8 @@ Paneles disponibles:
 | Ordenes de trabajo | Asignar responsables, iniciar, registrar por un ausente, costo real contra estimado, enviar a calidad y cerrar |
 | Taller (operario) | Vista propia sin menu, con campos grandes: sus tareas, horas, material y termino de tarea |
 | Canal web | Modo mantencion, pago en linea, autorregistro y parametros |
+| Avisos del sitio | Mensajes para la web con fecha de inicio y termino |
+| Matriz de permisos | Operaciones que otorga cada rol, editable por el Administrador |
 | Integraciones | Registro de llamadas a servicios externos |
 | Control de calidad | El inspector ejecuta los ensayos de las ordenes en calidad; el sistema evalua la conformidad y abre las no conformidades |
 | No conformidades | Seguimiento y cierre con accion correctiva |
@@ -168,6 +170,7 @@ Paneles disponibles:
 | Inventario | Stock por material con alerta bajo el minimo, recepcion de compras, ajuste por conteo fisico, kardex y alta de materiales |
 | Proveedores | Registro de proveedores de materiales |
 | Auditoria | Bitacora de solo lectura con filtros por usuario, accion, entidad y fechas |
+| Empleados | Personal del taller con cargo y tarifa versionada (Administrador) |
 | Usuarios y roles | Crear usuarios internos, asignar roles, asociar empleados del taller, suspender, reactivar y restablecer claves (solo Administrador) |
 
 Con estos paneles el flujo comercial completo (solicitud, cotizacion,
@@ -270,6 +273,47 @@ la API para modificar o borrar un registro. Solo el Administrador la consulta.
 - **Clientes (RF-CLI-01, 03, 04, 07, RF-ADM-03):** alta y edicion desde el
   escritorio, contactos, direcciones, historial de documentos y suspension de
   cuentas web (una cuenta suspendida pierde su sesion abierta).
+
+## Datos maestros y cotizaciones completas
+
+- **Receta del modelo (RF-CAT-04, 05):** boton *Materiales y tareas* en el
+  panel Catalogo. Produccion define la lista de materiales por unidad y las
+  tareas estandar con sus horas; es la base del costeo de cotizaciones y de
+  las tareas que se copian a cada orden de trabajo. Las ordenes ya generadas
+  conservan su copia.
+- **Varias lineas por cotizacion (RF-COM-03):** *Editar lineas* en un
+  borrador; cada modelo propone su precio sugerido desde la receta.
+- **Versiones (RF-COM-10):** *Nueva version* sobre una cotizacion emitida,
+  rechazada o vencida crea la version siguiente como borrador; la emitida
+  queda reemplazada y todas se conservan.
+- **Empleados y tarifas (RF-OT-11):** panel Empleados del Administrador. La
+  tarifa se versiona por fecha: las horas ya registradas no cambian de valor.
+- El cliente no ve borradores ni cotizaciones en aprobacion, ni en la web ni
+  en la API.
+
+## Completitud de la ERS
+
+- **Inventario:** bodegas, devoluciones (desde el taller o al proveedor),
+  kardex con filtro por fechas y valorizacion a costo promedio ponderado
+  (RF-INV-03, 04, 07, 08).
+- **Costos indirectos (RN-11):** `produccion.costo_indirecto_pct` se aplica
+  igual al costo estimado y al real, para que la desviacion sea comparable.
+- **Fecha estimada por tarea (RF-OT-02):** jornadas de 8 horas en dias
+  habiles desde el inicio de la orden; se ve en el escritorio y en la web.
+- **Catalogo web (RF-CAT-08):** filtros por cada parametro de lista usado en
+  modelos publicados (potencia, tension, refrigeracion...).
+- **Notificaciones (RF-COM-17):** ademas de las anteriores, pedido
+  confirmado, en fabricacion y entregado.
+- **Geocodificacion (RF-CLI-05):** quinta integracion, con Nominatim
+  (OpenStreetMap). Si no responde, la direccion se guarda sin validar.
+- **Avisos del sitio con vigencia (RF-ADM-05)** y **matriz de permisos
+  editable (RF-SEG-02)** en el escritorio.
+- **Tareas diarias:** `python manage.py tareas_diarias` sincroniza
+  indicadores y feriados y vence las cotizaciones (RF-PAG-05, RF-COM-12). En
+  produccion se programa como tarea diaria.
+- **Prueba de carga:** `python scripts/prueba_carga.py` (RNF-06, RNF-07).
+- **OWASP ZAP:** instrucciones en `docs/analisis_owasp_zap.md` (RNF-03).
+- Alcance diferido y su justificacion: `docs/alcance_diferido.md`.
 
 ## Seguridad del acceso
 
@@ -461,7 +505,7 @@ docker compose exec web pytest --cov-fail-under=70
 docker compose exec web pytest
 ```
 
-174 pruebas automatizadas con 91% de cobertura sobre `apps/`, por encima del
+187 pruebas automatizadas con 91% de cobertura sobre `apps/`, por encima del
 70% exigido por RNF-13. Las llamadas a servicios externos (incluido PayPal) se
 simulan con dobles de prueba.
 

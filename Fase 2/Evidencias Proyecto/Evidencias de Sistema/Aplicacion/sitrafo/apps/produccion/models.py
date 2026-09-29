@@ -177,11 +177,23 @@ class OrdenTrabajo(TimeStampedModel):
                 total += registro.costo_total_uf
         return total
 
+    @staticmethod
+    def factor_indirecto() -> Decimal:
+        """1 + recargo por costos indirectos configurable (RN-11)."""
+        from apps.configuracion.models import ParametroSistema
+
+        pct = Decimal(str(ParametroSistema.obtener("produccion.costo_indirecto_pct", 0) or 0))
+        return Decimal("1") + pct / Decimal("100")
+
+    @property
+    def costo_indirecto_uf(self) -> Decimal:
+        directo = self.costo_materiales_uf + self.costo_hh_uf
+        return (directo * (self.factor_indirecto() - 1)).quantize(Decimal("0.0001"))
+
     def recalcular_costo_real(self, guardar: bool = True) -> Decimal:
-        """Consolida materiales mas horas hombre (RN-11)."""
-        self.costo_real_uf = (self.costo_materiales_uf + self.costo_hh_uf).quantize(
-            Decimal("0.0001")
-        )
+        """Materiales mas horas hombre mas el recargo indirecto (RN-11)."""
+        directo = self.costo_materiales_uf + self.costo_hh_uf
+        self.costo_real_uf = (directo * self.factor_indirecto()).quantize(Decimal("0.0001"))
         if guardar:
             self.save(update_fields=["costo_real_uf"])
         return self.costo_real_uf
@@ -346,6 +358,30 @@ class TareaOT(models.Model):
             Decimal("0"),
         )
 
+
+    JORNADA_HORAS = 8
+
+    @property
+    def fecha_estimada_termino(self):
+        """
+        Fecha estimada de termino (RF-OT-02): acumula las horas estimadas de
+        las tareas hasta esta, en jornadas de 8 horas, en dias habiles desde el
+        inicio de la orden (o desde hoy si aun no se inicia).
+        """
+        import math
+
+        from django.utils import timezone
+
+        from apps.configuracion.models import Feriado
+
+        acumuladas = sum(
+            (t.horas_estimadas for t in self.orden_trabajo.tareas.all()
+             if t.secuencia <= self.secuencia),
+            Decimal("0"),
+        )
+        dias = max(1, math.ceil(acumuladas / self.JORNADA_HORAS))
+        inicio = self.orden_trabajo.fecha_inicio or timezone.localdate()
+        return Feriado.sumar_dias_habiles(inicio, dias - 1) if dias > 1 else inicio
 
 class ConsumoMaterial(models.Model):
     """

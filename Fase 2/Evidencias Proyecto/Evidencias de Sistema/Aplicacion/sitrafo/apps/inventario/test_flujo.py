@@ -138,3 +138,27 @@ def test_bodega_crea_materiales_y_proveedores(bodega):
     proveedor = bodega["bodeguero"].post("/api/v1/proveedores/", {
         "rut": "77111222-6", "razon_social": "Aislantes SpA"}, format="json")
     assert proveedor.status_code == 201, proveedor.data
+
+
+def test_devolucion_desde_taller_y_a_proveedor(bodega):
+    _recibir(bodega, 50)
+    url = _url(bodega, "devolucion")
+    base = {"bodega": bodega["central"].pk, "motivo": "Sobrante de bobinado"}
+    assert bodega["bodeguero"].post(url, {**base, "cantidad": "5", "sentido": "desde_taller"},
+                                    format="json").status_code == 200
+    assert MovimientoInventario.stock_actual(bodega["cobre"]) == Decimal("55")
+    excesiva = bodega["bodeguero"].post(url, {**base, "cantidad": "99",
+                                              "sentido": "a_proveedor"}, format="json")
+    assert excesiva.status_code == 409
+
+
+def test_costo_promedio_y_kardex_por_fechas(bodega):
+    _recibir(bodega, 100, costo_unitario_uf="0.30")
+    _recibir(bodega, 100, costo_unitario_uf="0.50")
+    material = bodega["bodeguero"].get(f"/api/v1/materiales/{bodega['cobre'].pk}/").data
+    assert Decimal(material["costo_promedio_uf"]) == Decimal("0.4")
+    assert Decimal(material["valor_inventario_uf"]) == Decimal("80")
+
+    manana = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
+    vacio = bodega["bodeguero"].get(_url(bodega, "kardex") + f"?desde={manana}").data
+    assert vacio["movimientos"] == [] and Decimal(vacio["saldo"]) == Decimal("200")

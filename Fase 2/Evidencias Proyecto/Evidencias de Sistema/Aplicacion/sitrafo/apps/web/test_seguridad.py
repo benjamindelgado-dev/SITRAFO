@@ -95,3 +95,28 @@ def test_cerrar_sesion_revoca_el_token_de_renovacion():
 def test_la_sesion_web_expira_por_inactividad():
     assert settings.SESSION_SAVE_EVERY_REQUEST is True
     assert settings.SESSION_COOKIE_AGE == 30 * 60
+
+
+@pytest.mark.django_db
+def test_catalogo_filtra_por_especificacion(client):
+    from apps.catalogo.models import (
+        FamiliaProducto,
+        ModeloParametro,
+        ModeloProducto,
+        ParametroTecnico,
+    )
+
+    Usuario.objects.create_user("maipo", "m@m.cl", "ClaveSegura2026")
+    client.login(username="maipo", password="ClaveSegura2026")
+    familia = FamiliaProducto.objects.create(nombre="Distribucion")
+    potencia = ParametroTecnico.objects.create(codigo="potencia_kva", nombre="Potencia",
+                                               unidad="kVA", tipo_dato="lista")
+    for codigo, kva in (("TD-100", "100"), ("TD-250", "250")):
+        modelo = ModeloProducto.objects.create(familia=familia, codigo=codigo,
+                                               nombre=f"Transformador {kva}", publicado=True)
+        ModeloParametro.objects.create(modelo=modelo, parametro=potencia, valor_defecto=kva)
+
+    todos = client.get(reverse("web:catalogo")).content.decode()
+    filtrado = client.get(reverse("web:catalogo") + "?p_potencia_kva=250").content.decode()
+    assert "TD-100" in todos and "TD-250" in todos
+    assert "TD-250" in filtrado and "TD-100" not in filtrado

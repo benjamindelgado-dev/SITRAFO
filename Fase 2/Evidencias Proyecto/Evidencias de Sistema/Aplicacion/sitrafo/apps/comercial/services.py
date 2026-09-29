@@ -56,6 +56,7 @@ class Costeo:
 
     @property
     def costo_estimado_uf(self) -> Decimal:
+        """Costo directo (materiales + horas hombre), sin el recargo indirecto."""
         return self.costo_material_uf + self.costo_hh_uf
 
 
@@ -90,7 +91,10 @@ def costear_modelo(modelo, margen_pct: Decimal | None = None) -> Costeo:
     tarifa = tarifa_referencia_uf()
     hh = horas * tarifa if tarifa else Decimal("0")
 
-    costo = (material + hh).quantize(CUATRO)
+    # Recargo por costos indirectos (RN-11), igual que en el costo real
+    from apps.produccion.models import OrdenTrabajo
+
+    costo = ((material + hh) * OrdenTrabajo.factor_indirecto()).quantize(CUATRO)
     precio_base = modelo.precio_vigente
     if costo > 0:
         sugerido = (costo * (1 + margen / 100)).quantize(CUATRO)
@@ -320,3 +324,94 @@ def anular_orden_compra(orden, usuario, motivo: str):
     )
     _auditar_anulacion(usuario, "orden_compra", orden, anterior.codigo, motivo)
     return orden
+
+
+# ----------------------------------------------------------------------
+# Lineas y versiones de la cotizacion (RF-COM-03, RF-COM-10)
+# ----------------------------------------------------------------------
+@transaction.atomic
+def guardar_lineas(cotizacion, usuario, lineas: list[dict]):
+    """
+    Reemplaza las lineas de un borrador. Cada linea se costea con la receta
+    de su modelo; el precio puede venir ajustado por el ejecutivo o tomarse
+    del precio sugerido.
+    """
+    from apps.catalogo.models import ModeloProducto
+
+    if cotizacion.estado.codigo != "borrador":
+        raise ErrorComercial("Solo se modifican las lineas de un borrador.")
+    if not lineas:
+        raise ErrorComercial("La cotizacion debe tener al menos una linea.")
+
+    nuevas = []
+    for i, dato in enumerate(lineas, start=1):
+        modelo = ModeloProducto.objects.filter(pk=dato.get("modelo"), activo=True).first()
+        if modelo is None:
+            raise ErrorComercial(f"Linea {i}: el modelo no existe o esta inactivo.")
+        cantidad = int(dato.get("cantidad") or 0)
+        if cantidad < 1:
+            raise ErrorComercial(f"Linea {i}: la cantidad debe ser al menos 1.")
+        costeo = costear_modelo(modelo, dato.get("margen_pct"))
+        precio = (Decimal(str(dato["precio_uf"])) if dato.get("precio_uf") not in (None, "")
+                  else costeo.precio_sugerido_uf)
+        if not precio or precio <= 0:
+            raise ErrorComercial(f"Linea {i}: {modelo.nombre} no tiene precio; indiquelo.")
+        nuevas.append(CotizacionLinea(
+            cotizacion=cotizacion, modelo=modelo, cantidad=cantidad,
+            costo_material_uf=costeo.costo_material_uf, costo_hh_uf=costeo.costo_hh_uf,
+            margen_pct=costeo.margen_pct, precio_uf=precio.quantize(CUATRO),
+        ))
+    cotizacion.lineas.all().delete()
+    CotizacionLinea.objects.bulk_create(nuevas)
+    cotizacion.recalcular_total()
+    return cotizacion
+
+
+@transaction.atomic
+def nueva_version(cotizacion, usuario, motivo: str = ""):
+    """
+    Crea la version siguiente de una cotizacion, conservando la anterior
+    (RF-COM-10). Si la anterior seguia emitida, queda reemplazada (anulada con
+    la referencia a la nueva version) para que el cliente no acepte ambas.
+    """
+    if cotizacion.estado.codigo not in ("emitida", "rechazada", "vencida"):
+        raise ErrorComercial(
+            "Solo se versiona una cotizacion emitida, rechazada o vencida; un borrador "
+            "se edita directamente.")
+    if cotizacion.ordenes_compra.exists():
+        raise ErrorComercial("La cotizacion ya origino una orden de compra.")
+    ultima = Cotizacion.objects.filter(numero=cotizacion.numero).order_by("-version").first()
+    if ultima.pk != cotizacion.pk:
+        raise ErrorComercial(f"Ya existe la version {ultima.version}: trabaje sobre ella.")
+
+    borrador = _estado("cotizacion", "borrador")
+    copia = Cotizacion.objects.create(
+        numero=cotizacion.numero, version=cotizacion.version + 1,
+        solicitud=cotizacion.solicitud, cliente=cotizacion.cliente, estado=borrador,
+        ejecutivo=usuario, valor_uf=cotizacion.valor_uf,
+        fecha_valor_uf=cotizacion.fecha_valor_uf, descuento_pct=cotizacion.descuento_pct,
+        plazo_dias_habiles=cotizacion.plazo_dias_habiles,
+        fecha_entrega=cotizacion.fecha_entrega, vence_el=cotizacion.vence_el,
+    )
+    CotizacionLinea.objects.bulk_create([
+        CotizacionLinea(cotizacion=copia, modelo=l.modelo, cantidad=l.cantidad,
+                        costo_material_uf=l.costo_material_uf, costo_hh_uf=l.costo_hh_uf,
+                        margen_pct=l.margen_pct, precio_uf=l.precio_uf)
+        for l in cotizacion.lineas.all()  # noqa: E741
+    ])
+    copia.recalcular_total()
+    detalle = f" Motivo: {motivo.strip()}" if motivo.strip() else ""
+    CotizacionHistorial.objects.create(
+        cotizacion=copia, estado_nuevo=borrador, usuario=usuario,
+        observacion=f"Version {copia.version} creada desde la version "
+                    f"{cotizacion.version}.{detalle}"[:300],
+    )
+    if cotizacion.estado.codigo == "emitida":
+        anterior = cotizacion.estado
+        cotizacion.estado = _estado("cotizacion", "anulada")
+        cotizacion.save(update_fields=["estado"])
+        CotizacionHistorial.objects.create(
+            cotizacion=cotizacion, estado_anterior=anterior, estado_nuevo=cotizacion.estado,
+            usuario=usuario, observacion=f"Reemplazada por la version {copia.version}.",
+        )
+    return copia

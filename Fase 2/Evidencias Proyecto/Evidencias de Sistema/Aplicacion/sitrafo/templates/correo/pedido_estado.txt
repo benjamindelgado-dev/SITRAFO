@@ -1,0 +1,11 @@
+{% autoescape off %}{{ titulo }}
+
+{{ mensaje }}
+
+Orden de compra {{ orden.numero }}.
+
+Ver mis pedidos: {{ url }}
+
+--
+Mensaje automatico de SITRAFO. No responda a este correo.
+{% endautoescape %}

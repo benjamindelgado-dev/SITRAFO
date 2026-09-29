@@ -9,10 +9,12 @@ from paneles import (
     PanelIntegraciones,
     PanelSolicitudes,
 )
+from paneles_admin import PanelAvisos, PanelRoles
 from paneles_calidad import PanelControlCalidad, PanelNoConformidades, PanelProtocolos
 from paneles_clientes import PanelClientes
 from paneles_comercial import PanelCotizaciones, PanelOrdenesCompra
 from paneles_inventario import PanelInventario, PanelProveedores
+from paneles_maestros import PanelEmpleados
 from paneles_produccion import PanelOrdenesTrabajo, VistaTaller
 from paneles_reportes import PanelReportes
 from paneles_seguridad import PanelAuditoria, PanelUsuarios
@@ -113,6 +115,7 @@ class VentanaPrincipal(QMainWindow):
             ("Cotizaciones", "cotizacion.leer", PanelCotizaciones),
             ("Ordenes de compra", "orden_compra.leer", PanelOrdenesCompra),
             ("Ordenes de trabajo", "orden_trabajo.leer", PanelOrdenesTrabajo),
+            ("Empleados", "empleado.leer", PanelEmpleados),
             ("Control de calidad", "ensayo.leer", PanelControlCalidad),
             ("No conformidades", "no_conformidad.leer", PanelNoConformidades),
             ("Protocolos de calidad", "protocolo_calidad.leer", PanelProtocolos),
@@ -121,7 +124,9 @@ class VentanaPrincipal(QMainWindow):
             ("Canal web", "canal_web.leer", PanelCanalWeb),
             ("Reportes", "reporte.leer", PanelReportes),
             ("Integraciones", "parametro.leer", PanelIntegraciones),
+            ("Avisos del sitio", "canal_web.leer", PanelAvisos),
             ("Usuarios y roles", "usuario.leer", PanelUsuarios),
+            ("Matriz de permisos", "rol.leer", PanelRoles),
             ("Auditoria", "auditoria.leer", PanelAuditoria),
         ]
         permitidos = [(n, clase) for n, permiso, clase in disponibles

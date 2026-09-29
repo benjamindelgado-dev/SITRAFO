@@ -311,14 +311,20 @@ class PanelCotizaciones(PanelBase):
         self.b_devolver.clicked.connect(self._devolver)
         self.b_oc = QPushButton("Generar orden de compra")
         self.b_oc.clicked.connect(self._generar_oc)
+        self.b_lineas = QPushButton("Editar lineas")
+        self.b_lineas.setObjectName("secundario")
+        self.b_lineas.clicked.connect(self._lineas)
+        self.b_version = QPushButton("Nueva version")
+        self.b_version.setObjectName("secundario")
+        self.b_version.clicked.connect(self._version)
         self.b_pdf = QPushButton("Descargar PDF")
         self.b_pdf.setObjectName("secundario")
         self.b_pdf.clicked.connect(self._pdf)
         self.b_anular = QPushButton("Anular")
         self.b_anular.setObjectName("peligro")
         self.b_anular.clicked.connect(self._anular)
-        for boton in (self.b_aprobacion, self.b_emitir, self.b_devolver,
-                      self.b_correo, self.b_oc, self.b_pdf, self.b_anular):
+        for boton in (self.b_lineas, self.b_aprobacion, self.b_emitir, self.b_devolver,
+                      self.b_correo, self.b_oc, self.b_version, self.b_pdf, self.b_anular):
             acciones.addWidget(boton)
 
         # Con acceso de solo lectura (L en la matriz) no se muestran acciones
@@ -329,6 +335,8 @@ class PanelCotizaciones(PanelBase):
         self.b_correo.setVisible(puede("cotizacion.actualizar"))
         self.b_oc.setVisible(puede("orden_compra.crear"))
         self.b_anular.setVisible(puede("cotizacion.anular"))
+        self.b_lineas.setVisible(puede("cotizacion.actualizar"))
+        self.b_version.setVisible(puede("cotizacion.crear"))
         acciones.addStretch()
         self.contenedor.addLayout(acciones)
 
@@ -417,6 +425,9 @@ class PanelCotizaciones(PanelBase):
                               else "Emitir al cliente")
         self.b_devolver.setEnabled(codigo == "en_aprobacion" and not propia)
         self.b_pdf.setEnabled(bool(c))
+        self.b_lineas.setEnabled(codigo == "borrador")
+        self.b_version.setEnabled(codigo in ("emitida", "rechazada", "vencida")
+                                  and not (c or {}).get("orden_compra"))
         self.b_anular.setEnabled(
             codigo in ("borrador", "en_aprobacion", "emitida")
             or (codigo == "aceptada" and not (c or {}).get("orden_compra")))
@@ -466,6 +477,39 @@ class PanelCotizaciones(PanelBase):
             return self.manejar_error(error)
         QMessageBox.information(self, "Devuelta",
                                 f"La cotizacion {c['numero']} volvio a borrador.")
+        self.refrescar()
+
+    def _lineas(self):
+        from paneles_maestros import DialogoLineas
+
+        c = self._actual()
+        if c is None:
+            return
+        try:
+            dialogo = DialogoLineas(self.cliente, c, self)
+        except ErrorAPI as error:
+            return self.manejar_error(error)
+        if dialogo.exec():
+            self.refrescar()
+
+    def _version(self):
+        c = self._actual()
+        if c is None:
+            return
+        motivo, ok = QInputDialog.getText(
+            self, "Nueva version",
+            f"Se creara la version {c['version'] + 1} de {c['numero']} como borrador.\n"
+            "Motivo del cambio (opcional):")
+        if not ok:
+            return
+        try:
+            nueva = self.cliente.nueva_version(c["id_cotizacion"], motivo)
+        except ErrorAPI as error:
+            return self.manejar_error(error)
+        QMessageBox.information(
+            self, "Nueva version",
+            f"Se creo {nueva['numero']} v{nueva['version']} en borrador. Ajuste sus lineas y "
+            "emitala; la version anterior se conserva.")
         self.refrescar()
 
     def _pdf(self):

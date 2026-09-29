@@ -163,3 +163,25 @@ def test_la_bitacora_es_de_solo_lectura_y_solo_para_el_administrador(base):
     comercial = _api(_interno("comercial", matriz.COMERCIAL))
     assert comercial.get("/api/v1/auditoria/").status_code == 403
     assert registro is not None
+
+
+# ---------------------------------------------------------------------------
+# Matriz editable (RF-SEG-02)
+# ---------------------------------------------------------------------------
+def test_el_administrador_edita_la_matriz_sin_bloquearse(base):
+    bodega = Rol.objects.get(nombre=matriz.BODEGA)
+    url = f"/api/v1/roles/{bodega.pk}"
+    datos = base["api"].get(f"{url}/matriz/").data
+    kardex = next(m for m in datos["modulos"] if m["modulo"] == "kardex")
+    assert kardex["operaciones"]["leer"] is True
+
+    usuario = _interno("bodeguero", matriz.BODEGA)
+    base["api"].post(f"{url}/permiso/", {"codigo": "reporte.crear", "otorgar": True},
+                     format="json")
+    assert Usuario.objects.get(pk=usuario.pk).has_perm("reporte.crear")
+
+    admin = Rol.objects.get(nombre=matriz.ADMIN)
+    respuesta = base["api"].post(f"/api/v1/roles/{admin.pk}/permiso/",
+                                 {"codigo": "usuario.actualizar", "otorgar": False},
+                                 format="json")
+    assert respuesta.status_code == 409

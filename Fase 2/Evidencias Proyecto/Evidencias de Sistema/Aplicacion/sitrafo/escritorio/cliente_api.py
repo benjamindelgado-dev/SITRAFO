@@ -199,6 +199,37 @@ class ClienteAPI:
         respuesta = self.obtener("parametros-tecnicos/", {"page_size": 200})
         return respuesta.get("results", respuesta)
 
+    def receta(self, id_modelo: int):
+        return self.obtener(f"modelos/{id_modelo}/receta/")
+
+    def guardar_receta(self, id_modelo: int, materiales: list, tareas: list):
+        return self.accion(f"modelos/{id_modelo}/guardar_receta/",
+                           {"materiales": materiales, "tareas": tareas})
+
+    def costeo_modelo(self, id_modelo: int):
+        return self.obtener(f"modelos/{id_modelo}/costeo/")
+
+    def guardar_lineas(self, id_cotizacion: int, lineas: list):
+        return self.accion(f"cotizaciones/{id_cotizacion}/lineas/", {"lineas": lineas})
+
+    def nueva_version(self, id_cotizacion: int, motivo: str):
+        return self.accion(f"cotizaciones/{id_cotizacion}/nueva_version/", {"motivo": motivo})
+
+    def empleados_todos(self):
+        return self.obtener("empleados/", {"todos": 1})
+
+    def crear_empleado(self, datos: dict):
+        return self.crear("empleados/", datos)
+
+    def actualizar_empleado(self, id_empleado: int, datos: dict):
+        return self.actualizar(f"empleados/{id_empleado}/", datos)
+
+    def fijar_tarifa(self, id_empleado: int, valor: str, desde: str | None = None):
+        datos = {"valor_hora_uf": valor}
+        if desde:
+            datos["vigente_desde"] = desde
+        return self.accion(f"empleados/{id_empleado}/tarifa/", datos)
+
     def alternar_publicacion(self, id_modelo: int):
         return self.accion(f"modelos/{id_modelo}/publicar/")
 
@@ -365,6 +396,28 @@ class ClienteAPI:
     def entidades_auditadas(self):
         return self.obtener("auditoria/entidades/")
 
+    def matriz_rol(self, id_rol: int):
+        return self.obtener(f"roles/{id_rol}/matriz/")
+
+    def cambiar_permiso_rol(self, id_rol: int, codigo: str, otorgar: bool):
+        return self.accion(f"roles/{id_rol}/permiso/", {"codigo": codigo, "otorgar": otorgar})
+
+    def avisos(self):
+        respuesta = self.obtener("avisos/")
+        return respuesta.get("results", respuesta)
+
+    def crear_aviso(self, datos: dict):
+        return self.crear("avisos/", datos)
+
+    def actualizar_aviso(self, id_aviso: int, datos: dict):
+        return self.actualizar(f"avisos/{id_aviso}/", datos)
+
+    def devolucion(self, id_material: int, datos: dict):
+        return self.accion(f"materiales/{id_material}/devolucion/", datos)
+
+    def crear_bodega(self, datos: dict):
+        return self.crear("bodegas/", datos)
+
     # -- Usuarios y roles --------------------------------------------------
     def usuarios(self):
         return self.obtener("usuarios/")
@@ -409,9 +462,10 @@ class ClienteAPI:
     def ajustar_stock(self, id_material: int, datos: dict):
         return self.accion(f"materiales/{id_material}/ajuste/", datos)
 
-    def kardex(self, id_material: int, id_bodega=None):
+    def kardex(self, id_material: int, id_bodega=None, desde=None, hasta=None):
+        params = {"bodega": id_bodega, "desde": desde, "hasta": hasta}
         return self.obtener(f"materiales/{id_material}/kardex/",
-                            {"bodega": id_bodega} if id_bodega else None)
+                            {k: v for k, v in params.items() if v})
 
     def categorias_material(self):
         return self.obtener("categorias-material/")

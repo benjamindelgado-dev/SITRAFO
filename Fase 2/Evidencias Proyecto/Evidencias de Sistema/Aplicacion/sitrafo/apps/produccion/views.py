@@ -1,4 +1,7 @@
 """Vistas de la API para la ejecucion productiva."""
+import datetime
+
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
@@ -183,14 +186,48 @@ class TareaViewSet(viewsets.ReadOnlyModelViewSet):
         return self._respuesta(tarea)
 
 
-class EmpleadoViewSet(viewsets.ReadOnlyModelViewSet):
-    """Empleados con su tarifa vigente. Lo usa la planificacion de tareas."""
+class EmpleadoViewSet(viewsets.ModelViewSet):
+    """
+    Empleados y tarifas (RF-OT-11). Lo administra el Administrador; produccion
+    lo consulta para planificar. ?todos=1 incluye a los inactivos.
+    """
 
-    queryset = Empleado.objects.filter(activo=True).select_related("usuario")
     serializer_class = EmpleadoSerializer
     permission_classes = [CuentaOperativa, PermisoPorRol]
+    modulo_permiso = "empleado"
     permisos_alternativos = {
         "list": ["empleado.leer", "orden_trabajo.actualizar"],
         "retrieve": ["empleado.leer", "orden_trabajo.actualizar"],
     }
+    permisos_accion = {"tarifa": "empleado.actualizar", "update": None,
+                       # Un empleado con horas registradas no se borra: se desactiva
+                       "destroy": None}
     pagination_class = None
+
+    def get_queryset(self):
+        consulta = Empleado.objects.select_related("usuario").prefetch_related("tarifas")
+        if not self.request.query_params.get("todos"):
+            consulta = consulta.filter(activo=True)
+        return consulta.order_by("nombre")
+
+    def perform_create(self, serializer):
+        try:
+            serializer.save()
+        except IntegrityError:
+            from rest_framework.exceptions import ValidationError
+
+            raise ValidationError({"rut": "Ya existe un empleado con ese RUT."}) from None
+
+    @action(detail=True, methods=["post"])
+    def tarifa(self, request, pk=None):
+        empleado = self.get_object()
+        desde = request.data.get("vigente_desde")
+        try:
+            services.fijar_tarifa(
+                empleado, request.data.get("valor_hora_uf", "0"), request.user,
+                datetime.date.fromisoformat(desde) if desde else None)
+        except (services.ErrorProduccion, ArithmeticError, ValueError) as error:
+            mensaje = str(error) if isinstance(error, services.ErrorProduccion) else \
+                "Indique una tarifa y una fecha validas."
+            return _conflicto(mensaje)
+        return Response(self.get_serializer(self.get_queryset().get(pk=empleado.pk)).data)

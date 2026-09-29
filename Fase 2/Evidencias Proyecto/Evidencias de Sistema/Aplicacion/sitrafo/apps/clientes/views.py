@@ -161,3 +161,24 @@ class DireccionClienteViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
     campo_cliente = "cliente_id"
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["cliente", "tipo"]
+    permisos_accion = {"geocodificar": "cliente.actualizar"}
+
+    def perform_create(self, serializer):
+        """Se guarda siempre; la geocodificacion es un complemento (RF-INT-03)."""
+        from .geocodificacion import geocodificar
+
+        direccion = serializer.save()
+        geocodificar(direccion)
+
+    @action(detail=True, methods=["post"])
+    def geocodificar(self, request, pk=None):
+        """Reintenta la geocodificacion de una direccion (RF-CLI-05)."""
+        from .geocodificacion import geocodificar
+
+        direccion = self.get_object()
+        if not geocodificar(direccion):
+            return Response({"detalle": "El servicio de geocodificacion no encontro la "
+                                        "direccion o no esta disponible."},
+                            status=status.HTTP_409_CONFLICT)
+        return Response(DireccionClienteSerializer(direccion).data)
+

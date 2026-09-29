@@ -157,9 +157,9 @@ class PanelOrdenesTrabajo(PanelBase):
         grupo_tareas = QGroupBox("Tareas")
         gt = QVBoxLayout(grupo_tareas)
         self.tareas = QTableWidget()
-        self.tareas.setColumnCount(5)
+        self.tareas.setColumnCount(6)
         self.tareas.setHorizontalHeaderLabels(
-            ["Tarea", "Responsable", "Horas reg. / est.", "Estado", ""]
+            ["Tarea", "Responsable", "Horas reg. / est.", "Termino est.", "Estado", ""]
         )
         self.tareas.verticalHeader().setVisible(False)
         self.tareas.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -168,7 +168,7 @@ class PanelOrdenesTrabajo(PanelBase):
         cabecera = self.tareas.horizontalHeader()
         cabecera.setSectionResizeMode(QHeaderView.ResizeToContents)
         cabecera.setSectionResizeMode(0, QHeaderView.Stretch)
-        self.tareas.setColumnHidden(4, True)
+        self.tareas.setColumnHidden(5, True)
         self.tareas.itemSelectionChanged.connect(self._habilitar_tarea)
         gt.addWidget(self.tareas)
 
@@ -282,6 +282,8 @@ class PanelOrdenesTrabajo(PanelBase):
         for i, t in enumerate(ot["tareas"]):
             valores = [f"{t['secuencia']}. {t['nombre']}", t.get("empleado_nombre") or "—",
                        f"{_horas(t['horas_registradas'])} / {_horas(t['horas_estimadas'])}",
+                       fecha(t.get("fecha_estimada_termino")) if t["estado"] != "terminada"
+                       else "—",
                        ESTADO_TAREA.get(t["estado"], t["estado"]), ""]
             for j, valor in enumerate(valores):
                 self.tareas.setItem(i, j, QTableWidgetItem(valor))

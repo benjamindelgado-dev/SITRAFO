@@ -63,12 +63,67 @@ def _conflicto(error):
 
 
 class RolViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Roles y matriz de permisos (RF-SEG-02). El Administrador consulta y
+    modifica que operaciones otorga cada rol; el cambio rige desde la
+    peticion siguiente de cada usuario.
+    """
+
     queryset = Rol.objects.filter(activo=True).prefetch_related("permisos_asignados")
     serializer_class = RolSerializer
     permission_classes = [CuentaOperativa, PermisoPorRol]
     permisos_alternativos = {"list": ["usuario.leer", "rol.leer"],
                              "retrieve": ["usuario.leer", "rol.leer"]}
+    permisos_accion = {"matriz": "rol.leer", "permiso": "rol.actualizar"}
     pagination_class = None
+
+    # Sin estos permisos nadie podria volver a administrar usuarios ni roles
+    PROTEGIDOS_ADMIN = {"usuario.leer", "usuario.actualizar", "rol.leer", "rol.actualizar"}
+
+    @action(detail=True, methods=["get"])
+    def matriz(self, request, pk=None):
+        from .matriz import MATRIZ
+
+        rol = self.get_object()
+        otorgados = set(rol.permisos_asignados.values_list("permiso__codigo", flat=True))
+        modulos = {}
+        for permiso in Permiso.objects.order_by("modulo", "codigo"):
+            fila = modulos.setdefault(permiso.modulo, {
+                "modulo": permiso.modulo,
+                "descripcion": MATRIZ.get(permiso.modulo, (permiso.modulo,))[0],
+                "operaciones": {},
+            })
+            fila["operaciones"][permiso.codigo.split(".", 1)[1]] = permiso.codigo in otorgados
+        return Response({"rol": rol.nombre, "modulos": list(modulos.values())})
+
+    @action(detail=True, methods=["post"])
+    def permiso(self, request, pk=None):
+        from .matriz import ADMIN
+        from .models import RolPermiso
+
+        rol = self.get_object()
+        codigo = request.data.get("codigo", "")
+        otorgar = bool(request.data.get("otorgar"))
+        permiso = Permiso.objects.filter(codigo=codigo).first()
+        if permiso is None:
+            return Response({"detalle": "Permiso desconocido."},
+                            status=status.HTTP_404_NOT_FOUND)
+        if rol.nombre == ADMIN and not otorgar and codigo in self.PROTEGIDOS_ADMIN:
+            return Response({"detalle": "El Administrador no puede perder la gestion de "
+                                        "usuarios y roles."},
+                            status=status.HTTP_409_CONFLICT)
+        if otorgar:
+            RolPermiso.objects.get_or_create(rol=rol, permiso=permiso)
+        else:
+            RolPermiso.objects.filter(rol=rol, permiso=permiso).delete()
+        Auditoria.objects.create(
+            usuario=request.user, entidad="rol", id_registro=str(rol.pk),
+            accion=Auditoria.Accion.MODIFICACION,
+            valor_anterior={"permiso": codigo, "otorgado": not otorgar},
+            valor_nuevo={"permiso": codigo, "otorgado": otorgar, "rol": rol.nombre},
+            origen=Auditoria.Origen.ESCRITORIO,
+        )
+        return self.matriz(request, pk)
 
 
 class UsuarioViewSet(viewsets.ReadOnlyModelViewSet):

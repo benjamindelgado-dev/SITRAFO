@@ -23,6 +23,16 @@
   <div class="col-md-3 d-grid">
     <button class="btn btn-plano">Filtrar</button>
   </div>
+  {% for f in filtros %}
+    <div class="col-md-3 col-6">
+      <select name="p_{{ f.codigo }}" class="form-select" onchange="this.form.submit()">
+        <option value="">{{ f.nombre }}: todas</option>
+        {% for v in f.valores %}
+          <option value="{{ v }}" {% if v == f.elegido %}selected{% endif %}>{{ v }} {{ f.unidad }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  {% endfor %}
 </form>
 
 <div class="row g-3">

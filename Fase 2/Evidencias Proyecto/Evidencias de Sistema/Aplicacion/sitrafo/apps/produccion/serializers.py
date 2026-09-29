@@ -11,11 +11,29 @@ from .models import Empleado, OrdenTrabajo, RegistroHoraHombre, TareaOT
 class EmpleadoSerializer(serializers.ModelSerializer):
     tarifa_vigente_uf = serializers.SerializerMethodField()
     username = serializers.CharField(source="usuario.username", read_only=True, default=None)
+    tarifas = serializers.SerializerMethodField()
 
     class Meta:
         model = Empleado
         fields = ["id_empleado", "rut", "nombre", "cargo", "activo", "username",
-                  "tarifa_vigente_uf"]
+                  "tarifa_vigente_uf", "tarifas"]
+
+    def validate_rut(self, valor):
+        from django.core.exceptions import ValidationError as ErrorDjango
+
+        from apps.common.validators import limpiar_rut, validar_rut
+
+        try:
+            validar_rut(valor)
+        except ErrorDjango as error:
+            raise serializers.ValidationError(error.messages) from error
+        return limpiar_rut(valor)
+
+    def get_tarifas(self, empleado) -> list[dict]:
+        return [{"valor_hora_uf": str(t.valor_hora_uf),
+                 "vigente_desde": t.vigente_desde.isoformat(),
+                 "vigente_hasta": t.vigente_hasta.isoformat() if t.vigente_hasta else None}
+                for t in empleado.tarifas.order_by("-vigente_desde")]
 
     def get_tarifa_vigente_uf(self, empleado):
         tarifa = empleado.tarifa_vigente_a()
@@ -42,12 +60,14 @@ class TareaSerializer(serializers.ModelSerializer):
     modelo_nombre = serializers.CharField(source="orden_trabajo.modelo.nombre",
                                           read_only=True)
     registros = RegistroHoraSerializer(source="registros_hora", many=True, read_only=True)
+    fecha_estimada_termino = serializers.DateField(read_only=True)
 
     class Meta:
         model = TareaOT
         fields = ["id_tarea", "orden_trabajo", "orden_trabajo_numero", "modelo_nombre",
                   "nombre", "secuencia", "horas_estimadas", "horas_registradas",
-                  "estado", "empleado", "empleado_nombre", "registros"]
+                  "estado", "empleado", "empleado_nombre", "fecha_estimada_termino",
+                  "registros"]
 
     def get_horas_registradas(self, tarea) -> str:
         total = sum((r.horas for r in tarea.registros_hora.all() if not r.anulado),
@@ -65,6 +85,8 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
     costo_materiales_uf = serializers.DecimalField(max_digits=14, decimal_places=4,
                                                    read_only=True)
     costo_hh_uf = serializers.DecimalField(max_digits=14, decimal_places=4, read_only=True)
+    costo_indirecto_uf = serializers.DecimalField(max_digits=14, decimal_places=4,
+                                                  read_only=True)
     desviacion_pct = serializers.DecimalField(max_digits=8, decimal_places=2,
                                               read_only=True)
     desviacion_requiere_justificacion = serializers.BooleanField(read_only=True)
@@ -77,7 +99,7 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
         fields = ["id_orden_trabajo", "numero", "orden_compra", "orden_compra_numero",
                   "cliente_nombre", "modelo", "modelo_nombre", "cantidad", "estado",
                   "estado_nombre", "estado_codigo", "costo_estimado_uf", "costo_real_uf",
-                  "costo_materiales_uf", "costo_hh_uf", "desviacion_pct",
+                  "costo_materiales_uf", "costo_hh_uf", "costo_indirecto_uf", "desviacion_pct",
                   "desviacion_requiere_justificacion", "avance_pct", "fecha_inicio",
                   "fecha_cierre", "impedimentos_cierre", "tareas", "historial"]
         read_only_fields = fields

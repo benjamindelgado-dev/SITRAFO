@@ -167,6 +167,11 @@ class PanelCatalogo(PanelBase):
         editar.clicked.connect(self.editar)
         editar.setVisible(self.cliente.puede("catalogo.actualizar"))
         acciones.addWidget(editar)
+        receta = QPushButton("Materiales y tareas")
+        receta.setObjectName("secundario")
+        receta.clicked.connect(self.receta)
+        receta.setVisible(self.cliente.puede("bom.leer"))
+        acciones.addWidget(receta)
         self.boton = QPushButton("Publicar o retirar")
         self.boton.clicked.connect(self.alternar)
         self.boton.setVisible(self.cliente.puede("catalogo.actualizar"))
@@ -201,6 +206,19 @@ class PanelCatalogo(PanelBase):
             ]
             for m in self.datos
         ])
+
+    def receta(self):
+        """Lista de materiales y tareas estandar del modelo (RF-CAT-04, 05)."""
+        from paneles_maestros import DialogoReceta
+
+        fila = self.tabla.currentRow()
+        if fila < 0:
+            QMessageBox.information(self, "Seleccione un modelo", "Elija una fila de la tabla.")
+            return
+        try:
+            DialogoReceta(self.cliente, self.datos[fila], self).exec()
+        except ErrorAPI as error:
+            self.manejar_error(error)
 
     def nuevo(self):
         self._abrir(None)

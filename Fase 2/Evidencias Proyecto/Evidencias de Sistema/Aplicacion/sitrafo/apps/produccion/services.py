@@ -15,6 +15,7 @@ escritorio y cualquier otra interfaz apliquen exactamente lo mismo:
   conformidades abiertas.
 - RN-13: un registro de horas no se corrige ni se borra: se anula.
 """
+import datetime
 from decimal import Decimal
 
 from django.conf import settings
@@ -96,9 +97,9 @@ def generar_ordenes_trabajo(orden_compra, usuario) -> list[OrdenTrabajo]:
             modelo=origen.modelo,
             cantidad=linea.cantidad,
             estado=planificada,
-            costo_estimado_uf=(origen.costo_estimado_uf * linea.cantidad).quantize(
-                Decimal("0.0001")
-            ),
+            # Mismo criterio que el costo real: directo mas recargo indirecto (RN-11)
+            costo_estimado_uf=(origen.costo_estimado_uf * linea.cantidad
+                               * OrdenTrabajo.factor_indirecto()).quantize(Decimal("0.0001")),
         )
         for tarea in origen.modelo.tareas_estandar.order_by("secuencia"):
             TareaOT.objects.create(
@@ -141,6 +142,17 @@ def iniciar(ot: OrdenTrabajo, usuario) -> OrdenTrabajo:
     ot.fecha_inicio = timezone.localdate()
     ot.save(update_fields=["fecha_inicio"])
     _cambiar_estado_ot(ot, "en_ejecucion", usuario, "Inicio de fabricacion en taller.")
+
+    # Aviso al cliente con la primera orden de trabajo que entra al taller
+    otras = ot.orden_compra.ordenes_trabajo.exclude(pk=ot.pk).exclude(
+        estado__codigo__in=["planificada", "anulada"])
+    if not otras.exists():
+        from apps.configuracion.services import notificaciones
+
+        orden = ot.orden_compra
+        transaction.on_commit(lambda: notificaciones.notificar_estado_pedido(
+            orden, "Su pedido entro en fabricacion",
+            "Comenzamos la fabricacion de su pedido. Puede seguir el avance en el portal."))
     return ot
 
 
@@ -332,3 +344,45 @@ def cerrar(ot: OrdenTrabajo, usuario, justificacion: str = "") -> OrdenTrabajo:
     except ErrorCobro:
         pass   # sin UF: se emite despues con el comando emitir_cobros
     return ot
+
+
+# ----------------------------------------------------------------------
+# Empleados y tarifas (RF-OT-11)
+# ----------------------------------------------------------------------
+@transaction.atomic
+def fijar_tarifa(empleado, valor_hora_uf: Decimal, usuario, desde=None):
+    """
+    Nueva tarifa de hora hombre, vigente desde la fecha indicada (hoy por
+    defecto). La anterior se cierra el dia previo: las horas ya registradas
+    conservan el valor con que se registraron (RN-10).
+    """
+    from .models import TarifaHoraHombre
+
+    valor = Decimal(str(valor_hora_uf))
+    if valor <= 0:
+        raise ErrorProduccion("La tarifa debe ser mayor que cero.")
+    desde = desde or timezone.localdate()
+    posterior = empleado.tarifas.filter(vigente_desde__gt=desde).first()
+    if posterior:
+        raise ErrorProduccion(
+            f"Ya existe una tarifa desde el {posterior.vigente_desde:%d-%m-%Y}.")
+
+    vigente = empleado.tarifas.filter(vigente_hasta__isnull=True).first()
+    anterior = str(vigente.valor_hora_uf) if vigente else None
+    if vigente and vigente.vigente_desde == desde:
+        vigente.valor_hora_uf = valor
+        vigente.save(update_fields=["valor_hora_uf"])
+        tarifa = vigente
+    else:
+        if vigente:
+            vigente.vigente_hasta = desde - datetime.timedelta(days=1)
+            vigente.save(update_fields=["vigente_hasta"])
+        tarifa = TarifaHoraHombre.objects.create(empleado=empleado, valor_hora_uf=valor,
+                                                 vigente_desde=desde)
+    Auditoria.objects.create(
+        usuario=usuario, entidad="empleado", id_registro=str(empleado.pk),
+        accion=Auditoria.Accion.MODIFICACION, valor_anterior={"valor_hora_uf": anterior},
+        valor_nuevo={"valor_hora_uf": str(valor), "vigente_desde": desde.isoformat()},
+        origen=Auditoria.Origen.ESCRITORIO,
+    )
+    return tarifa
