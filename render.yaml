@@ -1,0 +1,98 @@
+# Blueprint de Render para SITRAFO.
+# Las claves secretas se declaran con "sync: false": Render las pide en el panel
+# al crear el Blueprint y nunca quedan en el repositorio.
+
+envVarGroups:
+  - name: sitrafo-comun
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      # Render genera una clave larga y aleatoria; la comparten web y cron
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: MINDICADOR_URL
+        value: https://mindicador.cl/api
+      - key: FERIADOS_URL
+        value: https://date.nager.at/api/v3/PublicHolidays
+      - key: GEOCODIFICACION_URL
+        value: https://nominatim.openstreetmap.org
+      - key: PAYPAL_API_URL
+        value: https://api-m.sandbox.paypal.com
+      - key: CORREO_REMITENTE
+        value: SITRAFO <benjadelgado123@gmail.com>
+      - key: CORREO_REDIRIGIR_A
+        value: benjadelgado123@gmail.com
+      - key: SESION_INACTIVIDAD_MINUTOS
+        value: "30"
+
+services:
+  # ------------------------------------------------------------------------
+  # Aplicacion web + API
+  # ------------------------------------------------------------------------
+  - type: web
+    name: sitrafo
+    runtime: python
+    plan: starter
+    region: virginia
+    branch: main
+    rootDir: "Fase 2/Evidencias Proyecto/Evidencias de Sistema/Aplicacion/sitrafo"
+    # Solo despliega cuando la CI de GitHub termina en verde
+    autoDeployTrigger: checksPass
+    buildCommand: pip install -r requirements/prod.txt && python manage.py collectstatic --noinput
+    preDeployCommand: python manage.py migrate --noinput
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --timeout 60
+    envVars:
+      - fromGroup: sitrafo-comun
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sitrafo-db
+          property: connectionString
+      # Gunicorn lee esta variable como numero de workers (512 MB de RAM)
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: SITIO_URL
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_SECRET
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+
+  # ------------------------------------------------------------------------
+  # Tareas diarias: UF, feriados y vencimiento de cotizaciones (09:00 UTC)
+  # ------------------------------------------------------------------------
+  - type: cron
+    name: sitrafo-tareas-diarias
+    runtime: python
+    plan: starter
+    region: virginia
+    branch: main
+    rootDir: "Fase 2/Evidencias Proyecto/Evidencias de Sistema/Aplicacion/sitrafo"
+    autoDeployTrigger: checksPass
+    schedule: "0 9 * * *"
+    buildCommand: pip install -r requirements/prod.txt && python manage.py collectstatic --noinput
+    startCommand: python manage.py tareas_diarias
+    envVars:
+      - fromGroup: sitrafo-comun
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sitrafo-db
+          property: connectionString
+      - key: SITIO_URL
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+
+databases:
+  - name: sitrafo-db
+    databaseName: sitrafo
+    user: sitrafo
+    plan: basic-256mb
+    diskSizeGB: 1
+    region: virginia
+    postgresMajorVersion: "16"
+    # Sin acceso desde internet: solo la web y el cron (red interna)
+    ipAllowList: []
