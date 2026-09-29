@@ -266,3 +266,19 @@ class RecuperarClaveForm(BootstrapMixin, PasswordResetForm):
 
 class NuevaClaveForm(BootstrapMixin, SetPasswordForm):
     pass
+
+
+class DireccionForm(BootstrapMixin, forms.ModelForm):
+    """Direcciones de la cuenta del cliente (RF-CLI-04)."""
+
+    class Meta:
+        model = DireccionCliente
+        fields = ["tipo", "comuna", "calle", "numero"]
+        labels = {"tipo": "Tipo de direccion", "calle": "Calle", "numero": "Numero"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["comuna"].queryset = self.fields["comuna"].queryset.select_related(
+            "region").order_by("region__nombre", "nombre")
+        self.fields["comuna"].label_from_instance = (
+            lambda c: f"{c.nombre} ({c.region.nombre})")

@@ -209,6 +209,16 @@ class ClienteAPI:
     def costeo_modelo(self, id_modelo: int):
         return self.obtener(f"modelos/{id_modelo}/costeo/")
 
+    def agregar_tarea_ot(self, id_ot: int, nombre: str, horas: str, empleado=None):
+        return self.accion(f"ordenes-trabajo/{id_ot}/agregar_tarea/",
+                           {"nombre": nombre, "horas_estimadas": horas, "empleado": empleado})
+
+    def quitar_tarea_ot(self, id_ot: int, id_tarea: int):
+        return self.accion(f"ordenes-trabajo/{id_ot}/quitar_tarea/", {"tarea": id_tarea})
+
+    def cargar_tareas_estandar(self, id_ot: int):
+        return self.accion(f"ordenes-trabajo/{id_ot}/cargar_tareas_estandar/")
+
     def guardar_lineas(self, id_cotizacion: int, lineas: list):
         return self.accion(f"cotizaciones/{id_cotizacion}/lineas/", {"lineas": lineas})
 

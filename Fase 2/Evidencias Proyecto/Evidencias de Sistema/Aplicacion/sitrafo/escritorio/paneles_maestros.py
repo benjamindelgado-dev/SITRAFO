@@ -71,6 +71,10 @@ class DialogoReceta(QDialog):
         self.api, self.modelo = api, modelo
         self.editable = api.puede("bom.actualizar")
         self.materiales = [m for m in api.materiales() if m["activo"]]
+        try:
+            self.empleados = api.empleados()
+        except ErrorAPI:
+            self.empleados = []   # sin acceso a empleados: se omite el responsable habitual
         receta = api.receta(modelo["id_modelo"])
         self.setWindowTitle(f"Materiales y tareas — {modelo['codigo']} {modelo['nombre']}")
         self.resize(820, 600)
@@ -94,7 +98,7 @@ class DialogoReceta(QDialog):
 
         grupo_t = QGroupBox("Tareas estandar (en orden de ejecucion)")
         gt = QVBoxLayout(grupo_t)
-        self.t_tareas = _tabla(["Tarea", "Horas estimadas"], 0)
+        self.t_tareas = _tabla(["Tarea", "Horas estimadas", "Responsable habitual"], 0)
         gt.addWidget(self.t_tareas)
         fila = QHBoxLayout()
         for texto, funcion in (("Agregar tarea", self._agregar_tarea),
@@ -111,7 +115,8 @@ class DialogoReceta(QDialog):
         self.resumen = QLabel("")
         capa.addWidget(self.resumen)
         nota = QLabel("Los cambios aplican a las cotizaciones y ordenes de trabajo nuevas; "
-                      "las ya generadas conservan su copia.")
+                      "las ya generadas conservan su copia. El responsable habitual queda "
+                      "asignado automaticamente al generar cada orden de trabajo.")
         nota.setObjectName("nota")
         nota.setWordWrap(True)
         capa.addWidget(nota)
@@ -172,10 +177,18 @@ class DialogoReceta(QDialog):
         horas.setDecimals(2)
         horas.setSuffix(" h")
         horas.setValue(float(_dec((dato or {}).get("horas_estimadas", 2))))
+        responsable = QComboBox()
+        responsable.addItem("Sin asignar", None)
+        for e in self.empleados:
+            responsable.addItem(f"{e['nombre']} ({e['cargo']})", e["id_empleado"])
+        if dato and dato.get("empleado_sugerido"):
+            responsable.setCurrentIndex(max(0, responsable.findData(dato["empleado_sugerido"])))
         nombre.setEnabled(self.editable)
         horas.setEnabled(self.editable)
+        responsable.setEnabled(self.editable)
         self.t_tareas.setCellWidget(fila, 0, nombre)
         self.t_tareas.setCellWidget(fila, 1, horas)
+        self.t_tareas.setCellWidget(fila, 2, responsable)
 
     @staticmethod
     def _quitar(tabla):
@@ -187,7 +200,8 @@ class DialogoReceta(QDialog):
                        "cantidad": f"{self.t_materiales.cellWidget(i, 1).value():.4f}"}
                       for i in range(self.t_materiales.rowCount())]
         tareas = [{"nombre": self.t_tareas.cellWidget(i, 0).text().strip(),
-                   "horas_estimadas": f"{self.t_tareas.cellWidget(i, 1).value():.2f}"}
+                   "horas_estimadas": f"{self.t_tareas.cellWidget(i, 1).value():.2f}",
+                   "empleado_sugerido": self.t_tareas.cellWidget(i, 2).currentData()}
                   for i in range(self.t_tareas.rowCount())]
         try:
             receta = self.api.guardar_receta(self.modelo["id_modelo"], materiales, tareas)

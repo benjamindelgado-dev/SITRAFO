@@ -1,7 +1,7 @@
 """Ventana principal de la aplicacion de escritorio."""
 import time
 
-from cliente_api import ClienteAPI
+from cliente_api import ClienteAPI, ErrorAPI
 from paneles import (
     PanelCanalWeb,
     PanelCatalogo,
@@ -227,8 +227,36 @@ class VentanaPrincipal(QMainWindow):
             QApplication.quit()
         super().closeEvent(evento)
 
+    def _permisos_actuales(self) -> tuple:
+        identidad = self.cliente.identidad
+        return (identidad.get("es_superusuario"), tuple(sorted(identidad.get("permisos", []))))
+
+    def _reconstruir(self, seleccion: str):
+        """Rehace el menu con los permisos vigentes y vuelve a la seccion si sigue permitida."""
+        self._construir()
+        if self.es_vista_taller:
+            return
+        nombres = [n for n, _ in self.paneles]
+        self.menu.setCurrentRow(nombres.index(seleccion) if seleccion in nombres else 0)
+        if seleccion not in nombres:
+            QMessageBox.information(
+                self, "Permisos actualizados",
+                f"Su rol ya no tiene acceso a «{seleccion}». El menu se actualizo.")
+        self.statusBar().showMessage("Sus permisos cambiaron: el menu se actualizo.")
+
     def cambiar_panel(self, indice: int):
         if indice < 0:
+            return
+        # La matriz de permisos es editable: antes de mostrar una seccion se
+        # consultan los permisos vigentes y, si cambiaron, se rehace el menu
+        antes = self._permisos_actuales()
+        try:
+            self.cliente.cargar_identidad()
+        except ErrorAPI:
+            pass
+        if self._permisos_actuales() != antes:
+            nombre = self.paneles[indice][0]
+            QTimer.singleShot(0, lambda: self._reconstruir(nombre))
             return
         self.contenido.setCurrentIndex(indice)
         nombre, panel = self.paneles[indice]

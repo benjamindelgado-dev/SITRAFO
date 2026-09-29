@@ -265,6 +265,12 @@ class TareaEstandarModelo(models.Model):
     horas_estimadas = models.DecimalField(
         max_digits=8, decimal_places=2, verbose_name="horas hombre estimadas"
     )
+    empleado_sugerido = models.ForeignKey(
+        "produccion.Empleado", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="tareas_habituales", db_column="id_empleado_sugerido",
+        verbose_name="responsable habitual",
+        help_text="Se asigna automaticamente a la tarea al generar la orden de trabajo.",
+    )
 
     class Meta:
         db_table = "tarea_estandar_modelo"

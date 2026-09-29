@@ -87,9 +87,18 @@ def generar_ordenes_trabajo(orden_compra, usuario) -> list[OrdenTrabajo]:
     if orden_compra.ordenes_trabajo.exists():
         raise ErrorProduccion(f"La orden {orden_compra.numero} ya tiene ordenes de trabajo.")
 
+    lineas = list(orden_compra.lineas.select_related("cotizacion_linea__modelo"))
+    sin_tareas = sorted({l.cotizacion_linea.modelo.codigo for l in lineas  # noqa: E741
+                         if not l.cotizacion_linea.modelo.tareas_estandar.exists()})
+    if sin_tareas:
+        raise ErrorProduccion(
+            f"El modelo {', '.join(sin_tareas)} no tiene tareas estandar. Definalas en "
+            "Catalogo > Materiales y tareas antes de generar la orden de trabajo."
+        )
+
     planificada = _estado("orden_trabajo", "planificada")
     creadas = []
-    for linea in orden_compra.lineas.select_related("cotizacion_linea__modelo"):
+    for linea in lineas:
         origen = linea.cotizacion_linea
         ot = OrdenTrabajo.objects.create(
             numero=OrdenTrabajo.generar_numero(),
@@ -101,11 +110,7 @@ def generar_ordenes_trabajo(orden_compra, usuario) -> list[OrdenTrabajo]:
             costo_estimado_uf=(origen.costo_estimado_uf * linea.cantidad
                                * OrdenTrabajo.factor_indirecto()).quantize(Decimal("0.0001")),
         )
-        for tarea in origen.modelo.tareas_estandar.order_by("secuencia"):
-            TareaOT.objects.create(
-                orden_trabajo=ot, nombre=tarea.nombre, secuencia=tarea.secuencia,
-                horas_estimadas=tarea.horas_estimadas * linea.cantidad,
-            )
+        _copiar_tareas_estandar(ot)
         OrdenTrabajoHistorial.objects.create(
             orden_trabajo=ot, estado_nuevo=planificada, usuario=usuario,
             observacion=f"Generada desde la orden de compra {orden_compra.numero}.",
@@ -121,6 +126,67 @@ def generar_ordenes_trabajo(orden_compra, usuario) -> list[OrdenTrabajo]:
         observacion=f"{len(creadas)} orden(es) de trabajo generada(s).",
     )
     return creadas
+
+
+def _copiar_tareas_estandar(ot: OrdenTrabajo) -> int:
+    """
+    Copia las tareas estandar del modelo a la orden, con las horas por la
+    cantidad y el responsable habitual ya asignado si esta activo.
+    """
+    creadas = 0
+    for tarea in ot.modelo.tareas_estandar.select_related("empleado_sugerido").order_by(
+            "secuencia"):
+        responsable = tarea.empleado_sugerido
+        TareaOT.objects.create(
+            orden_trabajo=ot, nombre=tarea.nombre, secuencia=tarea.secuencia,
+            horas_estimadas=tarea.horas_estimadas * ot.cantidad,
+            empleado=responsable if responsable and responsable.activo else None,
+        )
+        creadas += 1
+    return creadas
+
+
+@transaction.atomic
+def cargar_tareas_estandar(ot: OrdenTrabajo, usuario) -> int:
+    """Carga las tareas estandar en una orden planificada que no tiene tareas."""
+    _exigir_estado(ot, "planificada", accion="cargar tareas")
+    if ot.tareas.exists():
+        raise ErrorProduccion("La orden ya tiene tareas: agregue o quite tareas una a una.")
+    if not ot.modelo.tareas_estandar.exists():
+        raise ErrorProduccion("El modelo tampoco tiene tareas estandar: agregue las tareas "
+                              "a la orden o definalas en el catalogo.")
+    return _copiar_tareas_estandar(ot)
+
+
+@transaction.atomic
+def agregar_tarea(ot: OrdenTrabajo, usuario, nombre: str, horas, empleado=None) -> TareaOT:
+    """Agrega una tarea a la orden (por ejemplo, un trabajo adicional del cliente)."""
+    _exigir_estado(ot, "planificada", "en_ejecucion", accion="agregar tareas")
+    nombre = (nombre or "").strip()
+    if not nombre:
+        raise ErrorProduccion("Indique el nombre de la tarea.")
+    horas = Decimal(str(horas))
+    if horas <= 0:
+        raise ErrorProduccion("Las horas estimadas deben ser mayores que cero.")
+    siguiente = (ot.tareas.order_by("-secuencia").values_list("secuencia", flat=True)
+                 .first() or 0) + 1
+    tarea = TareaOT.objects.create(orden_trabajo=ot, nombre=nombre[:120], secuencia=siguiente,
+                                   horas_estimadas=horas, empleado=empleado)
+    ot.recalcular_avance()
+    return tarea
+
+
+@transaction.atomic
+def quitar_tarea(tarea: TareaOT, usuario) -> None:
+    """Quita una tarea que aun no tiene trabajo registrado."""
+    ot = tarea.orden_trabajo
+    _exigir_estado(ot, "planificada", "en_ejecucion", accion="quitar tareas")
+    if tarea.registros_hora.exists() or tarea.consumos.exists():
+        raise ErrorProduccion("La tarea ya tiene horas o consumos registrados: no se puede quitar.")
+    if ot.tareas.count() == 1:
+        raise ErrorProduccion("La orden debe conservar al menos una tarea.")
+    tarea.delete()
+    ot.recalcular_avance()
 
 
 def asignar_empleado(tarea: TareaOT, empleado) -> TareaOT:

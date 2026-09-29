@@ -44,6 +44,9 @@ class OrdenTrabajoViewSet(viewsets.ReadOnlyModelViewSet):
         "iniciar": "orden_trabajo.actualizar",
         "enviar_calidad": "orden_trabajo.actualizar",
         "cerrar": "orden_trabajo.actualizar",
+        "agregar_tarea": "orden_trabajo.actualizar",
+        "quitar_tarea": "orden_trabajo.actualizar",
+        "cargar_tareas_estandar": "orden_trabajo.actualizar",
     }
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["estado", "orden_compra"]
@@ -67,6 +70,31 @@ class OrdenTrabajoViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["post"])
     def cerrar(self, request, pk=None):
         return self._accion(services.cerrar, request.data.get("justificacion", ""))
+
+    @action(detail=True, methods=["post"])
+    def cargar_tareas_estandar(self, request, pk=None):
+        return self._accion(services.cargar_tareas_estandar)
+
+    @action(detail=True, methods=["post"])
+    def agregar_tarea(self, request, pk=None):
+        empleado = None
+        if request.data.get("empleado"):
+            empleado = get_object_or_404(Empleado, pk=request.data["empleado"], activo=True)
+        try:
+            return self._accion(services.agregar_tarea, request.data.get("nombre", ""),
+                                request.data.get("horas_estimadas", "0"), empleado)
+        except (ArithmeticError, ValueError):
+            return _conflicto("Indique horas estimadas validas.")
+
+    @action(detail=True, methods=["post"])
+    def quitar_tarea(self, request, pk=None):
+        ot = self.get_object()
+        tarea = get_object_or_404(TareaOT, pk=request.data.get("tarea"), orden_trabajo=ot)
+        try:
+            services.quitar_tarea(tarea, request.user)
+        except services.ErrorProduccion as error:
+            return _conflicto(error)
+        return Response(self.get_serializer(self.get_queryset().get(pk=ot.pk)).data)
 
 
 class TareaViewSet(viewsets.ReadOnlyModelViewSet):

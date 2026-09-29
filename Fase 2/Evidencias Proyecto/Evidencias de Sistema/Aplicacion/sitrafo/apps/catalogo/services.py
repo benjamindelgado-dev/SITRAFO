@@ -173,7 +173,8 @@ def guardar_receta(modelo: ModeloProducto, usuario, *, materiales: list[dict],
     for secuencia, t in enumerate(tareas, start=1):
         TareaEstandarModelo.objects.create(modelo=modelo, nombre=t["nombre"].strip()[:120],
                                            secuencia=secuencia,
-                                           horas_estimadas=Decimal(str(t["horas_estimadas"])))
+                                           horas_estimadas=Decimal(str(t["horas_estimadas"])),
+                                           empleado_sugerido_id=t.get("empleado_sugerido") or None)
     _auditar(usuario, modelo, Auditoria.Accion.MODIFICACION, anterior,
              {"materiales": len(materiales), "tareas": len(tareas)})
     return modelo

@@ -40,6 +40,7 @@ from apps.pagos.services import cobros
 from apps.produccion.models import OrdenTrabajo
 
 from .forms import (
+    DireccionForm,
     LoginForm,
     NuevaClaveForm,
     RecuperarClaveForm,
@@ -442,7 +443,56 @@ def perfil(request):
     cliente = _cliente_de(request)
     contexto = _contexto_base(request)
     contexto["cliente"] = cliente
+    contexto["seccion"] = "perfil"
     return render(request, "web/perfil.html", contexto)
+
+
+# ---------------------------------------------------------------------------
+# Direcciones del cliente (RF-CLI-04)
+# ---------------------------------------------------------------------------
+def _direccion_del_cliente(request, pk):
+    from apps.clientes.models import DireccionCliente
+
+    return get_object_or_404(DireccionCliente, pk=pk, cliente=_cliente_de(request))
+
+
+@login_required
+def direccion_formulario(request, pk=None):
+    """Agregar o editar una direccion propia; se geocodifica al guardar."""
+    from apps.clientes.geocodificacion import geocodificar
+
+    cliente = _cliente_de(request)
+    if cliente is None:
+        return redirect("web:perfil")
+    direccion = _direccion_del_cliente(request, pk) if pk else None
+    formulario = DireccionForm(request.POST or None, instance=direccion)
+    if request.method == "POST" and formulario.is_valid():
+        nueva = formulario.save(commit=False)
+        nueva.cliente = cliente
+        nueva.validada = False
+        nueva.latitud = nueva.longitud = None
+        nueva.save()
+        geocodificar(nueva)   # si el servicio no responde, queda sin validar
+        messages.success(request, "Direccion guardada.")
+        return redirect("web:perfil")
+    contexto = _contexto_base(request)
+    contexto.update({"form": formulario, "direccion": direccion, "seccion": "perfil"})
+    return render(request, "web/direccion_form.html", contexto)
+
+
+@login_required
+@require_POST
+def direccion_eliminar(request, pk):
+    from django.db.models import ProtectedError
+
+    direccion = _direccion_del_cliente(request, pk)
+    try:
+        direccion.delete()
+        messages.success(request, "Direccion eliminada.")
+    except ProtectedError:
+        messages.error(request, "Esta direccion esta asociada a una solicitud de presupuesto y "
+                                "no puede eliminarse. Puede editarla o agregar una nueva.")
+    return redirect("web:perfil")
 
 
 # ---------------------------------------------------------------------------

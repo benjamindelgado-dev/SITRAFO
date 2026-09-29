@@ -50,4 +50,8 @@ urlpatterns = [
 
     # Cuenta
     path("perfil/", views.perfil, name="perfil"),
+    path("perfil/direcciones/nueva/", views.direccion_formulario, name="direccion_nueva"),
+    path("perfil/direcciones/<int:pk>/", views.direccion_formulario, name="direccion_editar"),
+    path("perfil/direcciones/<int:pk>/eliminar/", views.direccion_eliminar,
+         name="direccion_eliminar"),
 ]

@@ -47,15 +47,27 @@
 
   <div class="col-12">
     <div class="placa">
-      <div class="placa__cabecera"><span class="placa__codigo">DIRECCIONES</span></div>
+      <div class="placa__cabecera d-flex justify-content-between align-items-center">
+        <span class="placa__codigo">DIRECCIONES</span>
+        <a href="{% url 'web:direccion_nueva' %}" class="btn btn-principal btn-sm">Agregar direccion</a>
+      </div>
       <ul class="etapas-ot">
         {% for d in cliente.direcciones.all %}
           <li>
-            <span>{{ d }}</span>
-            <span class="estado">{{ d.get_tipo_display }}</span>
+            <span>{{ d }}
+              <span class="text-secondary" style="font-size:.8rem"> · {{ d.get_tipo_display }}{% if d.validada %} · ubicacion verificada{% endif %}</span>
+            </span>
+            <span class="d-flex gap-2 align-items-center">
+              <a href="{% url 'web:direccion_editar' d.pk %}">Editar</a>
+              <form method="post" action="{% url 'web:direccion_eliminar' d.pk %}" class="d-inline"
+                    onsubmit="return confirm('¿Eliminar esta direccion?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-link p-0 text-danger" style="font-size:inherit">Eliminar</button>
+              </form>
+            </span>
           </li>
         {% empty %}
-          <li><span class="text-secondary">Sin direcciones registradas. El area comercial puede agregarlas.</span></li>
+          <li><span class="text-secondary">Sin direcciones registradas. Agregue una para usarla en sus solicitudes.</span></li>
         {% endfor %}
       </ul>
     </div>

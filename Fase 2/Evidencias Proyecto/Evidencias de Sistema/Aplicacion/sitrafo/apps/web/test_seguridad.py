@@ -120,3 +120,34 @@ def test_catalogo_filtra_por_especificacion(client):
     filtrado = client.get(reverse("web:catalogo") + "?p_potencia_kva=250").content.decode()
     assert "TD-100" in todos and "TD-250" in todos
     assert "TD-250" in filtrado and "TD-100" not in filtrado
+
+
+@pytest.mark.django_db
+def test_cliente_agrega_edita_y_elimina_sus_direcciones(client):
+    from apps.clientes.models import Cliente, Comuna, DireccionCliente, Region
+
+    empresa = Cliente.objects.create(rut="76543210-3", razon_social="Maipo SpA",
+                                     tipo_persona="juridica")
+    Usuario.objects.create_user("maipo", "m@m.cl", "ClaveSegura2026", cliente=empresa)
+    otro = Cliente.objects.create(rut="77111222-6", razon_social="Otra", tipo_persona="juridica")
+    comuna = Comuna.objects.create(nombre="Puente Alto",
+                                   region=Region.objects.create(nombre="Metropolitana",
+                                                                codigo="RM"))
+    ajena = DireccionCliente.objects.create(cliente=otro, comuna=comuna, tipo="despacho",
+                                            calle="Ajena", numero="1")
+    client.login(username="maipo", password="ClaveSegura2026")
+
+    client.post(reverse("web:direccion_nueva"), {"tipo": "despacho", "comuna": comuna.pk,
+                                                 "calle": "Av. Concha y Toro", "numero": "100"})
+    propia = DireccionCliente.objects.get(cliente=empresa)
+    assert propia.validada is False            # sin red: se guarda igual
+
+    client.post(reverse("web:direccion_editar", args=[propia.pk]),
+                {"tipo": "instalacion", "comuna": comuna.pk, "calle": "Av. Nueva",
+                 "numero": "200"})
+    propia.refresh_from_db()
+    assert propia.calle == "Av. Nueva" and propia.tipo == "instalacion"
+
+    assert client.get(reverse("web:direccion_editar", args=[ajena.pk])).status_code == 404
+    client.post(reverse("web:direccion_eliminar", args=[propia.pk]))
+    assert not DireccionCliente.objects.filter(cliente=empresa).exists()

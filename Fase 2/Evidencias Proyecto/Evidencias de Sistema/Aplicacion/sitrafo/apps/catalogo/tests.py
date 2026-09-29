@@ -111,3 +111,16 @@ def test_no_se_borran_modelos(catalogo):
     _nuevo(catalogo)
     modelo = ModeloProducto.objects.get(codigo="TD-500")
     assert catalogo["admin"].delete(f"/api/v1/modelos/{modelo.pk}/").status_code == 403
+
+
+def test_no_se_publica_un_modelo_sin_tareas(catalogo):
+    _nuevo(catalogo)
+    modelo = ModeloProducto.objects.get(codigo="TD-500")
+    url = f"/api/v1/modelos/{modelo.pk}/publicar/"
+    assert catalogo["admin"].post(url).status_code == 409
+
+    from apps.catalogo.models import TareaEstandarModelo
+
+    TareaEstandarModelo.objects.create(modelo=modelo, nombre="Bobinado", secuencia=1,
+                                       horas_estimadas=Decimal("2"))
+    assert catalogo["admin"].post(url).status_code == 200

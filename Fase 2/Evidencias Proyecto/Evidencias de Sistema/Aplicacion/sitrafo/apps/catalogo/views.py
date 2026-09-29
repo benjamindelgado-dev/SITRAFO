@@ -123,6 +123,12 @@ class ModeloProductoViewSet(viewsets.ModelViewSet):
         """
         modelo = self.get_object()
         anterior = modelo.publicado
+        # Un modelo sin tareas estandar no puede fabricarse: no se ofrece al cliente
+        if not anterior and not modelo.tareas_estandar.exists():
+            return Response(
+                {"detalle": "El modelo no tiene tareas estandar. Defina sus materiales y "
+                            "tareas (Catalogo > Materiales y tareas) antes de publicarlo."},
+                status=status.HTTP_409_CONFLICT)
         modelo.publicado = not anterior
         modelo.save(update_fields=["publicado"])
 
@@ -155,8 +161,11 @@ class ModeloProductoViewSet(viewsets.ModelViewSet):
             ],
             "tareas": [
                 {"nombre": t.nombre, "secuencia": t.secuencia,
-                 "horas_estimadas": str(t.horas_estimadas)}
-                for t in modelo.tareas_estandar.order_by("secuencia")
+                 "horas_estimadas": str(t.horas_estimadas),
+                 "empleado_sugerido": t.empleado_sugerido_id,
+                 "empleado_sugerido_nombre": getattr(t.empleado_sugerido, "nombre", None)}
+                for t in modelo.tareas_estandar.select_related("empleado_sugerido")
+                .order_by("secuencia")
             ],
             "costo_material_uf": str(costeo.costo_material_uf),
             "costo_hh_uf": str(costeo.costo_hh_uf),

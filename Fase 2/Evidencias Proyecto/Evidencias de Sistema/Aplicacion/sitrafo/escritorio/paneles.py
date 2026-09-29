@@ -74,6 +74,13 @@ class PanelBase(QWidget):
                 tabla.setItem(i, j, item)
 
     def manejar_error(self, error: ErrorAPI):
+        if error.codigo == 403:
+            # Sin permiso no se deja a la vista informacion cargada antes
+            for tabla in self.findChildren(QTableWidget):
+                tabla.setRowCount(0)
+            QMessageBox.warning(self, "Acceso denegado",
+                                f"{error.mensaje}\n\nSu rol ya no autoriza esta seccion.")
+            return
         QMessageBox.warning(self, "No se pudo completar la operacion", error.mensaje)
 
     def refrescar(self):
@@ -238,13 +245,30 @@ class PanelCatalogo(PanelBase):
         except ErrorAPI as error:
             return self.manejar_error(error)
         if dialogo.exec() and dialogo.resultado:
-            accion = "actualizado" if id_modelo else "creado"
-            QMessageBox.information(
-                self, "Catalogo",
-                f"Modelo {dialogo.resultado['codigo']} {accion}."
-                + ("" if id_modelo else " Esta retirado: publiquelo cuando este listo."),
-            )
             self.refrescar()
+            if id_modelo:
+                QMessageBox.information(self, "Catalogo",
+                                        f"Modelo {dialogo.resultado['codigo']} actualizado.")
+                return
+            # Un modelo nuevo necesita su receta para cotizarse con costo y fabricarse
+            if self.cliente.puede("bom.actualizar"):
+                from paneles_maestros import DialogoReceta
+
+                QMessageBox.information(
+                    self, "Modelo creado",
+                    f"Modelo {dialogo.resultado['codigo']} creado. Ahora defina sus materiales "
+                    "y tareas: sin tareas no se puede publicar ni fabricar.")
+                try:
+                    DialogoReceta(self.cliente, dialogo.resultado, self).exec()
+                except ErrorAPI as error:
+                    self.manejar_error(error)
+            else:
+                QMessageBox.information(
+                    self, "Modelo creado",
+                    f"Modelo {dialogo.resultado['codigo']} creado sin publicar.\n\n"
+                    "Siguiente paso: el Jefe de produccion define sus materiales y tareas "
+                    "(Catalogo > Materiales y tareas). Mientras no tenga tareas, el modelo no "
+                    "se puede publicar ni fabricar.")
 
     def alternar(self):
         fila = self.tabla.currentRow()

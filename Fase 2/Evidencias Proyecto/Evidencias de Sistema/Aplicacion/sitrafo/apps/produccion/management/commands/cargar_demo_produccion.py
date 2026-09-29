@@ -201,6 +201,17 @@ class Command(BaseCommand):
                     empleado.save(update_fields=["usuario"])
             empleados.append(empleado)
 
+        # Responsable habitual de cada tarea estandar de la demostracion
+        juan, pedro, maria = empleados
+        for tarea in TareaEstandarModelo.objects.filter(empleado_sugerido__isnull=True):
+            if "obinado" in tarea.nombre:
+                tarea.empleado_sugerido = juan
+            elif "nsamble" in tarea.nombre or "ucleo" in tarea.nombre:
+                tarea.empleado_sugerido = pedro
+            else:
+                tarea.empleado_sugerido = maria
+            tarea.save(update_fields=["empleado_sugerido"])
+
         # Tareas sin responsable en ordenes ya existentes (la OT de cargar_demo)
         pendientes = TareaOT.objects.filter(
             empleado__isnull=True,

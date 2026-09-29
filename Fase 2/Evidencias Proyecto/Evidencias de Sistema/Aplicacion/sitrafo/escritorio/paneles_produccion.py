@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QInputDialog,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
@@ -135,6 +136,42 @@ class DialogoRegistro(QDialog):
         self.accept()
 
 
+class DialogoNuevaTarea(QDialog):
+    """Tarea adicional para una orden de trabajo."""
+
+    def __init__(self, cliente: ClienteAPI, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Agregar tarea a la orden")
+        self.setMinimumWidth(420)
+        formulario = QFormLayout(self)
+        self.nombre = QLineEdit()
+        self.nombre.setPlaceholderText("Ej.: Pintura especial solicitada por el cliente")
+        self.horas = QDoubleSpinBox()
+        self.horas.setRange(0.25, 200)
+        self.horas.setDecimals(2)
+        self.horas.setValue(1)
+        self.horas.setSuffix(" h")
+        self.responsable = QComboBox()
+        self.responsable.addItem("Sin asignar", None)
+        for e in cliente.empleados():
+            self.responsable.addItem(f"{e['nombre']} ({e['cargo']})", e["id_empleado"])
+        formulario.addRow("Tarea:", self.nombre)
+        formulario.addRow("Horas estimadas:", self.horas)
+        formulario.addRow("Responsable:", self.responsable)
+        botones = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        botones.button(QDialogButtonBox.Ok).setText("Agregar")
+        botones.button(QDialogButtonBox.Cancel).setObjectName("secundario")
+        botones.accepted.connect(self._aceptar)
+        botones.rejected.connect(self.reject)
+        formulario.addRow(botones)
+
+    def _aceptar(self):
+        if not self.nombre.text().strip():
+            QMessageBox.warning(self, "Falta el nombre", "Indique el nombre de la tarea.")
+            return
+        self.accept()
+
+
 # ---------------------------------------------------------------------------
 # Panel de ordenes de trabajo (CU-OT-01 a CU-OT-08)
 # ---------------------------------------------------------------------------
@@ -185,7 +222,17 @@ class PanelOrdenesTrabajo(PanelBase):
         self.b_terminar = QPushButton("Terminar tarea")
         self.b_terminar.setObjectName("secundario")
         self.b_terminar.clicked.connect(self._terminar_tarea)
-        for boton in (self.b_asignar, self.b_horas, self.b_consumo, self.b_terminar):
+        self.b_agregar = QPushButton("Agregar tarea")
+        self.b_agregar.setObjectName("secundario")
+        self.b_agregar.clicked.connect(self._agregar_tarea)
+        self.b_quitar = QPushButton("Quitar tarea")
+        self.b_quitar.setObjectName("secundario")
+        self.b_quitar.clicked.connect(self._quitar_tarea)
+        self.b_estandar = QPushButton("Cargar tareas estandar")
+        self.b_estandar.setObjectName("secundario")
+        self.b_estandar.clicked.connect(self._cargar_estandar)
+        for boton in (self.b_agregar, self.b_quitar, self.b_estandar, self.b_asignar,
+                      self.b_horas, self.b_consumo, self.b_terminar):
             acciones_tarea.addWidget(boton)
         acciones_tarea.addStretch()
         gt.addLayout(acciones_tarea)
@@ -225,7 +272,8 @@ class PanelOrdenesTrabajo(PanelBase):
         # Solo lectura para los roles con L en la matriz
         self.planifica = self.cliente.puede("orden_trabajo.actualizar")
         self.registra = self.cliente.puede("taller.crear")
-        for boton in (self.b_iniciar, self.b_calidad, self.b_cerrar, self.b_asignar):
+        for boton in (self.b_iniciar, self.b_calidad, self.b_cerrar, self.b_asignar,
+                      self.b_agregar, self.b_quitar, self.b_estandar):
             boton.setVisible(self.planifica)
         for boton in (self.b_horas, self.b_consumo, self.b_terminar):
             boton.setVisible(self.planifica and self.registra)
@@ -317,6 +365,10 @@ class PanelOrdenesTrabajo(PanelBase):
         ot, tarea = self._actual(), self._tarea()
         activa = bool(tarea) and tarea["estado"] != "terminada"
         codigo = ot["estado_codigo"] if ot else ""
+        abierta = codigo in ("planificada", "en_ejecucion")
+        self.b_agregar.setEnabled(abierta)
+        self.b_quitar.setEnabled(activa and abierta and not tarea.get("registros"))
+        self.b_estandar.setEnabled(codigo == "planificada" and not (ot or {}).get("tareas"))
         self.b_asignar.setEnabled(activa and codigo in ("planificada", "en_ejecucion"))
         self.b_horas.setEnabled(activa and codigo == "en_ejecucion")
         self.b_consumo.setEnabled(activa and codigo == "en_ejecucion")
@@ -350,6 +402,34 @@ class PanelOrdenesTrabajo(PanelBase):
             empleado = empleados[opciones.index(elegido)]
             self._ejecutar(self.cliente.asignar_tarea, tarea["id_tarea"],
                            empleado["id_empleado"], exito="")
+
+    def _agregar_tarea(self):
+        ot = self._actual()
+        if ot is None:
+            return
+        try:
+            dialogo = DialogoNuevaTarea(self.cliente, self)
+        except ErrorAPI as error:
+            return self.manejar_error(error)
+        if dialogo.exec():
+            self._ejecutar(self.cliente.agregar_tarea_ot, ot["id_orden_trabajo"],
+                           dialogo.nombre.text().strip(), f"{dialogo.horas.value():.2f}",
+                           dialogo.responsable.currentData(), exito="")
+
+    def _quitar_tarea(self):
+        ot, tarea = self._actual(), self._tarea()
+        if not tarea or QMessageBox.question(
+            self, "Quitar tarea", f"¿Quitar «{tarea['nombre']}» de {ot['numero']}?"
+        ) != QMessageBox.Yes:
+            return
+        self._ejecutar(self.cliente.quitar_tarea_ot, ot["id_orden_trabajo"], tarea["id_tarea"],
+                       exito="")
+
+    def _cargar_estandar(self):
+        ot = self._actual()
+        if ot:
+            self._ejecutar(self.cliente.cargar_tareas_estandar, ot["id_orden_trabajo"],
+                           exito="Tareas estandar del modelo cargadas en la orden.")
 
     def _registrar(self, tipo: str):
         tarea = self._tarea()

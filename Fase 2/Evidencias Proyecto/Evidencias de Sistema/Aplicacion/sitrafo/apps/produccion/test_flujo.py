@@ -307,3 +307,52 @@ def test_el_avance_se_mide_por_tareas_terminadas_no_por_horas(planta):
 
     ot.refresh_from_db()
     assert ot.avance_pct == Decimal("50")                 # 1 de 2 tareas
+
+
+# ---------------------------------------------------------------------------
+# Tareas: responsable habitual, agregar y quitar, modelo sin tareas
+# ---------------------------------------------------------------------------
+def test_responsable_habitual_se_asigna_al_generar(planta):
+    from apps.catalogo.models import TareaEstandarModelo
+
+    TareaEstandarModelo.objects.filter(nombre="Bobinado").update(
+        empleado_sugerido=planta["e_juan"])
+    ot = _generar(planta)
+    bobinado = ot.tareas.get(nombre="Bobinado")
+    assert bobinado.empleado == planta["e_juan"]
+    assert ot.tareas.get(nombre="Ensamble").empleado is None
+
+
+def test_modelo_sin_tareas_no_genera_orden_de_trabajo(planta):
+    from apps.catalogo.models import TareaEstandarModelo
+
+    TareaEstandarModelo.objects.all().delete()
+    respuesta = planta["jefe"].post(f"/api/v1/ordenes-compra/{planta['orden'].pk}/"
+                                    "generar_ordenes_trabajo/")
+    assert respuesta.status_code == 409
+    assert "Materiales y tareas" in respuesta.data["detalle"]
+
+
+def test_jefe_agrega_y_quita_tareas_de_la_orden(planta):
+    ot = _generar(planta)
+    base = f"/api/v1/ordenes-trabajo/{ot.pk}"
+    agregada = planta["jefe"].post(f"{base}/agregar_tarea/", {
+        "nombre": "Pintura", "horas_estimadas": "1.5", "empleado": planta["e_pedro"].pk},
+        format="json")
+    assert agregada.status_code == 200
+    nueva = ot.tareas.get(nombre="Pintura")
+    assert nueva.secuencia == 3 and nueva.empleado == planta["e_pedro"]
+
+    quitada = planta["jefe"].post(f"{base}/quitar_tarea/", {"tarea": nueva.pk}, format="json")
+    assert quitada.status_code == 200
+    assert not ot.tareas.filter(nombre="Pintura").exists()
+    assert planta["juan"].post(f"{base}/agregar_tarea/", {"nombre": "X", "horas_estimadas": "1"},
+                               format="json").status_code == 403
+
+
+def test_orden_sin_tareas_carga_las_estandar(planta):
+    ot = _generar(planta)
+    ot.tareas.all().delete()
+    respuesta = planta["jefe"].post(f"/api/v1/ordenes-trabajo/{ot.pk}/cargar_tareas_estandar/")
+    assert respuesta.status_code == 200
+    assert ot.tareas.count() == 2
