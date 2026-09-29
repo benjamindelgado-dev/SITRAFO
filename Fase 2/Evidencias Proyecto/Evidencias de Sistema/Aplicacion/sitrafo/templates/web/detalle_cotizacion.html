@@ -2,7 +2,10 @@
 {% block titulo %}{{ cotizacion.numero }} — SITRAFO{% endblock %}
 {% block contenido %}
 
-<p class="mb-3"><a href="{% url 'web:mis_cotizaciones' %}">Volver a cotizaciones</a></p>
+<p class="mb-3 d-flex justify-content-between flex-wrap gap-2">
+  <a href="{% url 'web:mis_cotizaciones' %}">Volver a cotizaciones</a>
+  <a href="{% url 'web:cotizacion_pdf' cotizacion.pk %}">Descargar en PDF</a>
+</p>
 
 <div class="row g-4">
   <div class="col-lg-7">

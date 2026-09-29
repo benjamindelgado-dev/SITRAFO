@@ -2,7 +2,12 @@
 {% block titulo %}{{ ot.numero }} — SITRAFO{% endblock %}
 {% block contenido %}
 
-<p class="mb-3"><a href="{% url 'web:mis_pedidos' %}">Volver a pedidos</a></p>
+<p class="mb-3 d-flex justify-content-between flex-wrap gap-2">
+  <a href="{% url 'web:mis_pedidos' %}">Volver a pedidos</a>
+  {% if ot.controles_calidad.exists %}
+    <a href="{% url 'web:informe_ensayos' ot.pk %}">Descargar informe de ensayos (PDF)</a>
+  {% endif %}
+</p>
 
 <div class="seccion">
   <h1>{{ ot.numero }}</h1>

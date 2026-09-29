@@ -8,8 +8,16 @@ en la plantilla.
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import (
+    LoginView,
+    LogoutView,
+    PasswordResetCompleteView,
+    PasswordResetConfirmView,
+    PasswordResetDoneView,
+    PasswordResetView,
+)
 from django.db import transaction
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.decorators.http import require_POST
@@ -31,7 +39,13 @@ from apps.pagos.models import DocumentoCobro, TransaccionPago
 from apps.pagos.services import cobros
 from apps.produccion.models import OrdenTrabajo
 
-from .forms import LoginForm, RegistroClienteForm, SolicitudPresupuestoForm
+from .forms import (
+    LoginForm,
+    NuevaClaveForm,
+    RecuperarClaveForm,
+    RegistroClienteForm,
+    SolicitudPresupuestoForm,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -495,3 +509,79 @@ def pago_cancelado(request):
     cobros.cancelar_pago(transaccion)
     messages.info(request, "Pago cancelado. El documento sigue pendiente.")
     return redirect("web:documento_cobro", pk=transaccion.documento_cobro_id)
+
+
+
+# ---------------------------------------------------------------------------
+# Documentos PDF (RF-CAT-09, RF-COM-09, RF-CAL-05)
+# ---------------------------------------------------------------------------
+def _pdf(contenido: bytes, nombre: str) -> HttpResponse:
+    respuesta = HttpResponse(contenido, content_type="application/pdf")
+    respuesta["Content-Disposition"] = f'attachment; filename="{nombre}"'
+    return respuesta
+
+
+@login_required
+def ficha_pdf(request, pk):
+    """Ficha tecnica descargable de un modelo publicado."""
+    from apps.catalogo.pdf import ficha_pdf as generar
+
+    modelo = get_object_or_404(
+        ModeloProducto.objects.select_related("familia"), pk=pk, publicado=True, activo=True
+    )
+    return _pdf(generar(modelo), f"Ficha-{modelo.codigo}.pdf")
+
+
+@login_required
+def cotizacion_pdf(request, pk):
+    """Cotizacion emitida del cliente en PDF (RN-16: solo las propias)."""
+    from apps.comercial.pdf import cotizacion_pdf as generar
+
+    cotizacion = get_object_or_404(
+        Cotizacion.objects.exclude(estado__codigo__in=["borrador", "en_aprobacion"]),
+        pk=pk, cliente=_cliente_de(request),
+    )
+    return _pdf(generar(cotizacion), f"{cotizacion.numero}.pdf")
+
+
+@login_required
+def informe_ensayos(request, pk):
+    """Informe de ensayos de una orden de trabajo del cliente."""
+    from apps.calidad.pdf import informe_ensayos_pdf
+
+    orden_trabajo = get_object_or_404(
+        OrdenTrabajo.objects.select_related("modelo", "orden_compra__cliente", "estado"),
+        pk=pk, orden_compra__cliente=_cliente_de(request),
+    )
+    if not orden_trabajo.controles_calidad.exists():
+        messages.info(request, "Esta orden aun no tiene ensayos registrados.")
+        return redirect("web:seguimiento", pk=pk)
+    return _pdf(informe_ensayos_pdf(orden_trabajo), f"Ensayos-{orden_trabajo.numero}.pdf")
+
+
+
+# ---------------------------------------------------------------------------
+# Privacidad y recuperacion de contrasena (RNF-17, RF-SEG-05)
+# ---------------------------------------------------------------------------
+def privacidad(request):
+    return render(request, "web/privacidad.html", _contexto_base(request))
+
+
+class RecuperarClaveView(PasswordResetView):
+    template_name = "web/clave_recuperar.html"
+    form_class = RecuperarClaveForm
+    success_url = reverse_lazy("web:clave_enviada")
+
+
+class ClaveEnviadaView(PasswordResetDoneView):
+    template_name = "web/clave_enviada.html"
+
+
+class NuevaClaveView(PasswordResetConfirmView):
+    template_name = "web/clave_nueva.html"
+    form_class = NuevaClaveForm
+    success_url = reverse_lazy("web:clave_lista")
+
+
+class ClaveListaView(PasswordResetCompleteView):
+    template_name = "web/clave_lista.html"

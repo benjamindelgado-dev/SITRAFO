@@ -139,7 +139,8 @@ def cambiar_estado(actor, usuario, estado: str) -> Usuario:
     anterior = usuario.estado
     usuario.estado = estado
     usuario.intentos_fallidos = 0
-    usuario.save(update_fields=["estado", "intentos_fallidos"])
+    usuario.bloqueado_hasta = None
+    usuario.save(update_fields=["estado", "intentos_fallidos", "bloqueado_hasta"])
     _auditar(actor, usuario, Auditoria.Accion.MODIFICACION,
              {"estado": anterior}, {"estado": estado})
     return usuario

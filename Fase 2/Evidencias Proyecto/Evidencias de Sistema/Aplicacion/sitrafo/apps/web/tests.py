@@ -93,7 +93,7 @@ def test_autorregistro_crea_cliente_y_cuenta(client, django_user_model):
         "rut": "76.543.210-3", "razon_social": "Electrica del Maipo SpA",
         "tipo_persona": "juridica", "giro": "Distribucion electrica",
         "username": "maipo", "email": "contacto@maipo.cl",
-        "password1": "ClaveSegura2026", "password2": "ClaveSegura2026",
+        "password1": "ClaveSegura2026", "password2": "ClaveSegura2026", "acepta_privacidad": "on",
     }
     respuesta = client.post(reverse("web:registro"), datos)
 

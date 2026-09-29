@@ -1,19 +1,22 @@
 """Ventana principal de la aplicacion de escritorio."""
+import time
+
 from cliente_api import ClienteAPI
 from paneles import (
     PanelCanalWeb,
     PanelCatalogo,
-    PanelClientes,
     PanelInicio,
     PanelIntegraciones,
     PanelSolicitudes,
 )
 from paneles_calidad import PanelControlCalidad, PanelNoConformidades, PanelProtocolos
+from paneles_clientes import PanelClientes
 from paneles_comercial import PanelCotizaciones, PanelOrdenesCompra
 from paneles_inventario import PanelInventario, PanelProveedores
 from paneles_produccion import PanelOrdenesTrabajo, VistaTaller
+from paneles_reportes import PanelReportes
 from paneles_seguridad import PanelAuditoria, PanelUsuarios
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -39,6 +42,7 @@ class VentanaPrincipal(QMainWindow):
         self.setWindowTitle("SITRAFO — Administracion interna")
         self.resize(1180, 740)
         self._construir()
+        self._vigilar_inactividad()
 
     @property
     def es_vista_taller(self) -> bool:
@@ -115,6 +119,7 @@ class VentanaPrincipal(QMainWindow):
             ("Inventario", "kardex.leer", PanelInventario),
             ("Proveedores", "material.leer", PanelProveedores),
             ("Canal web", "canal_web.leer", PanelCanalWeb),
+            ("Reportes", "reporte.leer", PanelReportes),
             ("Integraciones", "parametro.leer", PanelIntegraciones),
             ("Usuarios y roles", "usuario.leer", PanelUsuarios),
             ("Auditoria", "auditoria.leer", PanelAuditoria),
@@ -171,10 +176,39 @@ class VentanaPrincipal(QMainWindow):
         self.statusBar().showMessage(f"Conectado a {self.cliente.url_base}")
         self.taller.refrescar()
 
+    # -- Cierre por inactividad (RF-SEG-07) ---------------------------------
+    MINUTOS_INACTIVIDAD = 30
+
+    def _vigilar_inactividad(self):
+        self._ultima_actividad = time.monotonic()
+        QApplication.instance().installEventFilter(self)
+        self._reloj = QTimer(self)
+        self._reloj.timeout.connect(self._revisar_inactividad)
+        self._reloj.start(30_000)
+
+    def eventFilter(self, objeto, evento):
+        if evento.type() in (QEvent.MouseButtonPress, QEvent.KeyPress, QEvent.Wheel):
+            self._ultima_actividad = time.monotonic()
+        return super().eventFilter(objeto, evento)
+
+    def _revisar_inactividad(self):
+        if time.monotonic() - self._ultima_actividad >= self.MINUTOS_INACTIVIDAD * 60:
+            self._reloj.stop()
+            QMessageBox.information(
+                self, "Sesion cerrada",
+                f"La sesion se cerro tras {self.MINUTOS_INACTIVIDAD} minutos sin actividad.")
+            self._salir()
+
     def cerrar_sesion(self):
         if QMessageBox.question(self, "Cerrar sesion",
                                 "¿Desea cerrar la sesion?") != QMessageBox.Yes:
             return
+        self._salir()
+
+    def _salir(self):
+        if hasattr(self, "_reloj"):
+            self._reloj.stop()
+            QApplication.instance().removeEventFilter(self)
         # El token JWT se descarta en el cliente; al expirar ya no sirve
         self.cliente.cerrar_sesion()
         self._cerrando_sesion = True

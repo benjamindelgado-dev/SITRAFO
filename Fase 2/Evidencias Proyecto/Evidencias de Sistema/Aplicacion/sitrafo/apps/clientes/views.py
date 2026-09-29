@@ -1,7 +1,9 @@
 """Vistas de la API para el dominio de clientes."""
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
+from rest_framework.response import Response
 
 from apps.common.mixins import FiltradoPorClienteMixin
 from apps.common.permissions import CuentaOperativa, PermisoPorRol
@@ -48,6 +50,14 @@ class ClienteViewSet(viewsets.ModelViewSet):
     permission_classes = [CuentaOperativa, PermisoPorRol]
     modulo_permiso = "cliente"
     acciones_cliente = ("list", "retrieve")
+    permisos_accion = {
+        "documentos": "cliente.leer",
+        "cuentas": "cuenta_web.leer",
+        "suspender_cuenta": "cuenta_web.actualizar",
+        "reactivar_cuenta": "cuenta_web.actualizar",
+        # Un cliente con documentos no se borra: se deja inactivo
+        "destroy": None,
+    }
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["tipo_persona", "estado"]
     search_fields = ["rut", "razon_social", "nombre_fantasia"]
@@ -60,6 +70,75 @@ class ClienteViewSet(viewsets.ModelViewSet):
         if usuario.cliente_id is None:
             return queryset.none()
         return queryset.filter(id_cliente=usuario.cliente_id)
+
+    @action(detail=True, methods=["get"])
+    def documentos(self, request, pk=None):
+        """Historial completo de documentos del cliente (RF-CLI-07)."""
+        cliente = self.get_object()
+
+        def filas(consulta, campos):
+            return [{c: getattr(d, c) for c in campos} | {"estado": d.estado.nombre}
+                    for d in consulta.select_related("estado").order_by("-creado_en")]
+
+        from apps.pagos.models import DocumentoCobro
+
+        return Response({
+            "solicitudes": filas(cliente.solicitudes.all(), ["numero", "creado_en", "cantidad"]),
+            "cotizaciones": filas(cliente.cotizaciones.all(),
+                                  ["numero", "creado_en", "total_uf", "vence_el"]),
+            "ordenes_compra": filas(cliente.ordenes_compra.all(),
+                                    ["numero", "creado_en", "total_uf"]),
+            "cobros": [
+                {"numero": d.numero, "tipo": d.get_tipo_display(), "estado": d.get_estado_display(),
+                 "monto_uf": d.monto_uf, "monto_clp": d.monto_clp, "creado_en": d.creado_en}
+                for d in DocumentoCobro.objects.filter(orden_compra__cliente=cliente)
+                .order_by("-creado_en")
+            ],
+        })
+
+    @action(detail=True, methods=["get"])
+    def cuentas(self, request, pk=None):
+        """Cuentas web del cliente con su estado (RF-ADM-03)."""
+        cliente = self.get_object()
+        return Response([
+            {"id_usuario": u.pk, "username": u.username, "email": u.email,
+             "estado": u.estado, "estado_nombre": u.get_estado_display(),
+             "ultimo_acceso": u.ultimo_acceso}
+            for u in cliente.cuentas.order_by("username")
+        ])
+
+    def _estado_cuenta(self, request, estado):
+        from apps.seguridad.models import Auditoria
+
+        cliente = self.get_object()
+        cuenta = cliente.cuentas.filter(pk=request.data.get("cuenta")).first()
+        if cuenta is None:
+            return Response({"detalle": "La cuenta no pertenece a este cliente."},
+                            status=status.HTTP_404_NOT_FOUND)
+        anterior = cuenta.estado
+        cuenta.estado = estado
+        cuenta.intentos_fallidos = 0
+        cuenta.save(update_fields=["estado", "intentos_fallidos"])
+        Auditoria.objects.create(
+            usuario=request.user, entidad="cuenta_web", id_registro=str(cuenta.pk),
+            accion=Auditoria.Accion.MODIFICACION, valor_anterior={"estado": anterior},
+            valor_nuevo={"estado": estado, "cliente": cliente.razon_social},
+            origen=Auditoria.Origen.ESCRITORIO,
+        )
+        return self.cuentas(request, cliente.pk)
+
+    @action(detail=True, methods=["post"])
+    def suspender_cuenta(self, request, pk=None):
+        """Una cuenta suspendida no puede ingresar ni operar en la web (RF-ADM-03)."""
+        from apps.seguridad.models import Usuario
+
+        return self._estado_cuenta(request, Usuario.Estado.SUSPENDIDO)
+
+    @action(detail=True, methods=["post"])
+    def reactivar_cuenta(self, request, pk=None):
+        from apps.seguridad.models import Usuario
+
+        return self._estado_cuenta(request, Usuario.Estado.ACTIVO)
 
 
 class ContactoClienteViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):

@@ -1,0 +1,6 @@
+{% extends "correo/_base.html" %}
+{% block cuerpo %}
+<p>Recibimos una solicitud para cambiar la contrasena de la cuenta <strong>{{ usuario.username }}</strong>.</p>
+<p>El enlace sirve una sola vez y vence en una hora. Si usted no lo pidio, ignore este correo: su contrasena no cambiara.</p>
+{% include "correo/_boton.html" with texto="Crear nueva contrasena" %}
+{% endblock %}

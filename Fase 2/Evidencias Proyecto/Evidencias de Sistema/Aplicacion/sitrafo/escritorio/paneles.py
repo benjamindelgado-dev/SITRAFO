@@ -252,45 +252,6 @@ class PanelCatalogo(PanelBase):
         self.refrescar()
 
 
-class PanelClientes(PanelBase):
-    titulo = "Clientes"
-    subtitulo = "Clientes registrados en el sistema."
-    columnas = ["RUT", "Razon social", "Tipo", "Estado", "Contactos", "Direcciones"]
-
-    def construir(self):
-        barra = QHBoxLayout()
-        self.busqueda = QLineEdit()
-        self.busqueda.setPlaceholderText("Buscar por RUT o razon social")
-        self.busqueda.returnPressed.connect(self.refrescar)
-        barra.addWidget(self.busqueda)
-        buscar = QPushButton("Buscar")
-        buscar.setObjectName("secundario")
-        buscar.clicked.connect(self.refrescar)
-        barra.addWidget(buscar)
-        self.contenedor.addLayout(barra)
-
-        self.tabla = self.crear_tabla()
-        self.contenedor.addWidget(self.tabla)
-
-    def refrescar(self):
-        params = {}
-        if self.busqueda.text().strip():
-            params["search"] = self.busqueda.text().strip()
-        try:
-            respuesta = self.cliente.clientes(params)
-        except ErrorAPI as error:
-            return self.manejar_error(error)
-
-        registros = respuesta.get("results", respuesta)
-        self.llenar(self.tabla, [
-            [
-                c["rut"], c["razon_social"], c["tipo_persona"], c["estado"],
-                len(c.get("contactos", [])), len(c.get("direcciones", [])),
-            ]
-            for c in registros
-        ])
-
-
 class PanelSolicitudes(PanelBase):
     """Bandeja de solicitudes de presupuesto (CU-COM-02)."""
 
@@ -320,6 +281,11 @@ class PanelSolicitudes(PanelBase):
         cotizar.clicked.connect(self.cotizar)
         cotizar.setVisible(self.cliente.puede("cotizacion.crear"))
         acciones.addWidget(cotizar)
+        anular = QPushButton("Desestimar")
+        anular.setObjectName("peligro")
+        anular.clicked.connect(self.anular)
+        anular.setVisible(self.cliente.puede("solicitud.anular"))
+        acciones.addWidget(anular)
         recargar = QPushButton("Recargar")
         recargar.setObjectName("secundario")
         recargar.clicked.connect(self.refrescar)
@@ -378,6 +344,16 @@ class PanelSolicitudes(PanelBase):
         )
         self.refrescar()
 
+
+    def anular(self):
+        from paneles_comercial import pedir_motivo_y_anular
+
+        fila = self.tabla.currentRow()
+        if 0 <= fila < len(self.datos):
+            s = self.datos[fila]
+            if pedir_motivo_y_anular(self, self.cliente, "solicitudes", s["id_solicitud"],
+                                     s["numero"]):
+                self.refrescar()
 
     def cotizar(self):
         """Abre el formulario de cotizacion con el costeo del backend (CU-COM-03)."""

@@ -1,6 +1,7 @@
 """Vistas de la API para el dominio de seguridad."""
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import AuthenticationFailed
@@ -156,6 +157,22 @@ class UsuarioViewSet(viewsets.ReadOnlyModelViewSet):
 # ---------------------------------------------------------------------------
 # Ingreso con token (escritorio): bloqueo por intentos y ultimo acceso
 # ---------------------------------------------------------------------------
+def registrar_intento(usuario):
+    usuario.registrar_intento_fallido(
+        int(ParametroSistema.obtener("sistema.intentos_fallidos_max", 5)),
+        int(ParametroSistema.obtener("sistema.minutos_bloqueo", 15)),
+    )
+
+
+def mensaje_cuenta_no_disponible(usuario) -> str:
+    if usuario.estado == Usuario.Estado.BLOQUEADO and usuario.bloqueado_hasta:
+        hora = timezone.localtime(usuario.bloqueado_hasta).strftime("%H:%M")
+        return (f"Demasiados intentos fallidos: la cuenta esta bloqueada hasta las {hora}. "
+                "Puede esperar o pedir al administrador que la reactive.")
+    return (f"La cuenta esta {usuario.get_estado_display().lower()}. "
+            "Contacte al administrador.")
+
+
 class IngresoConControl(TokenObtainPairView):
     """
     Emite el token JWT aplicando las reglas de la cuenta (RF-SEG-04):
@@ -170,24 +187,19 @@ class IngresoConControl(TokenObtainPairView):
         usuario = Usuario.objects.filter(
             username=(request.data.get("username") or "").strip()
         ).first()
+        if usuario:
+            usuario.levantar_bloqueo_vencido()
         if usuario and not usuario.puede_ingresar:
-            return Response(
-                {"detail": f"La cuenta esta {usuario.get_estado_display().lower()}. "
-                           "Contacte al administrador."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return Response({"detail": mensaje_cuenta_no_disponible(usuario)},
+                            status=status.HTTP_403_FORBIDDEN)
         try:
             respuesta = super().post(request, *args, **kwargs)
         except AuthenticationFailed:
             if usuario:
-                maximo = int(ParametroSistema.obtener("sistema.intentos_fallidos_max", 5))
-                usuario.registrar_intento_fallido(maximo)
+                registrar_intento(usuario)
                 if usuario.estado == Usuario.Estado.BLOQUEADO:
-                    return Response(
-                        {"detail": "Demasiados intentos fallidos: la cuenta quedo "
-                                   "bloqueada. Contacte al administrador."},
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
+                    return Response({"detail": mensaje_cuenta_no_disponible(usuario)},
+                                    status=status.HTTP_403_FORBIDDEN)
             raise
         if usuario:
             usuario.registrar_acceso_exitoso()

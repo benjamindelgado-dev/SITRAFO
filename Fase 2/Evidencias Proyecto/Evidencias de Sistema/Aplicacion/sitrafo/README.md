@@ -255,6 +255,34 @@ Reglas en `apps/inventario/services.py`, expuestas en `/api/v1/materiales/`
 usuario, accion, entidad, origen y rango de fechas. No existe ninguna via en
 la API para modificar o borrar un registro. Solo el Administrador la consulta.
 
+## Documentos, anulacion y reportes
+
+- **Anulacion (RF-COM-15, RN-13):** solicitudes, cotizaciones y ordenes de
+  compra se anulan con motivo obligatorio, quedan en su historial y en la
+  auditoria, y nunca se borran. Una orden con pagos o con fabricacion
+  iniciada no se anula.
+- **PDF (reportlab):** cotizacion (adjunta al correo de emision y descargable
+  en la web y el escritorio, RF-COM-09), ficha tecnica del modelo (RF-CAT-09)
+  e informe de ensayos para el cliente (RF-CAL-05).
+- **Reportes (RF-REP-01 a 06):** `/api/v1/reportes/<tipo>/` con `comercial`,
+  `costos`, `consumos`, `horas` y `plazos`, exportables con `?formato=xlsx` o
+  `?formato=pdf`. Panel Reportes en el escritorio.
+- **Clientes (RF-CLI-01, 03, 04, 07, RF-ADM-03):** alta y edicion desde el
+  escritorio, contactos, direcciones, historial de documentos y suspension de
+  cuentas web (una cuenta suspendida pierde su sesion abierta).
+
+## Seguridad del acceso
+
+- Bloqueo temporal tras 5 intentos fallidos (15 minutos, configurable con
+  `sistema.minutos_bloqueo`), en la web y en el escritorio (RF-SEG-04).
+- Recuperacion de contrasena con enlace de un solo uso valido por una hora
+  (RF-SEG-05).
+- Cierre de sesion por inactividad: 30 minutos en la web
+  (`SESION_INACTIVIDAD_MINUTOS`) y en el escritorio (RF-SEG-07).
+- Revocacion del token al cerrar sesion (`/api/v1/auth/salir/`, RNF-04).
+- Politica de privacidad y consentimiento registrado en el autorregistro
+  (RNF-17, Ley 21.719).
+
 ## Roles y matriz de permisos
 
 La matriz de acceso de la ERS-01 (seccion 8.2) esta transcrita en
@@ -433,7 +461,7 @@ docker compose exec web pytest --cov-fail-under=70
 docker compose exec web pytest
 ```
 
-148 pruebas automatizadas con 91% de cobertura sobre `apps/`, por encima del
+174 pruebas automatizadas con 91% de cobertura sobre `apps/`, por encima del
 70% exigido por RNF-13. Las llamadas a servicios externos (incluido PayPal) se
 simulan con dobles de prueba.
 

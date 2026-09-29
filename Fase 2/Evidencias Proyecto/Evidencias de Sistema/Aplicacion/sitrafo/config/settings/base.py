@@ -31,6 +31,9 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "rest_framework",
     "django_filters",
+    # Revocacion de tokens al cerrar sesion (RNF-04). Agrega dos tablas propias
+    # de la libreria, fuera del modelo de datos del negocio.
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 LOCAL_APPS = [
@@ -59,7 +62,14 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.web.middleware.ModoMantencionMiddleware",
+    "apps.web.middleware.CuentaSuspendidaMiddleware",
 ]
+
+# Cierre de sesion web por inactividad (RF-SEG-07): la sesion se renueva en
+# cada peticion y expira tras el periodo configurado sin actividad
+SESSION_COOKIE_AGE = env.int("SESION_INACTIVIDAD_MINUTOS", default=30) * 60
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
@@ -171,6 +181,8 @@ BREVO_API_KEY = env("BREVO_API_KEY", default="")
 DEFAULT_FROM_EMAIL = env("CORREO_REMITENTE", default="SITRAFO <no-responder@sitrafo.cl>")
 # Solo desarrollo/demostracion: desvia todos los correos a esta direccion
 CORREO_REDIRIGIR_A = env("CORREO_REDIRIGIR_A", default="")
+# Recuperacion de clave: el enlace de un solo uso vence en una hora (RF-SEG-05)
+PASSWORD_RESET_TIMEOUT = 60 * 60
 # Direccion publica del sitio, para los enlaces dentro de los correos
 SITIO_URL = env("SITIO_URL", default="http://localhost:8000")
 
@@ -184,7 +196,7 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": False,
+    "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 

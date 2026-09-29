@@ -231,3 +231,18 @@ def test_cerrar_la_ultima_ot_emite_el_saldo_y_la_entrega_exige_pagarlo(
     respuesta = comercial.post(entrega)
     assert respuesta.status_code == 200
     assert respuesta.data["estado_codigo"] == "entregada"
+
+
+def test_el_cliente_descarga_el_informe_de_ensayos(planta):
+    from django.test import Client
+
+    control = _control(planta)
+    _medir(planta, control, 0, 2500)
+    cuenta = Usuario.objects.create_user("maipo", "m@maipo.cl", "x" * 12,
+                                         cliente=planta["ot"].orden_compra.cliente)
+    navegador = Client()
+    navegador.force_login(cuenta)
+
+    respuesta = navegador.get(f"/seguimiento/{planta['ot'].pk}/ensayos.pdf")
+    assert respuesta.status_code == 200
+    assert respuesta.content.startswith(b"%PDF")

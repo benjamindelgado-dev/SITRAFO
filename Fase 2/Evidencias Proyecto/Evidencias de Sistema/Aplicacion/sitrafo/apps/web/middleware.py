@@ -37,3 +37,28 @@ class ModoMantencionMiddleware:
             )
 
         return self.get_response(request)
+
+
+class CuentaSuspendidaMiddleware:
+    """
+    Cierra la sesion web de una cuenta suspendida o bloqueada (RF-ADM-03).
+
+    El ingreso ya rechaza estas cuentas; este middleware cubre el caso de una
+    cuenta suspendida mientras tenia una sesion abierta.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        usuario = request.user
+        if (usuario.is_authenticated and not usuario.puede_ingresar
+                and not request.path.startswith(RUTAS_EXENTAS)):
+            from django.contrib import messages
+            from django.contrib.auth import logout
+            from django.shortcuts import redirect
+
+            logout(request)
+            messages.error(request, "Su cuenta esta suspendida. Contacte al area comercial.")
+            return redirect("web:login")
+        return self.get_response(request)

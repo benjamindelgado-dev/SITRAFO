@@ -45,7 +45,8 @@ def url_sitio(nombre_ruta: str, *args) -> str:
     return f"{base}{reverse(nombre_ruta, args=args)}"
 
 
-def enviar(plantilla: str, asunto: str, destinatarios: list[str], contexto: dict) -> bool:
+def enviar(plantilla: str, asunto: str, destinatarios: list[str], contexto: dict,
+           adjuntos: list[tuple[str, bytes, str]] | None = None) -> bool:
     """
     Renderiza templates/correo/<plantilla>.txt y .html y envia el correo.
 
@@ -69,6 +70,8 @@ def enviar(plantilla: str, asunto: str, destinatarios: list[str], contexto: dict
             from_email=settings.DEFAULT_FROM_EMAIL, to=destinatarios,
         )
         mensaje.attach_alternative(html, "text/html")
+        for nombre, contenido, tipo in adjuntos or []:
+            mensaje.attach(nombre, contenido, tipo)
         return mensaje.send(fail_silently=True) == 1
     except Exception:  # noqa: BLE001
         logger.exception("No se pudo preparar el correo '%s'", asunto)
@@ -89,13 +92,22 @@ def notificar_solicitud_recibida(solicitud) -> bool:
 
 
 def notificar_cotizacion_emitida(cotizacion) -> bool:
-    """Envio de la cotizacion al cliente (RF-COM-09, CU-COM-07)."""
+    """Envio de la cotizacion al cliente, con el PDF adjunto (RF-COM-09)."""
+    from apps.comercial.pdf import cotizacion_pdf
+
+    try:
+        adjuntos = [(f"{cotizacion.numero}.pdf", cotizacion_pdf(cotizacion),
+                     "application/pdf")]
+    except Exception:  # noqa: BLE001
+        logger.exception("No se pudo generar el PDF de %s", cotizacion.numero)
+        adjuntos = []   # el correo sale igual, con el enlace al portal
     return enviar(
         "cotizacion_emitida",
         f"SITRAFO: cotizacion {cotizacion.numero} disponible",
         destinatarios_de(cotizacion.cliente),
         {"cotizacion": cotizacion,
          "url": url_sitio("web:detalle_cotizacion", cotizacion.pk)},
+        adjuntos=adjuntos,
     )
 
 

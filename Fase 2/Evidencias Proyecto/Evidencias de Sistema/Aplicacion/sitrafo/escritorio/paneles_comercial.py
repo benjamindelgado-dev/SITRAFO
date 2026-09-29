@@ -17,10 +17,12 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QDoubleSpinBox,
+    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
+    QInputDialog,
     QLabel,
     QMessageBox,
     QPushButton,
@@ -61,6 +63,23 @@ def fecha(texto) -> str:
         return "-"
     anio, mes, dia = str(texto)[:10].split("-")
     return f"{dia}-{mes}-{anio}"
+
+
+def pedir_motivo_y_anular(padre, cliente, recurso: str, id_documento: int, numero: str) -> bool:
+    """Pide el motivo y anula el documento (RF-COM-15). Devuelve si se anulo."""
+    motivo, ok = QInputDialog.getMultiLineText(
+        padre, f"Anular {numero}",
+        f"La anulacion de {numero} no se puede deshacer y queda registrada con su motivo.\n\n"
+        "Motivo (al menos 10 caracteres):")
+    if not ok:
+        return False
+    try:
+        cliente.anular(recurso, id_documento, motivo)
+    except ErrorAPI as error:
+        QMessageBox.warning(padre, "No se pudo anular", error.mensaje)
+        return False
+    QMessageBox.information(padre, "Documento anulado", f"{numero} quedo anulado.")
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -292,8 +311,14 @@ class PanelCotizaciones(PanelBase):
         self.b_devolver.clicked.connect(self._devolver)
         self.b_oc = QPushButton("Generar orden de compra")
         self.b_oc.clicked.connect(self._generar_oc)
+        self.b_pdf = QPushButton("Descargar PDF")
+        self.b_pdf.setObjectName("secundario")
+        self.b_pdf.clicked.connect(self._pdf)
+        self.b_anular = QPushButton("Anular")
+        self.b_anular.setObjectName("peligro")
+        self.b_anular.clicked.connect(self._anular)
         for boton in (self.b_aprobacion, self.b_emitir, self.b_devolver,
-                      self.b_correo, self.b_oc):
+                      self.b_correo, self.b_oc, self.b_pdf, self.b_anular):
             acciones.addWidget(boton)
 
         # Con acceso de solo lectura (L en la matriz) no se muestran acciones
@@ -303,6 +328,7 @@ class PanelCotizaciones(PanelBase):
         self.b_devolver.setVisible(puede("cotizacion.aprobar"))
         self.b_correo.setVisible(puede("cotizacion.actualizar"))
         self.b_oc.setVisible(puede("orden_compra.crear"))
+        self.b_anular.setVisible(puede("cotizacion.anular"))
         acciones.addStretch()
         self.contenedor.addLayout(acciones)
 
@@ -390,6 +416,10 @@ class PanelCotizaciones(PanelBase):
         self.b_emitir.setText("Aprobar y emitir" if codigo == "en_aprobacion"
                               else "Emitir al cliente")
         self.b_devolver.setEnabled(codigo == "en_aprobacion" and not propia)
+        self.b_pdf.setEnabled(bool(c))
+        self.b_anular.setEnabled(
+            codigo in ("borrador", "en_aprobacion", "emitida")
+            or (codigo == "aceptada" and not (c or {}).get("orden_compra")))
         self.b_correo.setEnabled(codigo in ("emitida", "aceptada"))
         self.b_oc.setEnabled(codigo == "aceptada" and not (c or {}).get("orden_compra"))
 
@@ -438,6 +468,28 @@ class PanelCotizaciones(PanelBase):
                                 f"La cotizacion {c['numero']} volvio a borrador.")
         self.refrescar()
 
+    def _pdf(self):
+        c = self._actual()
+        if c is None:
+            return
+        ruta, _ = QFileDialog.getSaveFileName(self, "Guardar cotizacion",
+                                              f"{c['numero']}.pdf", "PDF (*.pdf)")
+        if not ruta:
+            return
+        try:
+            contenido = self.cliente.cotizacion_pdf(c["id_cotizacion"])
+        except ErrorAPI as error:
+            return self.manejar_error(error)
+        with open(ruta, "wb") as archivo:
+            archivo.write(contenido)
+        QMessageBox.information(self, "PDF guardado", f"Guardado en:\n{ruta}")
+
+    def _anular(self):
+        c = self._actual()
+        if c and pedir_motivo_y_anular(self, self.cliente, "cotizaciones",
+                                       c["id_cotizacion"], c["numero"]):
+            self.refrescar()
+
     def _reenviar(self):
         self._ejecutar(self.cliente.enviar_cotizacion,
                        "Cotizacion {c[numero]} reenviada por correo.")
@@ -478,6 +530,11 @@ class PanelOrdenesCompra(PanelBase):
         self.b_ot.clicked.connect(self._generar_ot)
         self.b_ot.setVisible(self.cliente.puede("orden_trabajo.crear"))
         acciones.addWidget(self.b_ot)
+        self.b_anular = QPushButton("Anular")
+        self.b_anular.setObjectName("peligro")
+        self.b_anular.clicked.connect(self._anular)
+        self.b_anular.setVisible(self.cliente.puede("orden_compra.anular"))
+        acciones.addWidget(self.b_anular)
         self.b_entrega = QPushButton("Registrar entrega")
         self.b_entrega.setObjectName("exito")
         self.b_entrega.clicked.connect(self._entregar)
@@ -494,6 +551,7 @@ class PanelOrdenesCompra(PanelBase):
         self.b_confirmar.setEnabled(False)
         self.b_ot.setEnabled(False)
         self.b_entrega.setEnabled(False)
+        self.b_anular.setEnabled(False)
 
     def refrescar(self):
         try:
@@ -526,11 +584,21 @@ class PanelOrdenesCompra(PanelBase):
             bool(orden) and orden.get("estado_codigo") == "confirmada"
             and not orden.get("ordenes_trabajo")
         )
+        self.b_anular.setEnabled(bool(orden) and orden.get("estado_codigo") in (
+            "pendiente", "confirmada", "en_produccion"))
         # La entrega exige la fabricacion terminada (hay saldo emitido) y pagada
         self.b_entrega.setEnabled(
             bool(orden) and orden.get("estado_codigo") == "en_produccion"
             and (orden.get("saldo") or {}).get("estado") == "pagado"
         )
+
+    def _anular(self):
+        fila = self.tabla.currentRow()
+        if 0 <= fila < len(self.datos):
+            orden = self.datos[fila]
+            if pedir_motivo_y_anular(self, self.cliente, "ordenes-compra",
+                                     orden["id_orden_compra"], orden["numero"]):
+                self.refrescar()
 
     def _entregar(self):
         fila = self.tabla.currentRow()

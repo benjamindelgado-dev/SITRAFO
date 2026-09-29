@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titulo %}Nueva contrasena — SITRAFO{% endblock %}
+{% block contenido %}
+<div class="row justify-content-center pt-4"><div class="col-md-6 col-lg-5">
+  <div class="seccion"><h1>Nueva contrasena</h1></div>
+  {% if validlink %}
+    <div class="placa"><div class="placa__cuerpo">
+      <form method="post">{% csrf_token %}
+        {% for campo in form %}
+          <div class="mb-3">
+            <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+            {{ campo }}
+            {% if campo.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ campo.errors|striptags }}</div>{% endif %}
+          </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-principal w-100">Guardar contrasena</button>
+      </form>
+    </div></div>
+  {% else %}
+    <div class="aviso aviso--mal">El enlace ya fue usado o vencio. Solicite uno nuevo.</div>
+    <p class="mt-3"><a href="{% url 'web:clave_recuperar' %}">Pedir otro enlace</a></p>
+  {% endif %}
+</div></div>
+{% endblock %}

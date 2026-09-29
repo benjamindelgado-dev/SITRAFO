@@ -1,6 +1,6 @@
 """Formularios de la aplicacion web del cliente."""
 from django import forms
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm, SetPasswordForm
 from django.db import transaction
 
 from apps.catalogo.models import ModeloProducto, ParametroTecnico
@@ -8,6 +8,8 @@ from apps.clientes.models import Cliente, DireccionCliente
 from apps.comercial.models import SolicitudPresupuesto
 from apps.common.validators import limpiar_rut, validar_rut
 from apps.seguridad.models import Usuario
+
+VERSION_POLITICA = "2026-09"
 
 
 class BootstrapMixin:
@@ -34,6 +36,29 @@ class LoginForm(BootstrapMixin, AuthenticationForm):
         label="Contrasena",
         widget=forms.PasswordInput(attrs={"placeholder": "********"}),
     )
+
+    def clean(self):
+        """Cuenta los intentos fallidos y aplica el bloqueo temporal (RF-SEG-04)."""
+        from apps.seguridad.views import mensaje_cuenta_no_disponible, registrar_intento
+
+        usuario = Usuario.objects.filter(username=self.data.get("username", "").strip()).first()
+        if usuario:
+            usuario.levantar_bloqueo_vencido()
+            if usuario.estado == Usuario.Estado.BLOQUEADO:
+                raise forms.ValidationError(mensaje_cuenta_no_disponible(usuario),
+                                            code="cuenta_bloqueada")
+        try:
+            datos = super().clean()
+        except forms.ValidationError:
+            if usuario and self.errors.get("__all__") is None:
+                registrar_intento(usuario)
+                if usuario.estado == Usuario.Estado.BLOQUEADO:
+                    raise forms.ValidationError(mensaje_cuenta_no_disponible(usuario),
+                                                code="cuenta_bloqueada") from None
+            raise
+        if usuario:
+            usuario.registrar_acceso_exitoso()
+        return datos
 
     def confirm_login_allowed(self, user):
         """Una cuenta suspendida no puede ingresar (RF-ADM-03)."""
@@ -93,6 +118,13 @@ class RegistroClienteForm(BootstrapMixin, forms.Form):
             raise forms.ValidationError("Este correo ya esta registrado.")
         return email
 
+    acepta_privacidad = forms.BooleanField(
+        label="He leido y acepto la politica de privacidad y el tratamiento de mis datos "
+              "personales",
+        required=True,
+        error_messages={"required": "Debe aceptar la politica de privacidad para registrarse."},
+    )
+
     def clean(self):
         datos = super().clean()
         if datos.get("password1") != datos.get("password2"):
@@ -112,13 +144,23 @@ class RegistroClienteForm(BootstrapMixin, forms.Form):
             tipo_persona=datos["tipo_persona"],
             giro=datos.get("giro", ""),
         )
-        return Usuario.objects.create_user(
+        usuario = Usuario.objects.create_user(
             username=datos["username"],
             email=datos["email"],
             password=datos["password1"],
             cliente=cliente,
             es_interno=False,
         )
+        # Evidencia del consentimiento (RNF-17, Ley 19.628 y Ley 21.719)
+        from apps.seguridad.models import Auditoria
+
+        Auditoria.objects.create(
+            usuario=usuario, entidad="consentimiento", id_registro=str(usuario.pk),
+            accion=Auditoria.Accion.CREACION, valor_anterior=None,
+            valor_nuevo={"politica_privacidad": VERSION_POLITICA, "aceptada": True},
+            origen=Auditoria.Origen.WEB,
+        )
+        return usuario
 
 
 class SolicitudPresupuestoForm(BootstrapMixin, forms.ModelForm):
@@ -199,3 +241,28 @@ class SolicitudPresupuestoForm(BootstrapMixin, forms.ModelForm):
             valor = self.cleaned_data.get(f"param_{parametro.id_parametro}")
             if valor not in (None, ""):
                 yield parametro, str(valor)
+
+
+class RecuperarClaveForm(BootstrapMixin, PasswordResetForm):
+    """
+    Recuperacion de clave (RF-SEG-05). El correo sale por el mismo canal que
+    el resto de las notificaciones (Brevo), respetando CORREO_REDIRIGIR_A.
+    """
+
+    email = forms.EmailField(label="Correo registrado", max_length=150)
+
+    def get_users(self, email):
+        # Solo cuentas activas: una cuenta suspendida no recupera su acceso aqui
+        return [u for u in super().get_users(email) if u.puede_ingresar]
+
+    def send_mail(self, subject_template_name, email_template_name, context,
+                  from_email, to_email, html_email_template_name=None):
+        from apps.configuracion.services.notificaciones import enviar, url_sitio
+
+        enlace = url_sitio("web:clave_nueva", context["uid"], context["token"])
+        enviar("recuperar_clave", "SITRAFO: recuperacion de contrasena", [to_email],
+               {"usuario": context["user"], "enlace": enlace, "url": enlace})
+
+
+class NuevaClaveForm(BootstrapMixin, SetPasswordForm):
+    pass

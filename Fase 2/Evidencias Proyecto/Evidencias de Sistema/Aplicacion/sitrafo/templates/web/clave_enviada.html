@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block titulo %}Revise su correo — SITRAFO{% endblock %}
+{% block contenido %}
+<div class="row justify-content-center pt-4"><div class="col-md-6 col-lg-5">
+  <div class="seccion"><h1>Revise su correo</h1></div>
+  <div class="aviso aviso--bien">Si el correo corresponde a una cuenta activa, recibira en unos minutos
+    un enlace para crear una nueva contrasena. Revise tambien la carpeta de correo no deseado.</div>
+  <p class="mt-3"><a href="{% url 'web:login' %}">Volver al acceso</a></p>
+</div></div>
+{% endblock %}

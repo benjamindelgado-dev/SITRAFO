@@ -10,6 +10,13 @@ urlpatterns = [
     path("acceso/", views.LoginClienteView.as_view(), name="login"),
     path("salir/", views.LogoutClienteView.as_view(), name="logout"),
     path("registro/", views.RegistroView.as_view(), name="registro"),
+    path("privacidad/", views.privacidad, name="privacidad"),
+
+    # Recuperacion de contrasena (RF-SEG-05)
+    path("clave/recuperar/", views.RecuperarClaveView.as_view(), name="clave_recuperar"),
+    path("clave/enviada/", views.ClaveEnviadaView.as_view(), name="clave_enviada"),
+    path("clave/nueva/<uidb64>/<token>/", views.NuevaClaveView.as_view(), name="clave_nueva"),
+    path("clave/lista/", views.ClaveListaView.as_view(), name="clave_lista"),
 
     # Inicio
     path("", views.inicio, name="inicio"),
@@ -17,6 +24,7 @@ urlpatterns = [
     # Catalogo
     path("catalogo/", views.catalogo, name="catalogo"),
     path("catalogo/<int:pk>/", views.ficha_modelo, name="ficha_modelo"),
+    path("catalogo/<int:pk>/ficha.pdf", views.ficha_pdf, name="ficha_pdf"),
 
     # Solicitudes
     path("solicitar/", views.solicitar_presupuesto, name="solicitar"),
@@ -26,11 +34,13 @@ urlpatterns = [
     path("mis-cotizaciones/", views.mis_cotizaciones, name="mis_cotizaciones"),
     path("cotizacion/<int:pk>/", views.detalle_cotizacion, name="detalle_cotizacion"),
     path("cotizacion/<int:pk>/aceptar/", views.aceptar_cotizacion, name="aceptar_cotizacion"),
+    path("cotizacion/<int:pk>/pdf/", views.cotizacion_pdf, name="cotizacion_pdf"),
     path("cotizacion/<int:pk>/rechazar/", views.rechazar_cotizacion, name="rechazar_cotizacion"),
 
     # Pedidos
     path("mis-pedidos/", views.mis_pedidos, name="mis_pedidos"),
     path("seguimiento/<int:pk>/", views.seguimiento, name="seguimiento"),
+    path("seguimiento/<int:pk>/ensayos.pdf", views.informe_ensayos, name="informe_ensayos"),
 
     # Pago en linea
     path("cobro/<int:pk>/", views.documento_cobro, name="documento_cobro"),

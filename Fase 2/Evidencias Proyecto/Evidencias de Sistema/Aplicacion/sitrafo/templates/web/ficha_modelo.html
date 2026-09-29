@@ -55,6 +55,9 @@
         <a href="{% url 'web:solicitar' %}?modelo={{ modelo.pk }}" class="btn btn-principal w-100 mt-2">
           Pedir un presupuesto
         </a>
+        <a href="{% url 'web:ficha_pdf' modelo.pk %}" class="btn btn-plano w-100 mt-2">
+          Descargar ficha tecnica (PDF)
+        </a>
       </div>
     </div>
   </div>

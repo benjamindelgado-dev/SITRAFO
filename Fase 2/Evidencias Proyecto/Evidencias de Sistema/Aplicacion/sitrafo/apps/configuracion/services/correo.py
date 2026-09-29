@@ -17,6 +17,7 @@ Nota sobre reintentos: Brevo no ofrece clave de idempotencia. Un reintento
 tras un timeout podria duplicar un correo; se acepta ese riesgo porque un
 correo duplicado es preferible a uno perdido, y se limita a dos intentos.
 """
+import base64
 import logging
 from email.utils import parseaddr
 
@@ -68,6 +69,15 @@ class ClienteBrevo(ClienteServicioExterno):
         for contenido, tipo in getattr(mensaje, "alternatives", []):
             if tipo == "text/html":
                 cuerpo["htmlContent"] = contenido
+        adjuntos = []
+        for adjunto in mensaje.attachments:
+            nombre, contenido = adjunto[0], adjunto[1]
+            if isinstance(contenido, str):
+                contenido = contenido.encode()
+            adjuntos.append({"name": nombre,
+                             "content": base64.b64encode(contenido).decode("ascii")})
+        if adjuntos:
+            cuerpo["attachment"] = adjuntos
 
         return self.solicitar(
             "POST", "/smtp/email",

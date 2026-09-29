@@ -47,6 +47,15 @@
         </div>
       </div>
 
+      <div class="form-check mb-3">
+        {{ form.acepta_privacidad }}
+        <label class="form-check-label" for="{{ form.acepta_privacidad.id_for_label }}">
+          He leido y acepto la <a href="{% url 'web:privacidad' %}" target="_blank">politica de
+          privacidad</a> y el tratamiento de mis datos personales.
+        </label>
+        {% if form.acepta_privacidad.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ form.acepta_privacidad.errors|striptags }}</div>{% endif %}
+      </div>
+
       <button type="submit" class="btn btn-principal">Crear cuenta</button>
       <a href="{% url 'web:login' %}" class="btn btn-plano">Ya tengo cuenta</a>
     </form>

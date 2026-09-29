@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titulo %}Contrasena actualizada — SITRAFO{% endblock %}
+{% block contenido %}
+<div class="row justify-content-center pt-4"><div class="col-md-6 col-lg-5">
+  <div class="seccion"><h1>Contrasena actualizada</h1></div>
+  <div class="aviso aviso--bien">Ya puede ingresar con su nueva contrasena.</div>
+  <a href="{% url 'web:login' %}" class="btn btn-principal mt-3">Ir al acceso</a>
+</div></div>
+{% endblock %}

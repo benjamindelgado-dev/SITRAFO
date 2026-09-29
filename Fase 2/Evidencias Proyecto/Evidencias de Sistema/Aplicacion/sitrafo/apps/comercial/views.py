@@ -46,6 +46,17 @@ class EstadoDocumentoViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = None
 
 
+def _anular(vista, funcion, request):
+    """Anulacion comun a los documentos comerciales (RF-COM-15)."""
+    documento = vista.get_object()
+    try:
+        funcion(documento, request.user, request.data.get("motivo", ""))
+    except services.ErrorComercial as error:
+        return Response({"detalle": str(error)}, status=status.HTTP_409_CONFLICT)
+    return Response(vista.get_serializer(vista.get_queryset().get(pk=documento.pk)).data)
+
+
+
 class SolicitudPresupuestoViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
     """Solicitudes de presupuesto (CU-COM-01, CU-COM-02)."""
 
@@ -59,6 +70,7 @@ class SolicitudPresupuestoViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet
     acciones_cliente = ("list", "retrieve", "create")
     permisos_accion = {
         "asignar": "solicitud.actualizar",
+        "anular": "solicitud.anular",
         "costeo": "cotizacion.crear",
         "cotizar": "cotizacion.crear",
         # La solicitud no se edita ni se borra: cambia de estado por el flujo
@@ -91,6 +103,11 @@ class SolicitudPresupuestoViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet
             observacion=f"Asignada a {request.user.username}.",
         )
         return Response(self.get_serializer(solicitud).data)
+
+    @action(detail=True, methods=["post"])
+    def anular(self, request, pk=None):
+        """Desestima la solicitud con motivo (RF-COM-15)."""
+        return _anular(self, services.anular_solicitud, request)
 
     @action(detail=True, methods=["get"])
     def costeo(self, request, pk=None):
@@ -158,14 +175,16 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
     serializer_class = CotizacionSerializer
     permission_classes = [CuentaOperativa, PermisoPorRol]
     modulo_permiso = "cotizacion"
-    acciones_cliente = ("list", "retrieve", "aceptar", "rechazar")
+    acciones_cliente = ("list", "retrieve", "aceptar", "rechazar", "pdf")
     permisos_accion = {
         "aceptar": "cotizacion.actualizar",
+        "pdf": "cotizacion.leer",
         "rechazar": "cotizacion.actualizar",
         "emitir": "cotizacion.actualizar",
         "solicitar_aprobacion": "cotizacion.actualizar",
         "enviar_correo": "cotizacion.actualizar",
         "devolver": "cotizacion.aprobar",
+        "anular": "cotizacion.anular",
         "generar_orden_compra": "orden_compra.crear",
         # La cotizacion nace desde una solicitud (accion cotizar) y cambia
         # solo por las acciones del flujo
@@ -344,6 +363,26 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
         return Response(self.get_serializer(cotizacion).data)
 
     @action(detail=True, methods=["post"])
+    def anular(self, request, pk=None):
+        """Anula la cotizacion con motivo (RF-COM-15)."""
+        return _anular(self, services.anular_cotizacion, request)
+
+    @action(detail=True, methods=["get"])
+    def pdf(self, request, pk=None):
+        """Cotizacion en PDF (RF-COM-09). El cliente solo obtiene las suyas."""
+        from django.http import HttpResponse
+
+        from .pdf import cotizacion_pdf
+
+        cotizacion = self.get_object()
+        if cotizacion.estado.codigo in ("borrador", "en_aprobacion") and \
+                not request.user.es_interno:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        respuesta = HttpResponse(cotizacion_pdf(cotizacion), content_type="application/pdf")
+        respuesta["Content-Disposition"] = f'attachment; filename="{cotizacion.numero}.pdf"'
+        return respuesta
+
+    @action(detail=True, methods=["post"])
     def devolver(self, request, pk=None):
         """El aprobador rechaza el descuento: la cotizacion vuelve a borrador."""
         cotizacion = self.get_object()
@@ -447,6 +486,7 @@ class OrdenCompraViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
         "confirmar": "orden_compra.actualizar",
         "generar_ordenes_trabajo": "orden_trabajo.crear",
         "registrar_entrega": "orden_compra.actualizar",
+        "anular": "orden_compra.anular",
         # La orden nace solo desde una cotizacion aceptada (RN-06)
         "create": None, "update": None, "partial_update": None, "destroy": None,
     }
@@ -496,6 +536,11 @@ class OrdenCompraViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
             return Response({"detalle": str(error)}, status=status.HTTP_409_CONFLICT)
         return Response(OrdenTrabajoSerializer(creadas, many=True).data,
                         status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def anular(self, request, pk=None):
+        """Anula la orden de compra con motivo (RF-COM-15)."""
+        return _anular(self, services.anular_orden_compra, request)
 
     @action(detail=True, methods=["post"])
     def registrar_entrega(self, request, pk=None):

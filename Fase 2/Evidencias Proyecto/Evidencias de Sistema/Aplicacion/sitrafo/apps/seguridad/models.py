@@ -159,6 +159,10 @@ class Usuario(AbstractBaseUser):
     ultimo_acceso = models.DateTimeField(
         null=True, blank=True, verbose_name="ultimo acceso exitoso"
     )
+    bloqueado_hasta = models.DateTimeField(
+        null=True, blank=True, verbose_name="bloqueado hasta",
+        help_text="Fin del bloqueo temporal por intentos fallidos (RF-SEG-04).",
+    )
     roles = models.ManyToManyField(
         Rol, through="UsuarioRol", related_name="usuarios", verbose_name="roles"
     )
@@ -225,14 +229,30 @@ class Usuario(AbstractBaseUser):
         self.ultimo_acceso = timezone.now()
         self.save(update_fields=["intentos_fallidos", "ultimo_acceso"])
 
-    def registrar_intento_fallido(self, maximo: int) -> None:
-        """Bloquea la cuenta al superar el maximo configurado (RF-SEG-04)."""
+    def registrar_intento_fallido(self, maximo: int, minutos_bloqueo: int = 15) -> None:
+        """
+        Bloquea temporalmente la cuenta al llegar al maximo de intentos
+        consecutivos (RF-SEG-04). El bloqueo se levanta solo al vencer el
+        plazo, o antes si el administrador reactiva la cuenta.
+        """
         self.intentos_fallidos += 1
         campos = ["intentos_fallidos"]
-        if self.intentos_fallidos >= maximo:
+        if self.intentos_fallidos >= maximo and self.estado == self.Estado.ACTIVO:
             self.estado = self.Estado.BLOQUEADO
-            campos.append("estado")
+            self.bloqueado_hasta = timezone.now() + timezone.timedelta(minutes=minutos_bloqueo)
+            campos += ["estado", "bloqueado_hasta"]
         self.save(update_fields=campos)
+
+    def levantar_bloqueo_vencido(self) -> bool:
+        """Reactiva la cuenta si su bloqueo temporal ya vencio."""
+        if (self.estado == self.Estado.BLOQUEADO and self.bloqueado_hasta
+                and timezone.now() >= self.bloqueado_hasta):
+            self.estado = self.Estado.ACTIVO
+            self.intentos_fallidos = 0
+            self.bloqueado_hasta = None
+            self.save(update_fields=["estado", "intentos_fallidos", "bloqueado_hasta"])
+            return True
+        return False
 
 
 class UsuarioRol(models.Model):

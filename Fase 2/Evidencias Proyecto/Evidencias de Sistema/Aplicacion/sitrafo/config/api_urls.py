@@ -7,6 +7,7 @@ aplicacion web consumen estos mismos endpoints (RNF-05).
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import (
+    TokenBlacklistView,
     TokenRefreshView,
     TokenVerifyView,
 )
@@ -43,6 +44,7 @@ from apps.inventario.views import (
     ProveedorViewSet,
 )
 from apps.produccion.views import EmpleadoViewSet, OrdenTrabajoViewSet, TareaViewSet
+from apps.reportes.views import ReporteView
 from apps.seguridad.views import (
     AuditoriaViewSet,
     IngresoConControl,
@@ -100,6 +102,9 @@ urlpatterns = [
     path("auth/token/", IngresoConControl.as_view(), name="token_obtain_pair"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("auth/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
+    # Cierre de sesion: revoca el token de renovacion (RNF-04)
+    path("auth/salir/", TokenBlacklistView.as_view(), name="token_blacklist"),
     path("auth/yo/", yo, name="yo"),
+    path("reportes/<str:tipo>/", ReporteView.as_view(), name="reporte"),
     path("", include(router.urls)),
 ]

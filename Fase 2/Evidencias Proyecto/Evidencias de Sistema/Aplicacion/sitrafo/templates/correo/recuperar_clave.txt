@@ -1,0 +1,9 @@
+{% autoescape off %}Recibimos una solicitud para cambiar la contrasena de la cuenta {{ usuario.username }}.
+
+El enlace sirve una sola vez y vence en una hora. Si usted no lo pidio, ignore este correo.
+
+Crear nueva contrasena: {{ enlace }}
+
+--
+Mensaje automatico de SITRAFO. No responda a este correo.
+{% endautoescape %}

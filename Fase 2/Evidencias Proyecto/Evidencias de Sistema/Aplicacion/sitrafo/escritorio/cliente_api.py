@@ -70,6 +70,14 @@ class ClienteAPI:
         return self.identidad.get("roles", [])
 
     def cerrar_sesion(self) -> None:
+        """Revoca el token de renovacion en el servidor (RNF-04) y lo descarta."""
+        if self.refresh:
+            try:
+                self.sesion.post(f"{self.url_base}/auth/salir/", json={"refresh": self.refresh},
+                                 timeout=5)
+            except requests.exceptions.RequestException:
+                pass   # sin conexion: el token vence solo
+        self.sesion.headers.pop("Authorization", None)
         self.token = None
         self.refresh = None
         self.usuario = None
@@ -92,6 +100,18 @@ class ClienteAPI:
         return True
 
     # -- Verbos -------------------------------------------------------------
+    def descargar(self, ruta: str, params: dict | None = None) -> bytes:
+        """GET que devuelve un archivo (PDF o Excel) en vez de JSON."""
+        url = f"{self.url_base}/{ruta.lstrip('/')}"
+        try:
+            respuesta = self.sesion.get(url, params=params, timeout=60)
+            if respuesta.status_code == 401 and self.renovar_token():
+                respuesta = self.sesion.get(url, params=params, timeout=60)
+        except requests.exceptions.RequestException as exc:
+            raise ErrorAPI("No se pudo descargar el archivo desde el servidor.") from exc
+        self._verificar(respuesta)
+        return respuesta.content
+
     def obtener(self, ruta: str, params: dict | None = None):
         # Los listados del escritorio muestran todo en una tabla: se pide el
         # maximo por pagina para no perder filas cuando hay mas de 25
@@ -184,6 +204,44 @@ class ClienteAPI:
 
     def clientes(self, params=None):
         return self.obtener("clientes/", params)
+
+    def crear_cliente(self, datos: dict):
+        return self.crear("clientes/", datos)
+
+    def actualizar_cliente(self, id_cliente: int, datos: dict):
+        return self.actualizar(f"clientes/{id_cliente}/", datos)
+
+    def documentos_cliente(self, id_cliente: int):
+        return self.obtener(f"clientes/{id_cliente}/documentos/")
+
+    def cuentas_cliente(self, id_cliente: int):
+        return self.obtener(f"clientes/{id_cliente}/cuentas/")
+
+    def estado_cuenta_cliente(self, id_cliente: int, id_cuenta: int, suspender: bool):
+        accion = "suspender_cuenta" if suspender else "reactivar_cuenta"
+        return self.accion(f"clientes/{id_cliente}/{accion}/", {"cuenta": id_cuenta})
+
+    def crear_contacto(self, datos: dict):
+        return self.crear("contactos/", datos)
+
+    def crear_direccion(self, datos: dict):
+        return self.crear("direcciones/", datos)
+
+    def comunas(self):
+        return self.obtener("comunas/")
+
+    def anular(self, recurso: str, id_documento: int, motivo: str):
+        """recurso: solicitudes, cotizaciones u ordenes-compra (RF-COM-15)."""
+        return self.accion(f"{recurso}/{id_documento}/anular/", {"motivo": motivo})
+
+    def cotizacion_pdf(self, id_cotizacion: int) -> bytes:
+        return self.descargar(f"cotizaciones/{id_cotizacion}/pdf/")
+
+    def reporte(self, tipo: str, desde: str, hasta: str, formato: str = "json"):
+        params = {"desde": desde, "hasta": hasta, "formato": formato}
+        if formato == "json":
+            return self.obtener(f"reportes/{tipo}/", params)
+        return self.descargar(f"reportes/{tipo}/", params)
 
     def solicitudes(self, params=None):
         return self.obtener("solicitudes/", params)
