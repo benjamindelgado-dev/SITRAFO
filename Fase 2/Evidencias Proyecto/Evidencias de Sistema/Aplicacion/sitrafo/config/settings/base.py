@@ -94,16 +94,25 @@ TEMPLATES = [
 # --------------------------------------------------------------------------
 # Base de datos
 # --------------------------------------------------------------------------
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("POSTGRES_DB", default="sitrafo"),
-        "USER": env("POSTGRES_USER", default="sitrafo"),
-        "PASSWORD": env("POSTGRES_PASSWORD", default="sitrafo"),
-        "HOST": env("POSTGRES_HOST", default="db"),
-        "PORT": env.int("POSTGRES_PORT", default=5432),
+# En Render (y cualquier proveedor que la entregue) se usa DATABASE_URL.
+# Si no existe, se arma con las variables sueltas del entorno local con Docker.
+if env("DATABASE_URL", default=""):
+    DATABASES = {"default": env.db("DATABASE_URL")}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": env("POSTGRES_DB", default="sitrafo"),
+            "USER": env("POSTGRES_USER", default="sitrafo"),
+            "PASSWORD": env("POSTGRES_PASSWORD", default="sitrafo"),
+            "HOST": env("POSTGRES_HOST", default="db"),
+            "PORT": env.int("POSTGRES_PORT", default=5432),
+        }
     }
-}
+
+# Reutiliza conexiones entre peticiones y verifica que sigan vivas antes de usarlas
+DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
