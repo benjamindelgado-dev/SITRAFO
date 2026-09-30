@@ -31,7 +31,9 @@ from .models import (
     CotizacionHistorial,
     CotizacionLinea,
     EstadoDocumento,
+    OrdenCompra,
     OrdenCompraHistorial,
+    OrdenCompraLinea,
     SolicitudHistorial,
 )
 
@@ -324,6 +326,119 @@ def anular_orden_compra(orden, usuario, motivo: str):
     )
     _auditar_anulacion(usuario, "orden_compra", orden, anterior.codigo, motivo)
     return orden
+
+
+# ----------------------------------------------------------------------
+# Orden de compra automatica (RN-06, RN-07, RN-15)
+# ----------------------------------------------------------------------
+@transaction.atomic
+def generar_orden_compra(cotizacion, usuario, observacion: str = "") -> OrdenCompra:
+    """
+    Genera la orden de compra desde una cotizacion aceptada (RN-06).
+
+    Es el unico camino para crear una orden de compra. Se ejecuta sola al
+    aceptarse la cotizacion; el boton del escritorio queda como respaldo para
+    cotizaciones aceptadas antes de este cambio. El anticipo nace con la
+    orden (RN-15); si no hay UF para congelarlo, la orden igual se crea y el
+    anticipo se emite despues con emitir_cobros (RF-INT-03).
+    """
+    from apps.pagos.services.cobros import ErrorCobro, emitir_anticipo
+
+    if cotizacion.estado.codigo != "aceptada":
+        raise ErrorComercial("Solo una cotizacion aceptada origina una orden de compra.")
+    if cotizacion.ordenes_compra.exists():
+        raise ErrorComercial("Esta cotizacion ya tiene una orden de compra.")
+
+    estado_oc = _estado("orden_compra", "pendiente")
+    orden = OrdenCompra.objects.create(
+        numero=OrdenCompra.generar_numero(),
+        cotizacion=cotizacion,
+        cliente=cotizacion.cliente,
+        estado=estado_oc,
+        total_uf=cotizacion.total_uf,
+    )
+    for linea in cotizacion.lineas.all():
+        OrdenCompraLinea.objects.create(
+            orden_compra=orden,
+            cotizacion_linea=linea,
+            cantidad=linea.cantidad,
+            precio_uf=linea.precio_uf,
+        )
+    OrdenCompraHistorial.objects.create(
+        orden_compra=orden,
+        estado_nuevo=estado_oc,
+        usuario=usuario,
+        observacion=observacion or f"Generada desde la cotizacion {cotizacion.numero}.",
+    )
+    try:
+        emitir_anticipo(orden)
+    except ErrorCobro:
+        pass
+    return orden
+
+
+@transaction.atomic
+def aceptar_cotizacion(cotizacion, usuario, observacion: str = "Aceptada por el cliente."):
+    """
+    Registra la aceptacion (CU-COM-08) y genera la orden de compra con su
+    anticipo en el mismo paso. Quien llama ya verifico estado y vigencia.
+    """
+    anterior = cotizacion.estado
+    cotizacion.estado = _estado("cotizacion", "aceptada")
+    cotizacion.save(update_fields=["estado"])
+    CotizacionHistorial.objects.create(
+        cotizacion=cotizacion, estado_anterior=anterior, estado_nuevo=cotizacion.estado,
+        usuario=usuario, observacion=observacion,
+    )
+    return generar_orden_compra(
+        cotizacion, usuario,
+        f"Generada automaticamente al aceptar la cotizacion {cotizacion.numero}.",
+    )
+
+
+def anticipo_pagado(orden) -> bool:
+    from apps.pagos.models import DocumentoCobro
+
+    return orden.documentos_cobro.filter(
+        tipo=DocumentoCobro.Tipo.ANTICIPO, estado=DocumentoCobro.Estado.PAGADO
+    ).exists()
+
+
+@transaction.atomic
+def confirmar_orden_compra(orden, usuario, observacion: str = "Orden confirmada."):
+    """
+    Confirma la orden, habilitando la generacion de las OT (RN-07). Exige el
+    anticipo pagado: normalmente ocurre sola al pagarse; la confirmacion
+    manual queda como respaldo con la misma exigencia.
+    """
+    from apps.configuracion.services import notificaciones
+
+    if orden.estado.codigo != "pendiente":
+        raise ErrorComercial("Solo una orden pendiente puede confirmarse.")
+    if not anticipo_pagado(orden):
+        raise ErrorComercial("La orden se confirma con el anticipo pagado.")
+    anterior = orden.estado
+    orden.estado = _estado("orden_compra", "confirmada")
+    orden.save(update_fields=["estado"])
+    OrdenCompraHistorial.objects.create(
+        orden_compra=orden, estado_anterior=anterior, estado_nuevo=orden.estado,
+        usuario=usuario, observacion=observacion,
+    )
+    transaction.on_commit(lambda: notificaciones.notificar_estado_pedido(
+        orden, "Pedido confirmado",
+        "Confirmamos su orden de compra. Le avisaremos cuando comience la fabricacion."))
+    return orden
+
+
+def confirmar_si_anticipo(documento, usuario):
+    """Tras pagarse un documento: si es el anticipo, confirma la orden pendiente."""
+    from apps.pagos.models import DocumentoCobro
+
+    orden = documento.orden_compra
+    if documento.tipo != DocumentoCobro.Tipo.ANTICIPO or orden.estado.codigo != "pendiente":
+        return None
+    return confirmar_orden_compra(
+        orden, usuario, "Confirmada automaticamente al pagarse el anticipo.")
 
 
 # ----------------------------------------------------------------------

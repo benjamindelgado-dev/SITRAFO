@@ -18,8 +18,8 @@ def _hasta_orden(flujo):  # noqa: F811
     cotizacion = _cotizar(flujo)
     base = f"/api/v1/cotizaciones/{cotizacion['id_cotizacion']}"
     flujo["interno"].post(f"{base}/emitir/")
-    flujo["externo"].post(f"{base}/aceptar/")
-    return cotizacion, flujo["interno"].post(f"{base}/generar_orden_compra/").data
+    flujo["externo"].post(f"{base}/aceptar/")   # genera la orden de compra (RN-06)
+    return cotizacion, {"id_orden_compra": OrdenCompra.objects.get().pk}
 
 
 def test_anular_exige_motivo_y_queda_auditado(flujo):  # noqa: F811

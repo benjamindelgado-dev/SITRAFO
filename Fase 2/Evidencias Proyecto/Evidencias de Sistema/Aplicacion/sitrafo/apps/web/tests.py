@@ -67,6 +67,9 @@ def escenario(db, django_user_model, client):
     EstadoDocumento.objects.create(
         tipo_documento="cotizacion", codigo="vencida", nombre="Vencida", es_final=True
     )
+    EstadoDocumento.objects.create(
+        tipo_documento="orden_compra", codigo="pendiente", nombre="Pendiente"
+    )
 
     client.force_login(usuario)
     return {
@@ -250,6 +253,10 @@ def test_aceptar_cotizacion_vigente(escenario):
 
     assert cotizacion.estado.codigo == "aceptada"
     assert cotizacion.historial.count() == 1
+    # RN-06: la orden de compra nace sola con la aceptacion
+    orden = cotizacion.ordenes_compra.get()
+    assert orden.estado.codigo == "pendiente"
+    assert "automaticamente" in orden.historial.get().observacion
 
 
 @pytest.mark.django_db

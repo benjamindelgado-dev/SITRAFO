@@ -16,7 +16,6 @@ from apps.common.permissions import (
 from apps.configuracion.models import ParametroSistema
 from apps.configuracion.services import notificaciones
 from apps.configuracion.services.indicadores import valor_uf
-from apps.pagos.services.cobros import ErrorCobro, emitir_anticipo
 
 from . import services
 from .models import (
@@ -25,7 +24,6 @@ from .models import (
     EstadoDocumento,
     OrdenCompra,
     OrdenCompraHistorial,
-    OrdenCompraLinea,
     SolicitudPresupuesto,
 )
 from .serializers import (
@@ -250,9 +248,8 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        self._cambiar_estado(
-            cotizacion, "aceptada", request.user, "Aceptada por el cliente."
-        )
+        # La orden de compra y su anticipo nacen con la aceptacion (RN-06)
+        services.aceptar_cotizacion(cotizacion, request.user)
         return Response(self.get_serializer(cotizacion).data)
 
     @action(detail=True, methods=["post"])
@@ -453,54 +450,14 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
         """
         Genera la orden de compra desde una cotizacion aceptada (RN-06).
 
-        Es el unico camino para crear una orden de compra.
+        Normalmente nace sola al aceptarse la cotizacion; esta accion queda
+        como respaldo para cotizaciones aceptadas sin orden.
         """
         cotizacion = self.get_object()
-
-        if cotizacion.estado.codigo != "aceptada":
-            return Response(
-                {"detalle": "Solo una cotizacion aceptada origina una orden de compra."},
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        if cotizacion.ordenes_compra.exists():
-            return Response(
-                {"detalle": "Esta cotizacion ya tiene una orden de compra."},
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        estado_oc = EstadoDocumento.objects.get(
-            tipo_documento="orden_compra", codigo="pendiente"
-        )
-        orden = OrdenCompra.objects.create(
-            numero=OrdenCompra.generar_numero(),
-            cotizacion=cotizacion,
-            cliente=cotizacion.cliente,
-            estado=estado_oc,
-            total_uf=cotizacion.total_uf,
-        )
-        for linea in cotizacion.lineas.all():
-            OrdenCompraLinea.objects.create(
-                orden_compra=orden,
-                cotizacion_linea=linea,
-                cantidad=linea.cantidad,
-                precio_uf=linea.precio_uf,
-            )
-        OrdenCompraHistorial.objects.create(
-            orden_compra=orden,
-            estado_nuevo=estado_oc,
-            usuario=request.user,
-            observacion=f"Generada desde la cotizacion {cotizacion.numero}.",
-        )
-
-        # RN-15: el anticipo nace con la orden. Si no hay UF disponible para
-        # congelarlo, la orden igual se crea y el anticipo se emite despues
-        # con el comando emitir_cobros (degradacion controlada, RF-INT-03).
         try:
-            emitir_anticipo(orden)
-        except ErrorCobro:
-            pass
-
+            orden = services.generar_orden_compra(cotizacion, request.user)
+        except services.ErrorComercial as error:
+            return Response({"detalle": str(error)}, status=status.HTTP_409_CONFLICT)
         return Response(
             OrdenCompraSerializer(orden).data, status=status.HTTP_201_CREATED
         )
@@ -531,28 +488,12 @@ class OrdenCompraViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def confirmar(self, request, pk=None):
-        """Confirma la orden, habilitando la generacion de la OT (RN-07)."""
+        """Confirmacion manual de respaldo: exige el anticipo pagado (RN-07)."""
         orden = self.get_object()
-        if orden.estado.codigo != "pendiente":
-            return Response(
-                {"detalle": "Solo una orden pendiente puede confirmarse."},
-                status=status.HTTP_409_CONFLICT,
-            )
-        anterior = orden.estado
-        orden.estado = EstadoDocumento.objects.get(
-            tipo_documento="orden_compra", codigo="confirmada"
-        )
-        orden.save(update_fields=["estado"])
-        OrdenCompraHistorial.objects.create(
-            orden_compra=orden,
-            estado_anterior=anterior,
-            estado_nuevo=orden.estado,
-            usuario=request.user,
-            observacion="Orden confirmada.",
-        )
-        transaction.on_commit(lambda: notificaciones.notificar_estado_pedido(
-            orden, "Pedido confirmado",
-            "Confirmamos su orden de compra. Le avisaremos cuando comience la fabricacion."))
+        try:
+            services.confirmar_orden_compra(orden, request.user)
+        except services.ErrorComercial as error:
+            return Response({"detalle": str(error)}, status=status.HTTP_409_CONFLICT)
         return Response(self.get_serializer(orden).data)
 
     @action(detail=True, methods=["post"])

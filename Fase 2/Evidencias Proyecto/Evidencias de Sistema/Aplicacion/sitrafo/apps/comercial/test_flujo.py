@@ -19,7 +19,12 @@ from apps.catalogo.models import (
     TareaEstandarModelo,
 )
 from apps.clientes.models import Cliente
-from apps.comercial.models import Cotizacion, EstadoDocumento, SolicitudPresupuesto
+from apps.comercial.models import (
+    Cotizacion,
+    EstadoDocumento,
+    OrdenCompra,
+    SolicitudPresupuesto,
+)
 from apps.inventario.models import CategoriaMaterial, Material, PrecioMaterial
 from apps.pagos.models import DocumentoCobro, IndicadorEconomico
 from apps.produccion.models import Empleado, TarifaHoraHombre
@@ -194,13 +199,34 @@ def test_cadena_completa_hasta_el_anticipo(flujo):
     base = f"/api/v1/cotizaciones/{cotizacion['id_cotizacion']}"
 
     flujo["interno"].post(f"{base}/emitir/")
+    # Aceptar genera la orden de compra y su anticipo en el mismo paso (RN-06)
     assert flujo["externo"].post(f"{base}/aceptar/").status_code == 200
-    respuesta = flujo["interno"].post(f"{base}/generar_orden_compra/")
-
-    assert respuesta.status_code == 201
+    orden = OrdenCompra.objects.get()
+    assert orden.estado.codigo == "pendiente"
     documento = DocumentoCobro.objects.get()
-    assert documento.orden_compra.numero == respuesta.data["numero"]
+    assert documento.orden_compra == orden
     assert documento.monto_uf == Decimal("180.0000")   # 50 % de 360
+    # El boton manual queda de respaldo: no duplica la orden
+    assert flujo["interno"].post(f"{base}/generar_orden_compra/").status_code == 409
     historial = Cotizacion.objects.get().historial.values_list("estado_nuevo__codigo",
                                                                  flat=True)
     assert set(historial) == {"borrador", "emitida", "aceptada"}
+
+
+def test_confirmacion_manual_exige_anticipo_pagado(flujo):
+    """RN-07: la orden no se confirma sin el anticipo pagado."""
+    cotizacion = _cotizar(flujo)
+    base = f"/api/v1/cotizaciones/{cotizacion['id_cotizacion']}"
+    flujo["interno"].post(f"{base}/emitir/")
+    flujo["externo"].post(f"{base}/aceptar/")
+    orden = OrdenCompra.objects.get()
+    url = f"/api/v1/ordenes-compra/{orden.pk}/confirmar/"
+
+    respuesta = flujo["interno"].post(url)
+    assert respuesta.status_code == 409
+    assert "anticipo" in respuesta.data["detalle"]
+
+    DocumentoCobro.objects.update(estado=DocumentoCobro.Estado.PAGADO)
+    assert flujo["interno"].post(url).status_code == 200
+    orden.refresh_from_db()
+    assert orden.estado.codigo == "confirmada"

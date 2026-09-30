@@ -314,6 +314,7 @@ def confirmar_pago(transaccion: TransaccionPago, usuario,
     )
     # El comprobante sale solo cuando el pago ya quedo guardado
     transaction.on_commit(lambda: notificaciones.notificar_pago_confirmado(transaccion))
+    _confirmar_orden(documento, usuario)
     return ResultadoPago(True, f"Pago de {documento.numero} registrado.",
                          transaccion=transaccion)
 
@@ -356,7 +357,29 @@ def conciliar_pendiente(transaccion: TransaccionPago,
     transaccion.save()
 
     if transaccion.conciliar():
+        _confirmar_orden(transaccion.documento_cobro, None)
         return "conciliada: documento pagado"
     transaccion.estado = TransaccionPago.Estado.PENDIENTE_CONCILIACION
     transaccion.save(update_fields=["estado"])
     return "cobrada, pero el monto no coincide: requiere revision manual"
+
+
+def _confirmar_orden(documento, usuario):
+    """
+    Pagado el anticipo, la orden de compra se confirma sola (RN-07). En la
+    conciliacion diferida no hay usuario en linea: se registra al usuario del
+    sistema (el primer superusuario), como en tareas_diarias.
+    """
+    from django.contrib.auth import get_user_model
+
+    from apps.comercial import services as comercial
+
+    if usuario is None:
+        usuario = get_user_model().objects.filter(is_superuser=True).order_by("pk").first()
+        if usuario is None:
+            return
+
+    try:
+        comercial.confirmar_si_anticipo(documento, usuario)
+    except comercial.ErrorComercial:
+        pass   # la orden ya no esta pendiente (por ejemplo, anulada)

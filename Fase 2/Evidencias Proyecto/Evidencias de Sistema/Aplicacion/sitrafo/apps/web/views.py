@@ -24,6 +24,7 @@ from django.views.decorators.http import require_POST
 from django.views.generic import FormView
 
 from apps.catalogo.models import ModeloProducto
+from apps.comercial import services as comercial_services
 from apps.comercial.models import (
     Cotizacion,
     CotizacionHistorial,
@@ -372,13 +373,11 @@ def aceptar_cotizacion(request, pk):
         )
         return redirect("web:detalle_cotizacion", pk=pk)
 
-    _cambiar_estado_cotizacion(
-        cotizacion, "aceptada", request.user, "Aceptada por el cliente."
-    )
+    orden = comercial_services.aceptar_cotizacion(cotizacion, request.user)
     messages.success(
         request,
-        f"Cotizacion {cotizacion.numero} aceptada. El area comercial emitira "
-        "la orden de compra.",
+        f"Cotizacion {cotizacion.numero} aceptada. Se genero la orden de compra "
+        f"{orden.numero}: puede pagar el anticipo en Pedidos.",
     )
     return redirect("web:detalle_cotizacion", pk=pk)
 

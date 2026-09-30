@@ -83,8 +83,7 @@ def test_cotizacion_con_varias_lineas_llega_a_la_orden(flujo):  # noqa: F811
     assert respuesta.status_code == 200, respuesta.data
     assert Decimal(respuesta.data["total_uf"]) == Decimal("660")   # 2 x 180 + 300
     flujo["interno"].post(f"{base}/emitir/")
-    flujo["externo"].post(f"{base}/aceptar/")
-    flujo["interno"].post(f"{base}/generar_orden_compra/")
+    flujo["externo"].post(f"{base}/aceptar/")   # genera la orden de compra (RN-06)
     assert OrdenCompraLinea.objects.count() == 2
 
 

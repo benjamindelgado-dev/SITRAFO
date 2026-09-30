@@ -377,3 +377,17 @@ def test_pago_rechazado_no_envia_comprobante(escenario, documento,
     with django_capture_on_commit_callbacks(execute=True):
         _iniciar_y_volver(escenario, documento, PayPalFalso(captura_codigo=422))
     assert mail.outbox == []
+
+
+def test_pagar_el_anticipo_confirma_la_orden(escenario, documento):
+    """RN-07: pagado el anticipo, la orden pendiente se confirma sola."""
+    orden = escenario["orden"]
+    orden.estado = EstadoDocumento.objects.create(
+        tipo_documento="orden_compra", codigo="pendiente", nombre="Pendiente")
+    orden.save(update_fields=["estado"])
+
+    _iniciar_y_volver(escenario, documento, PayPalFalso())
+
+    orden.refresh_from_db()
+    assert orden.estado.codigo == "confirmada"
+    assert "anticipo" in orden.historial.get().observacion
