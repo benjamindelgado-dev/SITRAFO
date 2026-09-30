@@ -367,8 +367,13 @@ Administracion de cuentas (`apps/seguridad/services.py`):
   que el Administrador la reactive (RF-SEG-04). Se registra el ultimo acceso.
 
 `cargar_roles --usuarios-demo` crea `administrador`, `comercial`,
-`comercial2`, `produccion`, `operario`, `calidad` y `bodega`, todos con clave
-`Clave123456`. El escritorio muestra a cada uno solo sus paneles y acciones.
+`comercial2`, `produccion`, `operario`, `calidad` y `bodega`, y `cargar_demo`
+crea el ejecutivo `ejecutivo` y la cuenta del cliente `maipo`. Ambos comandos
+muestran al terminar la clave de demostracion de las cuentas que crean. Esas
+claves son solo para una instalacion local: el despliegue publico usa claves
+distintas que no se publican. Los comandos asignan la clave solo al crear la
+cuenta, por lo que volver a ejecutarlos no la restablece. El escritorio
+muestra a cada uno solo sus paneles y acciones.
 
 ## Diseno de la aplicacion web
 
