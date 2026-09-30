@@ -1,0 +1,83 @@
+# Construye la aplicacion de escritorio de SITRAFO como SITRAFO.exe (Windows).
+#
+# - En cada cambio de la carpeta escritorio: el .exe queda como artefacto de
+#   la ejecucion (pestana Actions > la ejecucion > Artifacts).
+# - Al publicar una etiqueta escritorio-vX.Y: ademas se crea una Release con
+#   el .exe descargable por cualquier persona desde la pagina del repositorio.
+#
+# El ejecutable no necesita Python instalado: incluye todo lo necesario y se
+# conecta por defecto a https://sitrafo.onrender.com (se puede cambiar desde
+# la ventana de acceso).
+
+name: Escritorio SITRAFO.exe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Fase 2/Evidencias Proyecto/Evidencias de Sistema/Aplicacion/sitrafo/escritorio/**"
+      - ".github/workflows/escritorio.yml"
+    tags: ["escritorio-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  ESCRITORIO: "Fase 2/Evidencias Proyecto/Evidencias de Sistema/Aplicacion/sitrafo/escritorio"
+
+jobs:
+  construir:
+    name: Construir SITRAFO.exe
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ${{ env.ESCRITORIO }}
+        shell: pwsh
+
+    steps:
+      - name: Obtener el codigo
+        uses: actions/checkout@v6
+
+      - name: Preparar Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ${{ env.ESCRITORIO }}/requirements.txt
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt "pyinstaller>=6.11"
+
+      - name: Construir el ejecutable
+        run: >
+          pyinstaller --noconfirm --clean --onefile --windowed
+          --name SITRAFO --icon sitrafo.ico --add-data "sitrafo.ico;." main.py
+
+      - name: Verificar el resultado
+        run: |
+          $exe = Get-Item dist/SITRAFO.exe
+          "SITRAFO.exe: {0:N1} MB" -f ($exe.Length / 1MB)
+          "## SITRAFO.exe construido ({0:N1} MB)" -f ($exe.Length / 1MB) >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Guardar como artefacto
+        uses: actions/upload-artifact@v6
+        with:
+          name: SITRAFO-windows
+          path: ${{ env.ESCRITORIO }}/dist/SITRAFO.exe
+          retention-days: 30
+
+      - name: Publicar en Releases (solo con etiqueta escritorio-v*)
+        if: startsWith(github.ref, 'refs/tags/escritorio-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: SITRAFO escritorio ${{ github.ref_name }}
+          files: ${{ env.ESCRITORIO }}/dist/SITRAFO.exe
+          body: |
+            Aplicacion de escritorio de SITRAFO para Windows.
+            1. Descargue SITRAFO.exe y ejecutelo (no requiere instalacion).
+            2. Si Windows muestra "Windows protegio su PC": Mas informacion > Ejecutar de todas formas.
+            3. Ingrese con su usuario. Se conecta a https://sitrafo.onrender.com.

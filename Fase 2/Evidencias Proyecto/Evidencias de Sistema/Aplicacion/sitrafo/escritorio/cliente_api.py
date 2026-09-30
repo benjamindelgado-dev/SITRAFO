@@ -31,12 +31,26 @@ class ClienteAPI:
         self.identidad: dict = {}
 
     # -- Autenticacion ------------------------------------------------------
+    def cambiar_servidor(self, url_base: str) -> None:
+        self.cerrar_sesion()
+        self.url_base = url_base.rstrip("/")
+
     def autenticar(self, username: str, password: str) -> None:
-        respuesta = self.sesion.post(
-            f"{self.url_base}/auth/token/",
-            json={"username": username, "password": password},
-            timeout=10,
-        )
+        try:
+            respuesta = self.sesion.post(
+                f"{self.url_base}/auth/token/",
+                json={"username": username, "password": password},
+                timeout=30,
+            )
+        except (requests.exceptions.InvalidURL, requests.exceptions.MissingSchema,
+                requests.exceptions.InvalidSchema):
+            raise ErrorAPI("La direccion del servidor no es valida. Revisela con "
+                           "\"Cambiar servidor\".") from None
+        except requests.exceptions.Timeout:
+            raise ErrorAPI("El servidor tardo demasiado en responder. Intente de nuevo.") from None
+        except requests.exceptions.RequestException:
+            raise ErrorAPI("No se pudo conectar con el servidor. Revise su conexion a internet "
+                           "y la direccion del servidor.") from None
         if respuesta.status_code == 401:
             raise ErrorAPI("Usuario o contrasena incorrectos.", 401)
         self._verificar(respuesta)

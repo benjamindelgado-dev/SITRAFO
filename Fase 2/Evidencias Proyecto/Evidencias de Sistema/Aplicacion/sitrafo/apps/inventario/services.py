@@ -137,7 +137,7 @@ def kardex(material: Material, bodega=None, limite: int = 200, desde=None, hasta
     saldo, filas = Decimal("0"), []
     for m in movimientos:
         saldo += m.cantidad
-        fecha = m.fecha_hora.date()
+        fecha = timezone.localtime(m.fecha_hora).date()   # dia en hora de Chile
         if (desde and fecha < desde) or (hasta and fecha > hasta):
             continue
         referencia = m.observacion

@@ -1,9 +1,11 @@
 """Ventana de acceso a la aplicacion de escritorio."""
+import configuracion_local
 from cliente_api import ClienteAPI, ErrorAPI
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QFormLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -19,7 +21,7 @@ class VentanaLogin(QDialog):
         super().__init__()
         self.cliente = cliente
         self.setWindowTitle("SITRAFO — Acceso")
-        self.setFixedSize(420, 340)
+        self.setFixedSize(420, 370)
         self._construir()
 
     def _construir(self):
@@ -61,14 +63,44 @@ class VentanaLogin(QDialog):
         contenedor.addWidget(self.mensaje)
         contenedor.addStretch()
 
-        pie = QLabel(f"Servidor: {self.cliente.url_base}")
-        pie.setObjectName("subtitulo")
-        pie.setAlignment(Qt.AlignCenter)
-        pie.setStyleSheet("color: #9aa5b1; font-size: 11px;")
-        contenedor.addWidget(pie)
+        self.pie = QLabel("")
+        self.pie.setObjectName("subtitulo")
+        self.pie.setAlignment(Qt.AlignCenter)
+        self.pie.setWordWrap(True)
+        self.pie.setStyleSheet("color: #9aa5b1; font-size: 11px;")
+        contenedor.addWidget(self.pie)
+        cambiar = QPushButton("Cambiar servidor")
+        cambiar.setObjectName("secundario")
+        cambiar.clicked.connect(self.cambiar_servidor)
+        contenedor.addWidget(cambiar, alignment=Qt.AlignCenter)
+        self._mostrar_servidor()
 
         self.clave.returnPressed.connect(self.ingresar)
-        self.usuario.setFocus()
+        ultimo = configuracion_local.leer().get("usuario")
+        if ultimo:
+            self.usuario.setText(ultimo)
+            self.clave.setFocus()
+        else:
+            self.usuario.setFocus()
+
+    def _mostrar_servidor(self):
+        self.pie.setText(f"Servidor: {self.cliente.url_base}")
+
+    def cambiar_servidor(self):
+        texto, ok = QInputDialog.getText(
+            self, "Servidor de SITRAFO",
+            "Direccion del sistema (por ejemplo sitrafo.onrender.com o localhost:8000):",
+            text=self.cliente.url_base.removesuffix("/api/v1"))
+        if not ok:
+            return
+        servidor = configuracion_local.normalizar_servidor(texto)
+        if servidor is None:
+            QMessageBox.warning(self, "Direccion no valida",
+                                "Escriba solo la direccion, sin espacios ni simbolos < >.")
+            return
+        self.cliente.cambiar_servidor(servidor)
+        configuracion_local.guardar(servidor=servidor)
+        self._mostrar_servidor()
 
     def _rechazar(self, motivo: str):
         self.cliente.cerrar_sesion()
@@ -114,4 +146,6 @@ class VentanaLogin(QDialog):
                 "que le asigne uno."
             )
 
+        # Se recuerdan el servidor y el usuario (nunca la contrasena)
+        configuracion_local.guardar(servidor=self.cliente.url_base, usuario=usuario)
         self.accept()

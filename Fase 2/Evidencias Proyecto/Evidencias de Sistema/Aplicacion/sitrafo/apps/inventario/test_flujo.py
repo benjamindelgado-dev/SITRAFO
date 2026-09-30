@@ -159,6 +159,8 @@ def test_costo_promedio_y_kardex_por_fechas(bodega):
     assert Decimal(material["costo_promedio_uf"]) == Decimal("0.4")
     assert Decimal(material["valor_inventario_uf"]) == Decimal("80")
 
-    manana = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
+    from django.utils import timezone
+
+    manana = (timezone.localdate() + datetime.timedelta(days=1)).isoformat()
     vacio = bodega["bodeguero"].get(_url(bodega, "kardex") + f"?desde={manana}").data
     assert vacio["movimientos"] == [] and Decimal(vacio["saldo"]) == Decimal("200")

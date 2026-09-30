@@ -29,3 +29,8 @@ htmlcov/
 
 # Resultados de pruebas generados por la CI
 reporte-pruebas.xml
+
+
+escritorio/build/
+escritorio/dist/
+escritorio/*.spec
