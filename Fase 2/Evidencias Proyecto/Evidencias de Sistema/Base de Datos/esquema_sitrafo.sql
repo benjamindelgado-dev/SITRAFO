@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict dyMr32pviLtfmY09tbyfxZgPTSFfPfsNsH5vMxQjmH27122xdc8e4v1WccZaPQi
+\restrict n7bhNDdvGFA27HLvp5L7tXA38nEcFstJbxY4NX5iCV39bDGdJxhCwAhsJekljSR
 
 -- Dumped from database version 16.15
 -- Dumped by pg_dump version 16.15
@@ -1592,6 +1592,7 @@ CREATE TABLE public.tarea_estandar_modelo (
     secuencia smallint NOT NULL,
     horas_estimadas numeric(8,2) NOT NULL,
     id_modelo integer NOT NULL,
+    id_empleado_sugerido integer,
     CONSTRAINT ck_tarea_horas_positivas CHECK ((horas_estimadas > (0)::numeric)),
     CONSTRAINT tarea_estandar_modelo_secuencia_check CHECK ((secuencia >= 0))
 );
@@ -3483,6 +3484,13 @@ CREATE INDEX solicitud_presupuesto_numero_e6823380_like ON public.solicitud_pres
 
 
 --
+-- Name: tarea_estandar_modelo_id_empleado_sugerido_90a81bd6; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX tarea_estandar_modelo_id_empleado_sugerido_90a81bd6 ON public.tarea_estandar_modelo USING btree (id_empleado_sugerido);
+
+
+--
 -- Name: tarea_estandar_modelo_id_modelo_8e5276db; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4254,6 +4262,14 @@ ALTER TABLE ONLY public.solicitud_presupuesto
 
 
 --
+-- Name: tarea_estandar_modelo tarea_estandar_model_id_empleado_sugerido_90a81bd6_fk_empleado_; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tarea_estandar_modelo
+    ADD CONSTRAINT tarea_estandar_model_id_empleado_sugerido_90a81bd6_fk_empleado_ FOREIGN KEY (id_empleado_sugerido) REFERENCES public.empleado(id_empleado) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: tarea_estandar_modelo tarea_estandar_model_id_modelo_8e5276db_fk_modelo_pr; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4345,5 +4361,5 @@ ALTER TABLE ONLY public.valor_parametro
 -- PostgreSQL database dump complete
 --
 
-\unrestrict dyMr32pviLtfmY09tbyfxZgPTSFfPfsNsH5vMxQjmH27122xdc8e4v1WccZaPQi
+\unrestrict n7bhNDdvGFA27HLvp5L7tXA38nEcFstJbxY4NX5iCV39bDGdJxhCwAhsJekljSR
 

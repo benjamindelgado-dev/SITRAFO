@@ -23,7 +23,7 @@ SET row_security = off;
 --
 
 COPY public.cliente (creado_en, modificado_en, id_cliente, rut, razon_social, nombre_fantasia, tipo_persona, giro, estado) FROM stdin;
-2026-09-23 10:12:06.580142+00	2026-09-23 10:12:06.580164+00	1	8102330-1	spa		natural	aaa	activo
+2026-09-23 10:12:06.580142+00	2026-09-23 10:12:06.580164+00	1	11111111-1	Cliente de prueba SpA		natural	aaa	activo
 2026-09-25 02:13:36.150067+00	2026-09-25 02:13:36.150078+00	4	76543210-3	Electrica del Maipo SpA		juridica	Distribucion electrica	activo
 \.
 
@@ -34,7 +34,7 @@ COPY public.cliente (creado_en, modificado_en, id_cliente, rut, razon_social, no
 
 COPY public.usuario (password, last_login, id_usuario, username, email, es_interno, estado, intentos_fallidos, ultimo_acceso, is_staff, is_superuser, is_active, creado_en, id_cliente, bloqueado_hasta) FROM stdin;
 pbkdf2_sha256$870000$L69qRdfjhrGHRVGsajXvZD$0BQ1RsRBrc50FN0h5jyqPIie4xowozdYUT8pIXxV4Yw=	2026-09-25 08:16:47.426273+00	7	ejecutivo	ejecutivo@sitrafo.cl	t	activo	0	\N	t	t	t	2026-09-25 02:13:35.769171+00	\N	\N
-pbkdf2_sha256$870000$zfp8cxuzz8aS4IRwHTwwHp$obsBdKIunZzCwDMLV8Sj+Z4f+0PmYMlYNXugGbCgknc=	2026-09-25 18:45:39.028533+00	1	benjaadb	benjadelgado123@gmail.com	t	activo	0	2026-09-25 20:12:51.62202+00	t	t	t	2026-09-23 09:21:47.67586+00	\N	\N
+!ClaveNoUtilizable	2026-09-25 18:45:39.028533+00	1	benjaadb	superusuario@sitrafo.cl	t	activo	0	2026-09-25 20:12:51.62202+00	t	t	t	2026-09-23 09:21:47.67586+00	\N	\N
 pbkdf2_sha256$870000$s6y252O8HtR7Zz52RQYULO$qaVz5Qqry6sF95n/mTr+9rIN9U2IbejTpI+6uH0Jiog=	\N	11	comercial2	comercial2@sitrafo.cl	t	activo	0	\N	f	f	t	2026-09-25 09:04:52.790567+00	\N	\N
 pbkdf2_sha256$870000$7yEYqiqv2JzvyJNcPxaQY7$mT1kBTVh9YsENFzFmqNnQ9IEPHozEtI5uGqqA0gqvHU=	\N	12	produccion	produccion@sitrafo.cl	t	activo	0	2026-09-29 12:34:30.477853+00	f	f	t	2026-09-25 09:04:53.190295+00	\N	\N
 pbkdf2_sha256$870000$dIijxAhmha6bcgRwqxxHfH$yd/+Gt7Vk1eOIclbIr5672IrkMyQrzObD88fFExjt5U=	2026-09-25 18:01:38.638527+00	10	comercial	comercial@sitrafo.cl	t	activo	0	2026-09-29 12:40:32.534863+00	f	f	t	2026-09-25 09:04:52.410458+00	\N	\N
@@ -838,16 +838,7 @@ COPY public.cotizacion_linea (id_linea, cantidad, costo_material_uf, costo_hh_uf
 -- Data for Name: django_admin_log; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.django_admin_log (id, action_time, object_id, object_repr, action_flag, change_message, content_type_id, user_id) FROM stdin;
-1	2026-09-25 07:40:39.437411+00	1	OC OC-2026-0001	2	[{"changed": {"fields": ["Estado actual"]}}]	34	7
-2	2026-09-25 07:41:37.911384+00	1	OC OC-2026-0001	2	[{"changed": {"fields": ["Estado actual"]}}]	34	7
-3	2026-09-25 07:53:26.072075+00	3	Cotizacion SP-2026-0006 v1	1	[{"added": {}}, {"added": {"name": "linea de cotizacion", "object": "2 x TM-025 - Transformador monofasico 25 kVA"}}]	30	7
-4	2026-09-25 18:47:01.241988+00	16	mdiaz	1	[{"added": {}}, {"added": {"name": "rol de usuario", "object": "mdiaz - Operario de taller"}}]	8	1
-5	2026-09-25 18:48:57.246616+00	16	mdiaz	2	[]	8	1
-6	2026-09-25 18:49:57.590893+00	3	Maria Diaz (Tecnica de ensayos)	2	[{"changed": {"fields": ["Usuario del sistema"]}}]	40	1
-7	2026-09-25 20:05:37.658812+00	1	OT OT-2026-0001	2	[{"changed": {"name": "tarea de la orden de trabajo", "object": "3. Bobinado de alta tension", "fields": ["Estado"]}}, {"changed": {"name": "tarea de la orden de trabajo", "object": "4. Ensamble y llenado de aceite", "fields": ["Estado"]}}, {"changed": {"name": "tarea de la orden de trabajo", "object": "5. Ensayos de rutina", "fields": ["Estado"]}}]	41	1
-8	2026-09-25 20:40:30.112479+00	7	OT OT-2026-0007	2	[{"added": {"name": "tarea de la orden de trabajo", "object": "1. 1"}}]	41	1
-\.
+-- Datos de django_admin_log omitidos (sesiones, tokens o historial del admin)
 
 
 --
@@ -904,12 +895,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 -- Data for Name: django_session; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.django_session (session_key, session_data, expire_date) FROM stdin;
-gh3lets3ycr7fg7oklvflebyw35dbm86	.eJxVjDsOwjAQBe_iGln-rDcOJT1nsNbeNQmgRIqTCnF3iJQC2jcz76USbeuQtiZLGlmdVVSn3y1Teci0A77TdJt1mad1GbPeFX3Qpq8zy_NyuH8HA7XhW0umioLEEanruDgrTqLzUK0l6AmrdwEQGHPvOXowBh1IQPYhFAPq_QH5Szd2:1xBXYs:lt3wtjp-ODlmN4omsuawTzR-PJK6tUCYzhSqrH18f8k	2026-09-29 13:37:58.366188+00
-olc80l7ri9c29q0lcsigvt353m8jqx0x	.eJxVjDsOwjAQBe_iGln-rDcOJT1nsNbeNQmgRIqTCnF3iJQC2jcz76USbeuQtiZLGlmdVVSn3y1Teci0A77TdJt1mad1GbPeFX3Qpq8zy_NyuH8HA7XhW0umioLEEanruDgrTqLzUK0l6AmrdwEQGHPvOXowBh1IQPYhFAPq_QH5Szd2:1xBYfR:nT0nBOps4GXBovRZTpVHmSAYPIl8g-AXDrddW8bUgoA	2026-09-29 14:48:49.158804+00
-kzec2o0w0048mj8ico8ktzfzm3ve22ig	.eJxVjDsOwjAQBe_iGln-xR9Kes5g2btrHEC2FCcV4u4QKQW0b2bei8W0rTVug5Y4Izszx06_W07woLYDvKd26xx6W5c5813hBx382pGel8P9O6hp1G_tM4Ev2Ukiq4NNIIIOKiknUWg7OYBMhN5o1AJ8KE4aRcXaidCQosDeH_jnOFA:1xA16t:Beyn3fSL_25my5fMtem0h6_Bf-TAwkxL1RKLFZVAUh0	2026-10-09 08:16:47.432194+00
-mgbvsajjptwqnj5gtj4dtbk4jd4lhmw4	.eJxVjEEOwiAQAP_C2RBZWAsevfcNZIFFqgaS0p6MfzckPeh1ZjJv4Wnfit87r35J4iqUOP2yQPHJdYj0oHpvMra6rUuQI5GH7XJuiV-3o_0bFOplbA041ForHSleEjKqKVsdETK5kMECA5A2ATFmIIdsiS2cJ8fGBVTi8wXLxDd0:1xAAvT:ATa3qnvlxIuvRLviuTftC5v2oK1dIYl3DfXzYJddZVc	2026-10-09 18:45:39.03338+00
-\.
+-- Datos de django_session omitidos (sesiones, tokens o historial del admin)
 
 
 --
@@ -1793,30 +1779,14 @@ COPY public.tarifa_hora_hombre (id_tarifa, valor_hora_uf, vigente_desde, vigente
 -- Data for Name: token_blacklist_outstandingtoken; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.token_blacklist_outstandingtoken (id, token, created_at, expires_at, user_id, jti) FROM stdin;
-1	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc5MDc2OTY1MywiaWF0IjoxNzkwNjgzMjUzLCJqdGkiOiI4ZTczNzQ1YjM2Yzc0YzEwYTU4ZDNlZDM5NWMwMzQyYyIsImlkX3VzdWFyaW8iOjEwfQ.rx60SdpnVUR1k3ihiof6rOPRAAPHiTSGmd-dv55Jeds	2026-09-29 12:00:53.220274+00	2026-09-30 12:00:53+00	10	8e73745b36c74c10a58d3ed395c0342c
-2	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc5MDc2OTg4MSwiaWF0IjoxNzkwNjgzNDgxLCJqdGkiOiJjNWU4ZDU3NTBjM2E0OGEzYWUxNjM1NzNlNDVjZjYwNCIsImlkX3VzdWFyaW8iOjEwfQ.lIRTds5RylOPJKro2yy4OP1DmKhr2cGvflT9EL7NoEs	2026-09-29 12:04:41.16247+00	2026-09-30 12:04:41+00	10	c5e8d5750c3a48a3ae163573e45cf604
-3	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc5MDc3MTU0NCwiaWF0IjoxNzkwNjg1MTQ0LCJqdGkiOiIxNGZlODUxNGZlYzg0ZTk1YTY5MjQzNDBmOWFmMDdiZiIsImlkX3VzdWFyaW8iOjl9.EcyMDGxFUAGvzw1v7dPpfz0qxXj2e0XbanV9xuZ7DcU	2026-09-29 12:32:24.851823+00	2026-09-30 12:32:24+00	9	14fe8514fec84e95a6924340f9af07bf
-4	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc5MDc3MTY3MCwiaWF0IjoxNzkwNjg1MjcwLCJqdGkiOiJjMWMyNWU1NjQzNjE0NWFlYTAyMWI2M2ZjZGE4NjdiOCIsImlkX3VzdWFyaW8iOjEyfQ.9BQwGMNbw9b3feF4GvwIbDuat5TQelJSfp8KouyoGxw	2026-09-29 12:34:30.466718+00	2026-09-30 12:34:30+00	12	c1c25e56436145aea021b63fcda867b8
-5	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc5MDc3MTg4OCwiaWF0IjoxNzkwNjg1NDg4LCJqdGkiOiJhMmRjNzVhMDExYjQ0ZmFjODU1ZGU0N2U4MjUzNmUyZiIsImlkX3VzdWFyaW8iOjl9.TjRWovZ5Tif4DvfNCu6bDlXdgywkptDocNh9XjyawqU	2026-09-29 12:38:08.30461+00	2026-09-30 12:38:08+00	9	a2dc75a011b44fac855de47e82536e2f
-6	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc5MDc3MjAzMiwiaWF0IjoxNzkwNjg1NjMyLCJqdGkiOiJkNjUzY2E1YzFkZDk0YWY4OTI1ZTA3OTAxMDM1YWFlOCIsImlkX3VzdWFyaW8iOjEwfQ.RGpIcje9s6OrbHeMZYGQQQfC6QYeopOipwUWnOCR7wk	2026-09-29 12:40:32.515828+00	2026-09-30 12:40:32+00	10	d653ca5c1dd94af8925e07901035aae8
-7	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc5MDc3MjM0NSwiaWF0IjoxNzkwNjg1OTQ1LCJqdGkiOiJiYzZmODIzMTNiYmQ0MmM1OGY5MTgzNjVkNTAxMTY3ZiIsImlkX3VzdWFyaW8iOjl9.T0ez87x6lePeekthWTz6FCuKEL3aCtxOoBZgwxZWg6c	2026-09-29 12:45:45.217663+00	2026-09-30 12:45:45+00	9	bc6f82313bbd42c58f918365d501167f
-8	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc5MDc3MzI2NywiaWF0IjoxNzkwNjg2ODY3LCJqdGkiOiI3YmY5YTA3ODc4M2I0NzVjYWNmZTBjMjNlOWIyNGI2MiIsImlkX3VzdWFyaW8iOjl9.tEHtMXPFkUUXqcJBf1ObS-FqVN8sMrna1RexrZFbYU4	2026-09-29 13:01:07.54428+00	2026-09-30 13:01:07+00	9	7bf9a078783b475cacfe0c23e9b24b62
-\.
+-- Datos de token_blacklist_outstandingtoken omitidos (sesiones, tokens o historial del admin)
 
 
 --
 -- Data for Name: token_blacklist_blacklistedtoken; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.token_blacklist_blacklistedtoken (id, blacklisted_at, token_id) FROM stdin;
-1	2026-09-29 12:04:34.416738+00	1
-2	2026-09-29 12:16:18.903721+00	2
-3	2026-09-29 12:34:23.50046+00	3
-4	2026-09-29 12:38:03.003973+00	4
-5	2026-09-29 12:39:54.574598+00	5
-6	2026-09-29 12:45:39.593367+00	6
-\.
+-- Datos de token_blacklist_blacklistedtoken omitidos (sesiones, tokens o historial del admin)
 
 
 --
