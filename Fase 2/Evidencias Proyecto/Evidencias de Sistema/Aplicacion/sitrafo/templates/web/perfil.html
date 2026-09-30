@@ -58,11 +58,16 @@
               <span class="text-secondary" style="font-size:.8rem"> · {{ d.get_tipo_display }}{% if d.validada %} · ubicacion verificada{% endif %}</span>
             </span>
             <span class="d-flex gap-2 align-items-center">
-              <a href="{% url 'web:direccion_editar' d.pk %}">Editar</a>
-              <form method="post" action="{% url 'web:direccion_eliminar' d.pk %}" class="d-inline"
+              {# Ambas acciones con la misma clase: un enlace y un boton de formulario #}
+              {# se alinean distinto si no comparten estilo (padding, linea y margen). #}
+              <a href="{% url 'web:direccion_editar' d.pk %}"
+                 class="btn btn-link p-0 border-0 lh-base align-baseline"
+                 style="font-size:inherit">Editar</a>
+              <form method="post" action="{% url 'web:direccion_eliminar' d.pk %}" class="d-inline m-0"
                     onsubmit="return confirm('¿Eliminar esta direccion?');">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-link p-0 text-danger" style="font-size:inherit">Eliminar</button>
+                <button type="submit" class="btn btn-link p-0 border-0 lh-base align-baseline text-danger"
+                        style="font-size:inherit">Eliminar</button>
               </form>
             </span>
           </li>
