@@ -1,0 +1,23 @@
+@startuml EST-06_Usuario
+title EST-06 — Estados de la cuenta de usuario (RF-SEG-04, RF-ADM-03)
+!include _skin_arq.txt
+hide empty description
+
+state "Activo" as activo
+state "Bloqueado" as bloqueado
+state "Suspendido" as suspendido
+
+[*] --> activo : creación de la cuenta\n(escritorio o autorregistro web)
+activo --> activo : intento fallido\n[intentos < máximo] / suma intento
+activo --> activo : ingreso exitoso\n/ reinicia intentos, registra último acceso
+activo --> bloqueado : intento fallido\n[intentos = máximo, por defecto 5]\n/ bloqueado_hasta = ahora + 15 min\n(parámetros del sistema)
+bloqueado --> activo : vence el bloqueo (al próximo ingreso)\no el administrador la reactiva\no restablece la clave
+activo --> suspendido : el administrador la suspende
+suspendido --> activo : el administrador la reactiva
+
+note right of suspendido
+  Una cuenta suspendida o bloqueada no recibe
+  token ni sesión, y el middleware cierra la
+  sesión web que estuviera abierta.
+end note
+@enduml

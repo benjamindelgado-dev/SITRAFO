@@ -1,0 +1,73 @@
+@startuml MER_Seguridad
+title Dominio 1 — Seguridad y auditoría
+!include _skin_er.txt
+
+entity "rol" as t0 {
+  * id_rol : serial <<PK>>
+  --
+  * activo : boolean
+  * nombre : varchar(60) <<UQ>>
+  descripcion : varchar(200)
+}
+entity "permiso" as t1 {
+  * id_permiso : serial <<PK>>
+  --
+  * codigo : varchar(80) <<UQ>>
+  * modulo : varchar(40)
+  * operacion : varchar(20)
+}
+entity "rol_permiso" as t2 {
+  * id : bigserial <<PK>>
+  --
+  * id_rol : integer <<FK>>
+  * id_permiso : integer <<FK>>
+  * otorgado_en : timestamptz
+}
+entity "usuario" as t3 {
+  * id_usuario : serial <<PK>>
+  --
+  id_cliente : integer <<FK>>
+  * password : varchar(128)
+  last_login : timestamptz
+  * username : varchar(60) <<UQ>>
+  * email : varchar(150) <<UQ>>
+  * es_interno : boolean
+  * estado : varchar(20)
+  * intentos_fallidos : smallint
+  ultimo_acceso : timestamptz
+  bloqueado_hasta : timestamptz
+  * is_staff : boolean
+  * is_superuser : boolean
+  * is_active : boolean
+  * creado_en : timestamptz
+}
+entity "usuario_rol" as t4 {
+  * id : bigserial <<PK>>
+  --
+  * id_usuario : integer <<FK>>
+  * id_rol : integer <<FK>>
+  * asignado_en : timestamptz
+}
+entity "auditoria" as t5 {
+  * id_auditoria : bigserial <<PK>>
+  --
+  * id_usuario : integer <<FK>>
+  * entidad : varchar(60)
+  * id_registro : varchar(40)
+  * accion : varchar(20)
+  valor_anterior : jsonb
+  valor_nuevo : jsonb
+  * fecha_hora : timestamptz
+  origen : varchar(40)
+}
+entity "cliente" as x_cliente #EEF2F7 {
+  * id_cliente : serial <<PK>>
+}
+
+t0 ||--o{ t2
+t1 ||--o{ t2
+x_cliente |o--o{ t3
+t3 ||--o{ t4
+t0 ||--o{ t4
+t3 ||--o{ t5
+@enduml

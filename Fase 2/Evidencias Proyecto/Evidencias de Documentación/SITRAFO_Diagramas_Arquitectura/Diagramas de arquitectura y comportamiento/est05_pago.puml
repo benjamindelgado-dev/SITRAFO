@@ -1,0 +1,35 @@
+@startuml EST-05_Pago
+title EST-05 — Estados del documento de cobro y de la transacción de pago
+!include _skin_arq.txt
+hide empty description
+
+state "Documento de cobro" as DC {
+  state "Pendiente" as dpend
+  state "Pagado" as dpag
+  state "Anulado" as danu
+  [*] --> dpend : emitir anticipo o saldo\n/ UF congelada (RN-03)
+  dpend --> dpag : transacción conciliada\n[monto coincide]
+  dpend --> danu : la orden de compra se anula
+  dpag --> [*]
+  danu --> [*]
+}
+
+state "Transacción de pago (PayPal)" as TP {
+  state "Iniciada" as ini
+  state "Aprobada" as apr
+  state "Pendiente de conciliación" as pc
+  state "Rechazada" as rec
+  state "Cancelada" as can
+  [*] --> ini : orden creada en PayPal
+  ini --> can : el cliente vuelve sin aprobar
+  ini --> rec : PayPal rechaza el medio de pago
+  ini --> pc : sin respuesta o captura PENDING
+  ini --> apr : captura COMPLETED
+  apr --> pc : el monto no coincide
+  pc --> apr : conciliar_pagos\n[PayPal confirma y el monto coincide]
+  apr --> [*]
+  rec --> [*]
+  can --> [*]
+}
+apr -[#B5651D,dashed]-> dpag : conciliar()
+@enduml

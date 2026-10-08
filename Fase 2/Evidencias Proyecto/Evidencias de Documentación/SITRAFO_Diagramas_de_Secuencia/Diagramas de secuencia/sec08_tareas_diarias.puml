@@ -1,0 +1,53 @@
+@startuml SEC-08_Tareas_diarias
+title SEC-08 — Tareas automáticas diarias (RF-PAG-05, RF-COM-12, RF-INT-01 a 03)
+!include _skin_secuencia.txt
+
+participant "Cron Job\n(Render)" as CR
+box "Servidor SITRAFO (Render)" #F7F9FC
+  control "manage.py\ntareas_diarias" as T
+  control "ClienteIndicadores" as CI
+  control "ClienteFeriados" as CF
+  control "ClienteServicioExterno\n(reintentos + log)" as CS
+  database "PostgreSQL" as DB
+end box
+participant "mindicador.cl" as MI
+participant "API de feriados\n(Nager.Date)" as FE
+
+CR -> T : ejecución programada diaria
+
+== 1. Indicadores económicos ==
+T -> CI : sincronizar_dia()
+CI -> CS : obtener("/") con reintentos\ny espera incremental (RF-INT-02)
+CS -> MI : GET /api
+alt responde
+  MI --> CS : UF, UTM, dólar del día
+  CI -> DB : INSERT/UPDATE indicador_economico
+else no responde tras los reintentos
+  CS --> CI : RespuestaServicio(fallida)
+  note right of CI : El sistema sigue operando con el\núltimo valor conocido (RF-PAG-06).
+end
+CS -> DB : INSERT log_integracion\n(servicio, código, latencia, éxito)
+
+== 2. Feriados del año actual y el siguiente ==
+loop año en (actual, siguiente)
+  T -> CF : sincronizar_anio(año)
+  CF -> CS : obtener(año/CL)
+  CS -> FE : GET /PublicHolidays/{año}/CL
+  FE --> CS : lista de feriados
+  CF -> DB : INSERT/UPDATE feriado
+  CS -> DB : INSERT log_integracion
+end
+
+== 3. Vencimiento de cotizaciones ==
+T -> DB : cotizaciones emitidas con vence_el < hoy
+loop por cada cotización vencida
+  T -> DB : estado → vencida
+  T -> DB : INSERT cotizacion_historial\n(usuario del sistema)
+end
+T --> CR : resumen en la salida del job
+
+note over T, DB
+  Cada tarea es independiente: si un servicio externo falla,
+  las demás se ejecutan igual (degradación controlada, RF-INT-03).
+end note
+@enduml

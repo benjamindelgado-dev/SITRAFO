@@ -1,0 +1,45 @@
+@startuml MER_Pagos
+title Dominio 8 — Pagos y moneda
+!include _skin_er.txt
+
+entity "indicador_economico" as t0 {
+  * id_indicador : serial <<PK>>
+  --
+  * codigo : varchar(10)
+  * fecha : date
+  * valor : numeric(14,4)
+  * obtenido_en : timestamptz
+}
+entity "documento_cobro" as t1 {
+  * id_documento_cobro : serial <<PK>>
+  --
+  * id_orden_compra : integer <<FK>>
+  * numero : varchar(20) <<UQ>>
+  * tipo : varchar(20)
+  * monto_uf : numeric(14,4)
+  * valor_uf : numeric(12,2)
+  * monto_clp : numeric(16,2)
+  * estado : varchar(20)
+  * vence_el : date
+  * creado_en : timestamptz
+}
+entity "transaccion_pago" as t2 {
+  * id_transaccion : serial <<PK>>
+  --
+  * id_documento_cobro : integer <<FK>>
+  * id_externo : varchar(120)
+  * pasarela : varchar(40)
+  * monto : numeric(16,2)
+  * moneda : varchar(3)
+  * estado : varchar(30)
+  * iniciada_en : timestamptz
+  resuelta_en : timestamptz
+  respuesta : jsonb
+}
+entity "orden_compra" as x_orden_compra #EEF2F7 {
+  * id_orden_compra : serial <<PK>>
+}
+
+x_orden_compra ||--o{ t1
+t1 ||--o{ t2
+@enduml

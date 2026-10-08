@@ -1,0 +1,85 @@
+@startuml Clases_Calidad
+title Diagrama de clases — Control de calidad
+!include _skin_clases.txt
+
+set separator none
+abstract class ActivableModel <<apps.common>> #EEF2F7
+class ModeloProducto <<apps.catalogo>> #EEF2F7
+class OrdenTrabajo <<apps.produccion>> #EEF2F7
+class Usuario <<apps.seguridad>> #EEF2F7
+package "apps.calidad" {
+class ProtocoloCalidad {
+  - id_protocolo : int {PK}
+  - nombre : str
+  - version : int
+  - norma_referencia : str [0..1]
+  + puntos_obligatorios «property»
+}
+class PuntoControl {
+  - id_punto : int {PK}
+  - nombre : str
+  - tipo_ensayo : str
+  - unidad : str
+  - valor_esperado : Decimal [0..1]
+  - tolerancia_inf : Decimal [0..1]
+  - tolerancia_sup : Decimal [0..1]
+  - obligatorio : bool
+  - secuencia : int
+  + evaluar(valor_medido)
+}
+class ControlCalidad {
+  - id_control : int {PK}
+  - fecha_hora : datetime
+  - estado : Estado
+  - observacion : str [0..1]
+  + puntos_pendientes «property»
+  + actualizar_estado(guardar)
+}
+enum "ControlCalidad.Estado" as ControlCalidad_Estado {
+  en_proceso
+  conforme
+  con_nc
+}
+ControlCalidad ..> ControlCalidad_Estado
+class ResultadoControl {
+  - id_resultado : int {PK}
+  - valor_medido : Decimal
+  - conforme : bool
+  - observacion : str [0..1]
+  - registrado_en : datetime
+  + save()
+}
+class NoConformidad {
+  - id_no_conformidad : int {PK}
+  - descripcion : str
+  - severidad : Severidad
+  - accion_correctiva : str [0..1]
+  - estado : Estado
+  - abierta_en : datetime
+  - cerrada_en : datetime [0..1]
+  + cerrar(usuario, accion_correctiva)
+}
+enum "NoConformidad.Severidad" as NoConformidad_Severidad {
+  menor
+  mayor
+  critica
+}
+NoConformidad ..> NoConformidad_Severidad
+enum "NoConformidad.Estado" as NoConformidad_Estado {
+  abierta
+  cerrada
+}
+NoConformidad ..> NoConformidad_Estado
+}
+ActivableModel <|-- ProtocoloCalidad
+ProtocoloCalidad "*" --> "1" ModeloProducto : modelo
+PuntoControl "*" --> "1" ProtocoloCalidad : protocolo
+ControlCalidad "*" --> "1" OrdenTrabajo : orden_trabajo
+ControlCalidad "*" --> "1" ProtocoloCalidad : protocolo
+ControlCalidad "*" --> "1" Usuario : inspector
+ResultadoControl "*" --> "1" ControlCalidad : control
+ResultadoControl "*" --> "1" PuntoControl : punto
+NoConformidad "0..1" --> "1" ResultadoControl : resultado
+NoConformidad "*" --> "1" Usuario : responsable
+NoConformidad "*" --> "0..1" Usuario : usuario_cierre
+@enduml

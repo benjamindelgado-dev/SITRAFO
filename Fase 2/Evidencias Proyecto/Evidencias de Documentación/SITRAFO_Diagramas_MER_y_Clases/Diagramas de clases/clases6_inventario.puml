@@ -1,0 +1,79 @@
+@startuml Clases_Inventario
+title Diagrama de clases — Inventario
+!include _skin_clases.txt
+
+set separator none
+abstract class ActivableModel <<apps.common>> #EEF2F7
+abstract class VigenciaModel <<apps.common>> #EEF2F7
+class ConsumoMaterial <<apps.produccion>> #EEF2F7
+class Usuario <<apps.seguridad>> #EEF2F7
+package "apps.inventario" {
+class CategoriaMaterial {
+  - id_categoria : int {PK}
+  - nombre : str {UQ}
+}
+class Material {
+  - id_material : int {PK}
+  - codigo : str {UQ}
+  - nombre : str
+  - unidad_medida : UnidadMedida
+  - stock_minimo : Decimal [0..1]
+  + costo_vigente «property»
+}
+enum "Material.UnidadMedida" as Material_UnidadMedida {
+  un
+  kg
+  m
+  m2
+  l
+}
+Material ..> Material_UnidadMedida
+class Proveedor {
+  - id_proveedor : int {PK}
+  - rut : str {UQ}
+  - razon_social : str
+  - email : str [0..1]
+  - telefono : str [0..1]
+  + save()
+}
+class Bodega {
+  - id_bodega : int {PK}
+  - codigo : str {UQ}
+  - nombre : str
+  - ubicacion : str [0..1]
+}
+class PrecioMaterial {
+  - id_precio_material : int {PK}
+  - costo_uf : Decimal
+}
+class MovimientoInventario {
+  - id_movimiento : int {PK}
+  - tipo : Tipo
+  - cantidad : Decimal
+  - costo_unitario_uf : Decimal
+  - fecha_hora : datetime
+  - observacion : str [0..1]
+  + {static} stock_actual(material, bodega)
+}
+enum "MovimientoInventario.Tipo" as MovimientoInventario_Tipo {
+  recepcion
+  consumo
+  ajuste
+  devolucion
+}
+MovimientoInventario ..> MovimientoInventario_Tipo
+}
+ActivableModel <|-- CategoriaMaterial
+ActivableModel <|-- Material
+ActivableModel <|-- Proveedor
+ActivableModel <|-- Bodega
+VigenciaModel <|-- PrecioMaterial
+Material "*" --> "1" CategoriaMaterial : categoria
+PrecioMaterial "*" --> "1" Material : material
+PrecioMaterial "*" --> "0..1" Proveedor : proveedor
+MovimientoInventario "*" --> "1" Material : material
+MovimientoInventario "*" --> "1" Bodega : bodega
+MovimientoInventario "*" --> "0..1" Proveedor : proveedor
+MovimientoInventario "0..1" --> "0..1" ConsumoMaterial : consumo
+MovimientoInventario "*" --> "1" Usuario : usuario
+@enduml

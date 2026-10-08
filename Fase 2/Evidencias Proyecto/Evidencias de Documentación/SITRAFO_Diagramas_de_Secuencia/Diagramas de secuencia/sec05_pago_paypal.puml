@@ -1,0 +1,71 @@
+@startuml SEC-05_Pago_anticipo
+title SEC-05 — Pago en línea del anticipo y confirmación automática de la orden (CU-PAG-02, RN-07)
+!include _skin_secuencia.txt
+
+actor "Cliente" as U
+boundary "Navegador" as N
+box "Servidor SITRAFO (Render)" #F7F9FC
+  boundary "documento_cobro / pagar_documento\npago_retorno (vistas web)" as W
+  control "pagos.services.cobros" as CB
+  control "ClientePayPal" as PP
+  control "comercial.services" as S
+  control "notificaciones" as NT
+  database "PostgreSQL" as DB
+end box
+participant "PayPal\n(sandbox)" as PAY
+participant "Brevo" as B
+
+U -> N : abre el documento de cobro
+N -> W : GET /cobro/{id}/
+W -> CB : validar_pagable(documento)
+note right of CB : pago habilitado (parámetro web),\nestado pendiente y no vencido
+W -> CB : tipo_cambio_usd()
+W --> N : monto en CLP y su equivalente en USD
+
+U -> N : «Pagar»
+N -> W : POST /cobro/{id}/pagar/
+W -> CB : iniciar_pago(documento, url_retorno, url_cancelación)
+CB -> CB : convertir_a_usd(monto_clp, dólar observado)
+CB -> PP : crear_orden(monto, USD, referencia,\nclave_idempotencia)
+PP -> PAY : POST /v1/oauth2/token (credenciales de la app)
+PP -> PAY : POST /v2/checkout/orders
+alt PayPal no responde
+  PAY --> PP : error / sin respuesta
+  CB --> W : ResultadoPago(fallido)
+  W --> N : «La pasarela no está disponible;\nsu documento no fue modificado»
+else orden creada
+  PAY --> PP : id de orden + URL de aprobación
+  CB -> DB : INSERT transaccion_pago (iniciada)
+  W --> N : redirección a PayPal
+  U -> PAY : aprueba el pago
+  PAY --> N : redirección a /pago/retorno/?token=id
+  N -> W : GET /pago/retorno/
+  W -> CB : confirmar_pago(transaccion, usuario)
+  group transacción atómica (select_for_update)
+    CB -> PP : capturar_orden(id)
+    PP -> PAY : POST /v2/checkout/orders/{id}/capture
+    PAY --> PP : resultado de la captura
+    alt sin respuesta o PENDING
+      CB -> DB : transacción → pendiente_conciliacion
+      note right of CB : la revisa luego el comando\nconciliar_pagos
+    else rechazada
+      CB -> DB : transacción → rechazada
+    else COMPLETED
+      CB -> DB : transacción → aprobada
+      CB -> CB : transaccion.conciliar()
+      alt monto no coincide
+        CB -> DB : transacción → pendiente_conciliacion
+      else monto coincide
+        CB -> DB : documento_cobro → pagado
+        CB -> DB : INSERT auditoria (origen web)
+        CB -> S : confirmar_si_anticipo(documento, usuario)
+        S -> S : confirmar_orden_compra()
+        S -> DB : orden_compra → confirmada + historial
+        CB -> NT : on_commit: comprobante de pago\ny aviso «pedido confirmado»
+        NT -> B : correos al cliente
+      end
+    end
+  end
+  W --> N : documento con el resultado del pago
+end
+@enduml

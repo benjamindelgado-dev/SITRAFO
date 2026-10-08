@@ -1,0 +1,46 @@
+@startuml SEC-09_Canal_web
+title SEC-09 — Administración del canal web desde el escritorio (RF-ADM-01, RF-ADM-02, RF-ADM-07)
+!include _skin_secuencia.txt
+
+actor "Administrador" as AD
+boundary "Panel Canal web\n(escritorio)" as P
+box "Servidor SITRAFO (Render)" #F7F9FC
+  boundary "ParametroSistemaViewSet\nPOST parametros/{clave}/alternar/" as A
+  control "PermisoPorRol" as PR
+  entity "ParametroSistema" as PS
+  database "PostgreSQL" as DB
+  control "ModoMantencionMiddleware" as MW
+  boundary "Vistas web" as W
+end box
+actor "Cliente" as CL
+
+AD -> P : activa el interruptor «Modo mantención»
+P -> A : POST parametros/web.modo_mantencion/alternar/
+A -> PR : has_permission (canal_web.actualizar\no parametro.actualizar)
+alt rol no autorizado
+  PR -> DB : INSERT auditoria (acceso_denegado)
+  A --> P : 403 «Su rol no autoriza modificar este parámetro»
+else autorizado
+  A -> A : _verificar_ambito(parámetro)
+  A -> PS : valor = «true», usuario = administrador
+  PS -> DB : UPDATE parametro_sistema
+  A -> DB : INSERT auditoria\n(valor anterior → valor nuevo, origen escritorio)
+  A --> P : 200 parámetro actualizado
+  P --> AD : interruptor activo
+end
+
+== Efecto inmediato en la web, sin redesplegar ==
+CL -> MW : cualquier página del portal
+MW -> PS : obtener("web.modo_mantencion")
+PS -> DB : SELECT parametro_sistema
+alt mantención activa y usuario no interno
+  MW --> CL : 503 página de mantención\ncon el mensaje configurado
+else
+  MW -> W : continúa normalmente
+  W --> CL : página solicitada
+end
+note over A, W
+  El mismo mecanismo controla la habilitación del pago en línea,
+  el autorregistro de clientes y los avisos publicados en el sitio.
+end note
+@enduml

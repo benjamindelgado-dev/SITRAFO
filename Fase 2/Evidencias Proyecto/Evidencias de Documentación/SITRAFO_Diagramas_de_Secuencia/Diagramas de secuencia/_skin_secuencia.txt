@@ -1,0 +1,37 @@
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Calibri
+skinparam defaultFontSize 12
+skinparam dpi 160
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 230
+skinparam sequenceMessageAlign left
+skinparam ParticipantPadding 8
+skinparam BoxPadding 8
+skinparam sequence {
+  ArrowColor #44546A
+  ArrowFontColor #1A1A1A
+  ArrowFontSize 11
+  LifeLineBorderColor #8496B0
+  LifeLineBackgroundColor #DCE4EF
+  ParticipantBorderColor #2E5496
+  ParticipantBackgroundColor #DCE4EF
+  ParticipantFontColor #1A1A1A
+  ActorBorderColor #2E5496
+  ActorBackgroundColor #DCE4EF
+  BoxBorderColor #8496B0
+  GroupBorderColor #8496B0
+  GroupBackgroundColor #F2F5FA
+  GroupHeaderFontColor #2E5496
+  DividerBackgroundColor #F2F5FA
+}
+skinparam database {
+  BorderColor #2E5496
+  BackgroundColor #DCE4EF
+}
+skinparam note {
+  BackgroundColor #FFFBEA
+  BorderColor #C9B458
+  FontSize 11
+}
+autonumber "<b>0."

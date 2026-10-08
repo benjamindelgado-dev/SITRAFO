@@ -1,0 +1,76 @@
+@startuml ACT-01_Proceso_pedido
+title ACT-01 — Proceso comercial y productivo de un pedido, de la solicitud a la entrega
+!include _skin_arq.txt
+
+|#F2F5FA|Cliente (web)|
+start
+:Solicitar presupuesto con la\nespecificación técnica;
+|#FFFFFF|Ejecutivo comercial (escritorio)|
+:Asignar y revisar la solicitud;
+:Elaborar la cotización\n(costeo automático, UF del día,\nplazo en días hábiles);
+if (¿Descuento sobre el umbral?) then (sí)
+  :Enviar a aprobación;
+  |#F2F5FA|Aprobador comercial (escritorio)|
+  :Revisar el descuento\n(debe ser otro usuario, RN-05);
+  :Aprobar y emitir\n(o devolver a borrador con motivo);
+else (no)
+  |#FFFFFF|Ejecutivo comercial (escritorio)|
+  :Emitir la cotización;
+endif
+|#FBF3EC|Sistema|
+:Congelar UF y vigencia;\nenviar PDF por correo;
+|#F2F5FA|Cliente (web)|
+if (¿Respuesta del cliente?) then (acepta)
+  |#FBF3EC|Sistema|
+  :Generar la orden de compra\ny el cobro del anticipo;
+else (rechaza o vence)
+  |#F2F5FA|Cliente (web)|
+  :Cotización rechazada o vencida;
+  stop
+endif
+|#F2F5FA|Cliente (web)|
+:Pagar el anticipo con PayPal;
+|#FBF3EC|Sistema|
+:Capturar y conciliar el pago;
+:Confirmar la orden de compra\ny avisar al cliente;
+|#FFFFFF|Jefe de producción (escritorio)|
+:Generar una orden de trabajo\npor línea de la compra;
+:Asignar responsables e iniciar;
+|#F2F5FA|Operario (escritorio, Taller)|
+repeat
+  :Registrar horas y consumos\nde la tarea;
+  |#FBF3EC|Sistema|
+  :Descontar stock y recalcular\ncosto real y avance;
+  |#F2F5FA|Operario (escritorio, Taller)|
+  :Terminar la tarea;
+repeat while (¿Quedan tareas?) is (sí)
+->no;
+|#FFFFFF|Jefe de producción (escritorio)|
+:Enviar la OT a calidad;
+|#F2F5FA|Inspector de calidad (escritorio)|
+repeat
+  :Registrar el resultado del ensayo;
+  if (¿Dentro de tolerancia?) then (no)
+    :Abrir no conformidad;
+    :Registrar acción correctiva\ny cerrar la no conformidad;
+  else (sí)
+  endif
+repeat while (¿Faltan ensayos o hay que repetir?) is (sí)
+->no;
+|#FFFFFF|Jefe de producción (escritorio)|
+:Cerrar la OT\n(justificar desviación de costo si corresponde);
+|#FBF3EC|Sistema|
+if (¿Era la última OT de la compra?) then (sí)
+  :Emitir el cobro del saldo\ny avisar al cliente;
+else (no)
+  :Esperar el cierre de las demás OT;
+  detach
+endif
+|#F2F5FA|Cliente (web)|
+:Pagar el saldo con PayPal;
+|#FFFFFF|Ejecutivo comercial (escritorio)|
+:Registrar la entrega;
+|#FBF3EC|Sistema|
+:Orden de compra entregada;\naviso al cliente;
+stop
+@enduml

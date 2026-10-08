@@ -1,0 +1,29 @@
+@startuml EST-03_Orden_compra
+title EST-03 — Estados de la orden de compra
+!include _skin_arq.txt
+hide empty description
+
+state "Pendiente" as pendiente
+state "Confirmada" as confirmada
+state "En producción" as en_produccion
+state "Entregada" as entregada
+state "Anulada" as anulada
+
+[*] --> pendiente : cotización aceptada\n/ emite documento de cobro del anticipo (RN-06, RN-15)
+pendiente --> confirmada : anticipo pagado (automático)\no confirmar manual [anticipo pagado] (RN-07)
+confirmada --> en_produccion : generar órdenes de trabajo\n[modelos con tareas estándar]
+en_produccion --> entregada : registrar_entrega\n[todas las OT cerradas y saldo pagado]
+pendiente --> anulada : anular [motivo, sin pagos registrados]\n/ anula cobros pendientes
+entregada --> [*]
+anulada --> [*]
+
+note left of anulada
+  Una orden confirmada ya tiene el anticipo pagado:
+  no se anula en el sistema, porque la devolución
+  es un proceso financiero externo.
+end note
+note right of en_produccion
+  Al cerrarse la última orden de trabajo
+  se emite automáticamente el cobro del saldo.
+end note
+@enduml

@@ -1,0 +1,54 @@
+@startuml SEC-04_Aceptacion_OC
+title SEC-04 — Aceptación de la cotización y generación automática de la orden de compra (CU-COM-08, RN-06, RN-15)
+!include _skin_secuencia.txt
+
+actor "Cliente" as U
+boundary "Navegador" as N
+box "Servidor SITRAFO (Render)" #F7F9FC
+  boundary "aceptar_cotizacion\n(vista web)" as W
+  entity "Cotizacion" as C
+  control "comercial.services" as S
+  control "pagos.services.cobros" as CB
+  control "indicadores / feriados" as IF
+  database "PostgreSQL" as DB
+end box
+
+U -> N : «Aceptar» en el detalle de la cotización
+N -> W : POST /cotizacion/{id}/aceptar/
+W -> DB : cotización del cliente autenticado (RN-16)
+alt estado distinto de emitida
+  W --> N : «Esta cotización ya no admite respuesta»
+else emitida
+  W -> C : esta_vigente
+  alt vencida al momento de aceptar
+    W -> DB : estado → vencida + historial
+    W --> N : «La cotización venció el dd-mm-aaaa»
+  else vigente
+    W -> S : aceptar_cotizacion(cotizacion, usuario)
+    group transacción atómica
+      S -> DB : estado → aceptada + cotizacion_historial
+      S -> S : generar_orden_compra(cotizacion, usuario)
+      S -> DB : INSERT orden_compra (pendiente)
+      loop por cada línea de la cotización
+        S -> DB : INSERT orden_compra_linea\n(referencia a la línea de origen)
+      end
+      S -> DB : INSERT orden_compra_historial
+      S -> CB : emitir_anticipo(orden)
+      CB -> IF : valor_uf() — UF congelada en el cobro
+      CB -> IF : plazo_en_dias_habiles(hoy, 10)
+      alt hay UF disponible
+        CB -> DB : INSERT documento_cobro\n(anticipo, monto_uf, monto_clp, vence_el)
+      else sin UF
+        CB --> S : ErrorCobro (se ignora)
+        note right : La orden se crea igual; el anticipo\nlo emite después el comando\nemitir_cobros (RF-INT-03).
+      end
+    end
+    S --> W : OrdenCompra
+    W --> N : «Cotización aceptada. Se generó la orden\nOC-xxxx: puede pagar el anticipo en Pedidos»
+  end
+end
+note over N, W
+  La misma regla se expone en la API (POST cotizaciones/{id}/aceptar/)
+  y llama al mismo servicio: el resultado no depende de la interfaz.
+end note
+@enduml

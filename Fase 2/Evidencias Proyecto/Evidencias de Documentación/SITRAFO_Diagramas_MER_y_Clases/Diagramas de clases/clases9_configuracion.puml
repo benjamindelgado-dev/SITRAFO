@@ -1,0 +1,75 @@
+@startuml Clases_Configuracion
+title Diagrama de clases — Configuración, canal web e integraciones
+!include _skin_clases.txt
+
+set separator none
+class Usuario <<apps.seguridad>> #EEF2F7
+package "apps.configuracion" {
+class ParametroSistema {
+  - id_parametro_sistema : int {PK}
+  - clave : str {UQ}
+  - valor : str
+  - tipo_dato : TipoDato
+  - ambito : Ambito
+  - descripcion : str [0..1]
+  - modificado_en : datetime
+  + valor_tipado «property»
+}
+enum "ParametroSistema.TipoDato" as ParametroSistema_TipoDato {
+  booleano
+  numerico
+  texto
+  fecha
+}
+ParametroSistema ..> ParametroSistema_TipoDato
+enum "ParametroSistema.Ambito" as ParametroSistema_Ambito {
+  sistema
+  canal_web
+  comercial
+  produccion
+}
+ParametroSistema ..> ParametroSistema_Ambito
+class AvisoSitio {
+  - id_aviso : int {PK}
+  - titulo : str
+  - cuerpo : str
+  - tipo : Tipo
+  - vigente_desde : datetime
+  - vigente_hasta : datetime [0..1]
+  - activo : bool
+  + esta_publicado «property»
+}
+enum "AvisoSitio.Tipo" as AvisoSitio_Tipo {
+  informativo
+  advertencia
+  mantencion
+}
+AvisoSitio ..> AvisoSitio_Tipo
+class Feriado {
+  - id_feriado : int {PK}
+  - fecha : date {UQ}
+  - nombre : str
+  - tipo : Tipo
+  - obtenido_en : datetime
+}
+enum "Feriado.Tipo" as Feriado_Tipo {
+  civil
+  religioso
+  regional
+}
+Feriado ..> Feriado_Tipo
+class LogIntegracion {
+  - id_log : int {PK}
+  - servicio : str
+  - endpoint : str
+  - metodo : str
+  - codigo_respuesta : int
+  - latencia_ms : int
+  - exitoso : bool
+  - mensaje_error : str [0..1]
+  - fecha_hora : datetime
+}
+}
+ParametroSistema "*" --> "1" Usuario : usuario
+AvisoSitio "*" --> "1" Usuario : usuario
+@enduml

@@ -1,0 +1,89 @@
+@startuml MER_Catalogo
+title Dominio 3 — Catálogo de productos
+!include _skin_er.txt
+
+entity "familia_producto" as t0 {
+  * id_familia : serial <<PK>>
+  --
+  * activo : boolean
+  * nombre : varchar(80) <<UQ>>
+  descripcion : varchar(200)
+}
+entity "modelo_producto" as t1 {
+  * id_modelo : serial <<PK>>
+  --
+  * id_familia : integer <<FK>>
+  * activo : boolean
+  * codigo : varchar(40) <<UQ>>
+  * nombre : varchar(150)
+  descripcion : text
+  * publicado : boolean
+}
+entity "parametro_tecnico" as t2 {
+  * id_parametro : serial <<PK>>
+  --
+  * codigo : varchar(40) <<UQ>>
+  * nombre : varchar(100)
+  * unidad : varchar(20)
+  * tipo_dato : varchar(20)
+  * obligatorio : boolean
+}
+entity "valor_parametro" as t3 {
+  * id_valor : serial <<PK>>
+  --
+  * id_parametro : integer <<FK>>
+  * activo : boolean
+  * valor : varchar(60)
+  * orden : smallint
+}
+entity "modelo_parametro" as t4 {
+  * id : bigserial <<PK>>
+  --
+  * id_modelo : integer <<FK>>
+  * id_parametro : integer <<FK>>
+  valor_defecto : varchar(60)
+  * obligatorio : boolean
+}
+entity "precio_base_modelo" as t5 {
+  * id_precio : serial <<PK>>
+  --
+  * id_modelo : integer <<FK>>
+  * id_usuario : integer <<FK>>
+  * vigente_desde : date
+  vigente_hasta : date
+  * monto_uf : numeric(12,4)
+}
+entity "bom_modelo" as t6 {
+  * id_bom : serial <<PK>>
+  --
+  * id_modelo : integer <<FK>>
+  * id_material : integer <<FK>>
+  * cantidad : numeric(12,4)
+  observacion : varchar(200)
+}
+entity "tarea_estandar_modelo" as t7 {
+  * id_tarea_estandar : serial <<PK>>
+  --
+  * id_modelo : integer <<FK>>
+  id_empleado_sugerido : integer <<FK>>
+  * nombre : varchar(120)
+  * secuencia : smallint
+  * horas_estimadas : numeric(8,2)
+}
+entity "material" as x_material #EEF2F7 {
+  * id_material : serial <<PK>>
+}
+entity "empleado" as x_empleado #EEF2F7 {
+  * id_empleado : serial <<PK>>
+}
+
+t0 ||--o{ t1
+t2 ||--o{ t3
+t1 ||--o{ t4
+t2 ||--o{ t4
+t1 ||--o{ t5
+t1 ||--o{ t6
+x_material ||--o{ t6
+t1 ||--o{ t7
+x_empleado |o--o{ t7
+@enduml

@@ -1,0 +1,64 @@
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Calibri
+skinparam defaultFontSize 12
+skinparam dpi 160
+skinparam roundCorner 8
+skinparam ArrowColor #44546A
+skinparam ArrowFontColor #44546A
+skinparam ArrowFontSize 10
+skinparam state {
+  BackgroundColor #DCE4EF
+  BorderColor #2E5496
+  FontColor #1A1A1A
+  StartColor #2E5496
+  EndColor #2E5496
+}
+skinparam activity {
+  BackgroundColor #DCE4EF
+  BorderColor #2E5496
+  FontColor #1A1A1A
+  DiamondBackgroundColor #FBF3EC
+  DiamondBorderColor #B5651D
+}
+skinparam swimlane {
+  BorderColor #8496B0
+  TitleFontColor #2E5496
+  TitleFontStyle bold
+}
+skinparam component {
+  BackgroundColor #DCE4EF
+  BorderColor #2E5496
+}
+skinparam node {
+  BackgroundColor #F2F5FA
+  BorderColor #2E5496
+}
+skinparam database {
+  BackgroundColor #DCE4EF
+  BorderColor #2E5496
+}
+skinparam cloud {
+  BackgroundColor #FBF3EC
+  BorderColor #B5651D
+}
+skinparam package {
+  BorderColor #8496B0
+  FontColor #2E5496
+}
+skinparam rectangle {
+  BorderColor #8496B0
+}
+skinparam artifact {
+  BackgroundColor #FFFFFF
+  BorderColor #2E5496
+}
+skinparam note {
+  BackgroundColor #FFFBEA
+  BorderColor #C9B458
+  FontSize 11
+}
+skinparam actor {
+  BackgroundColor #DCE4EF
+  BorderColor #2E5496
+}

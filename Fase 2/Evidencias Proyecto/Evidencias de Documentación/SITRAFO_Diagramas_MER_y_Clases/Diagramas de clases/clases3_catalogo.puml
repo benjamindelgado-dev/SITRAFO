@@ -1,0 +1,80 @@
+@startuml Clases_Catalogo
+title Diagrama de clases — Catálogo de productos
+!include _skin_clases.txt
+
+set separator none
+abstract class ActivableModel <<apps.common>> #EEF2F7
+abstract class VigenciaModel <<apps.common>> #EEF2F7
+class Empleado <<apps.produccion>> #EEF2F7
+class Material <<apps.inventario>> #EEF2F7
+class Usuario <<apps.seguridad>> #EEF2F7
+package "apps.catalogo" {
+class FamiliaProducto {
+  - id_familia : int {PK}
+  - nombre : str {UQ}
+  - descripcion : str [0..1]
+}
+class ModeloProducto {
+  - id_modelo : int {PK}
+  - codigo : str {UQ}
+  - nombre : str
+  - descripcion : str [0..1]
+  - publicado : bool
+  + horas_estandar_totales «property»
+  + precio_vigente «property»
+}
+class ParametroTecnico {
+  - id_parametro : int {PK}
+  - codigo : str {UQ}
+  - nombre : str
+  - unidad : str
+  - tipo_dato : TipoDato
+  - obligatorio : bool
+}
+enum "ParametroTecnico.TipoDato" as ParametroTecnico_TipoDato {
+  numerico
+  texto
+  lista
+}
+ParametroTecnico ..> ParametroTecnico_TipoDato
+class ValorParametro {
+  - id_valor : int {PK}
+  - valor : str
+  - orden : int
+}
+class ModeloParametro {
+  - id : int {PK}
+  - valor_defecto : str [0..1]
+  - obligatorio : bool
+}
+class PrecioBaseModelo {
+  - id_precio : int {PK}
+  - monto_uf : Decimal
+}
+class BomModelo {
+  - id_bom : int {PK}
+  - cantidad : Decimal
+  - observacion : str [0..1]
+}
+class TareaEstandarModelo {
+  - id_tarea_estandar : int {PK}
+  - nombre : str
+  - secuencia : int
+  - horas_estimadas : Decimal
+}
+}
+ActivableModel <|-- FamiliaProducto
+ActivableModel <|-- ModeloProducto
+ActivableModel <|-- ValorParametro
+VigenciaModel <|-- PrecioBaseModelo
+ModeloProducto "*" --> "1" FamiliaProducto : familia
+ValorParametro "*" --> "1" ParametroTecnico : parametro
+ModeloParametro "*" --> "1" ModeloProducto : modelo
+ModeloParametro "*" --> "1" ParametroTecnico : parametro
+PrecioBaseModelo "*" --> "1" ModeloProducto : modelo
+PrecioBaseModelo "*" --> "1" Usuario : usuario
+BomModelo "*" --> "1" ModeloProducto : modelo
+BomModelo "*" --> "1" Material : material
+TareaEstandarModelo "*" --> "1" ModeloProducto : modelo
+TareaEstandarModelo "*" --> "0..1" Empleado : empleado_sugerido
+@enduml

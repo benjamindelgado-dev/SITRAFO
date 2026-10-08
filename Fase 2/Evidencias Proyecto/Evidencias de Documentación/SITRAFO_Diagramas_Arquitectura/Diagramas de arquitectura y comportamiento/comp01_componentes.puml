@@ -1,0 +1,71 @@
+@startuml COMP-01_Componentes
+title COMP-01 — Diagrama de componentes de SITRAFO
+!include _skin_arq.txt
+top to bottom direction
+
+actor "Usuarios internos" as UI
+actor "Clientes" as UC
+
+package "Aplicación de escritorio (PySide6)" as ESC {
+  [Ventanas y paneles por módulo\n(comercial, producción, taller, calidad,\ninventario, reportes, administración)] as PAN
+  [ClienteAPI\n(requests, token JWT,\nrenovación automática)] as CAPI
+}
+
+package "Servidor Django 5.1 (gunicorn)" as SRV {
+  package "Presentación" {
+    [API REST /api/v1/\n(Django REST Framework,\n29 recursos)] as API
+    [Portal web del cliente\n(vistas y plantillas Django,\nBootstrap 5)] as WEB
+    [Middleware\n(HTTPS, CSRF, mantención,\ncuenta suspendida)] as MW
+  }
+  package "Seguridad" {
+    [Autenticación\n(JWT para la API,\nsesión para la web)] as AUTH
+    [PermisoPorRol\n(matriz de 6 roles,\nauditoría de denegaciones)] as PERM
+  }
+  package "Negocio" {
+    [Servicios de dominio\nseguridad · comercial · produccion\ninventario · calidad · pagos (cobros)] as SVC
+    [reportes\n(Excel con openpyxl,\nPDF con reportlab)] as REP
+    [notificaciones\n(plantillas de correo)] as NOT
+  }
+  package "Integración" {
+    [ClienteServicioExterno\n(reintentos, espera incremental,\nlog_integracion)] as BASE
+    [ClienteIndicadores · ClienteFeriados\nClienteGeocodificacion\nClientePayPal · ClienteBrevo] as CLI
+  }
+  package "Datos" {
+    [Modelos Django (ORM)\n54 tablas en 9 aplicaciones\n+ clases base de apps.common] as ORM
+  }
+}
+
+database "PostgreSQL 16" as DB
+cloud "Servicios externos\nmindicador.cl · Nager.Date\nNominatim · PayPal · Brevo" as EXT
+
+UI --> PAN
+PAN --> CAPI
+CAPI --> API : HTTPS / JSON\nAuthorization: Bearer
+UC --> WEB : HTTPS / HTML\ncookie de sesión
+WEB ..> MW
+API ..> AUTH
+API ..> PERM
+WEB ..> AUTH
+API --> SVC
+API --> REP
+WEB --> SVC
+SVC --> NOT
+SVC --> CLI
+NOT --> CLI : correo (Brevo)
+CLI --|> BASE
+SVC --> ORM
+REP --> ORM
+ORM --> DB : psycopg 3
+BASE --> EXT : HTTPS
+
+note right of CAPI
+  El escritorio nunca accede a la
+  base de datos: toda operación
+  pasa por la API REST.
+end note
+note right of SVC
+  La API y la web llaman a los mismos
+  servicios: una regla de negocio se
+  implementa una sola vez.
+end note
+@enduml

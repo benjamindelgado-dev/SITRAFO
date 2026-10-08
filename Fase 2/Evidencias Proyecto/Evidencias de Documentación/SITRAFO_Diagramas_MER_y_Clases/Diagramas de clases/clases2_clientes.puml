@@ -1,0 +1,66 @@
+@startuml Clases_Clientes
+title Diagrama de clases — Clientes
+!include _skin_clases.txt
+
+set separator none
+abstract class TimeStampedModel <<apps.common>> #EEF2F7
+package "apps.clientes" {
+class Region {
+  - id_region : int {PK}
+  - nombre : str {UQ}
+  - codigo : str
+}
+class Comuna {
+  - id_comuna : int {PK}
+  - nombre : str
+}
+class Cliente {
+  - id_cliente : int {PK}
+  - rut : str {UQ}
+  - razon_social : str
+  - nombre_fantasia : str [0..1]
+  - tipo_persona : TipoPersona
+  - giro : str [0..1]
+  - estado : Estado
+  + save()
+}
+enum "Cliente.TipoPersona" as Cliente_TipoPersona {
+  natural
+  juridica
+}
+Cliente ..> Cliente_TipoPersona
+enum "Cliente.Estado" as Cliente_Estado {
+  activo
+  inactivo
+}
+Cliente ..> Cliente_Estado
+class ContactoCliente {
+  - id_contacto : int {PK}
+  - nombre : str
+  - cargo : str [0..1]
+  - email : str [0..1]
+  - telefono : str [0..1]
+  - principal : bool
+}
+class DireccionCliente {
+  - id_direccion : int {PK}
+  - tipo : Tipo
+  - calle : str
+  - numero : str [0..1]
+  - latitud : Decimal [0..1]
+  - longitud : Decimal [0..1]
+  - validada : bool
+}
+enum "DireccionCliente.Tipo" as DireccionCliente_Tipo {
+  facturacion
+  despacho
+  instalacion
+}
+DireccionCliente ..> DireccionCliente_Tipo
+}
+TimeStampedModel <|-- Cliente
+Comuna "*" --> "1" Region : region
+ContactoCliente "*" --> "1" Cliente : cliente
+DireccionCliente "*" --> "1" Cliente : cliente
+DireccionCliente "*" --> "1" Comuna : comuna
+@enduml

@@ -1,0 +1,120 @@
+@startuml Clases_Comercial
+title Diagrama de clases — Proceso comercial
+!include _skin_clases.txt
+
+set separator none
+abstract class HistorialEstadoModel <<apps.common>> #EEF2F7
+abstract class TimeStampedModel <<apps.common>> #EEF2F7
+class Cliente <<apps.clientes>> #EEF2F7
+class DireccionCliente <<apps.clientes>> #EEF2F7
+class ModeloProducto <<apps.catalogo>> #EEF2F7
+class ParametroTecnico <<apps.catalogo>> #EEF2F7
+class Usuario <<apps.seguridad>> #EEF2F7
+package "apps.comercial" {
+class EstadoDocumento {
+  - id_estado : int {PK}
+  - tipo_documento : TipoDocumento
+  - codigo : str
+  - nombre : str
+  - es_final : bool
+}
+enum "EstadoDocumento.TipoDocumento" as EstadoDocumento_TipoDocumento {
+  solicitud
+  cotizacion
+  orden_compra
+  orden_trabajo
+}
+EstadoDocumento ..> EstadoDocumento_TipoDocumento
+class SolicitudPresupuesto {
+  - id_solicitud : int {PK}
+  - numero : str {UQ}
+  - cantidad : int
+  - fecha_deseada : date [0..1]
+  + {static} generar_numero()
+}
+class SolicitudEspecificacion {
+  - id : int {PK}
+  - valor : str
+}
+class SolicitudHistorial {
+  - id_historial : int {PK}
+}
+class Cotizacion {
+  - id_cotizacion : int {PK}
+  - numero : str
+  - version : int
+  - valor_uf : Decimal
+  - fecha_valor_uf : date
+  - total_uf : Decimal
+  - descuento_pct : Decimal
+  - plazo_dias_habiles : int [0..1]
+  - fecha_entrega : date [0..1]
+  - vence_el : date
+  + dias_para_vencer «property»
+  + esta_vigente «property»
+  + requiere_aprobacion «property»
+  + total_clp «property»
+  + {static} calcular_vencimiento(fecha_emision, dias)
+  + {static} generar_numero()
+  + recalcular_total(guardar)
+  + clean()
+}
+class CotizacionLinea {
+  - id_linea : int {PK}
+  - cantidad : int
+  - costo_material_uf : Decimal
+  - costo_hh_uf : Decimal
+  - margen_pct : Decimal
+  - precio_uf : Decimal
+  + costo_estimado_uf «property»
+  + calcular_precio()
+}
+class CotizacionHistorial {
+  - id_historial : int {PK}
+}
+class OrdenCompra {
+  - id_orden_compra : int {PK}
+  - numero : str {UQ}
+  - total_uf : Decimal
+  - anticipo_pct : Decimal [0..1]
+  + monto_anticipo_uf «property»
+  + monto_saldo_uf «property»
+  + {static} generar_numero()
+}
+class OrdenCompraLinea {
+  - id_linea_oc : int {PK}
+  - cantidad : int
+  - precio_uf : Decimal
+}
+class OrdenCompraHistorial {
+  - id_historial : int {PK}
+}
+}
+TimeStampedModel <|-- SolicitudPresupuesto
+HistorialEstadoModel <|-- SolicitudHistorial
+TimeStampedModel <|-- Cotizacion
+HistorialEstadoModel <|-- CotizacionHistorial
+TimeStampedModel <|-- OrdenCompra
+HistorialEstadoModel <|-- OrdenCompraHistorial
+SolicitudPresupuesto "*" --> "1" Cliente : cliente
+SolicitudPresupuesto "*" --> "0..1" ModeloProducto : modelo
+SolicitudPresupuesto "*" --> "0..1" DireccionCliente : direccion
+SolicitudPresupuesto "*" --> "1" EstadoDocumento : estado
+SolicitudPresupuesto "*" --> "0..1" Usuario : ejecutivo
+SolicitudEspecificacion "*" --> "1" SolicitudPresupuesto : solicitud
+SolicitudEspecificacion "*" --> "1" ParametroTecnico : parametro
+SolicitudHistorial "*" --> "1" SolicitudPresupuesto : solicitud
+Cotizacion "*" --> "1" SolicitudPresupuesto : solicitud
+Cotizacion "*" --> "1" Cliente : cliente
+Cotizacion "*" --> "1" EstadoDocumento : estado
+Cotizacion "*" --> "1" Usuario : ejecutivo
+CotizacionLinea "*" --> "1" Cotizacion : cotizacion
+CotizacionLinea "*" --> "1" ModeloProducto : modelo
+CotizacionHistorial "*" --> "1" Cotizacion : cotizacion
+OrdenCompra "*" --> "1" Cotizacion : cotizacion
+OrdenCompra "*" --> "1" Cliente : cliente
+OrdenCompra "*" --> "1" EstadoDocumento : estado
+OrdenCompraLinea "*" --> "1" OrdenCompra : orden_compra
+OrdenCompraLinea "*" --> "1" CotizacionLinea : cotizacion_linea
+OrdenCompraHistorial "*" --> "1" OrdenCompra : orden_compra
+@enduml

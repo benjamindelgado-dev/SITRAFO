@@ -1,0 +1,107 @@
+@startuml Clases_Produccion
+title Diagrama de clases — Ejecución productiva
+!include _skin_clases.txt
+
+set separator none
+abstract class ActivableModel <<apps.common>> #EEF2F7
+abstract class HistorialEstadoModel <<apps.common>> #EEF2F7
+abstract class TimeStampedModel <<apps.common>> #EEF2F7
+class Bodega <<apps.inventario>> #EEF2F7
+class EstadoDocumento <<apps.comercial>> #EEF2F7
+class Material <<apps.inventario>> #EEF2F7
+class ModeloProducto <<apps.catalogo>> #EEF2F7
+class OrdenCompra <<apps.comercial>> #EEF2F7
+class Usuario <<apps.seguridad>> #EEF2F7
+package "apps.produccion" {
+class Empleado {
+  - id_empleado : int {PK}
+  - rut : str {UQ}
+  - nombre : str
+  - cargo : str
+  + tarifa_vigente_a(fecha)
+  + save()
+}
+class TarifaHoraHombre {
+  - id_tarifa : int {PK}
+  - valor_hora_uf : Decimal
+  - vigente_desde : date
+  - vigente_hasta : date [0..1]
+}
+class OrdenTrabajo {
+  - id_orden_trabajo : int {PK}
+  - numero : str {UQ}
+  - cantidad : int
+  - costo_estimado_uf : Decimal
+  - costo_real_uf : Decimal [0..1]
+  - avance_pct : Decimal [0..1]
+  - fecha_inicio : date [0..1]
+  - fecha_cierre : date [0..1]
+  + costo_hh_uf «property»
+  + costo_indirecto_uf «property»
+  + costo_materiales_uf «property»
+  + desviacion_pct «property»
+  + desviacion_requiere_justificacion «property»
+  + desviacion_uf «property»
+  + tareas_pendientes «property»
+  + {static} factor_indirecto()
+  + {static} generar_numero()
+  + puede_cerrarse()
+  + recalcular_avance(guardar)
+  + recalcular_costo_real(guardar)
+}
+class OrdenTrabajoHistorial {
+  - id_historial : int {PK}
+}
+class TareaOT {
+  - id_tarea : int {PK}
+  - nombre : str
+  - secuencia : int
+  - horas_estimadas : Decimal
+  - estado : Estado
+  - fecha_estimada : date [0..1]
+  + fecha_estimada_termino «property»
+  + horas_registradas «property»
+}
+enum "TareaOT.Estado" as TareaOT_Estado {
+  pendiente
+  en_ejecucion
+  terminada
+}
+TareaOT ..> TareaOT_Estado
+class ConsumoMaterial {
+  - id_consumo : int {PK}
+  - cantidad : Decimal
+  - costo_unitario_uf : Decimal
+  - planificado : bool
+  - fecha : datetime
+  + costo_total_uf «property»
+}
+class RegistroHoraHombre {
+  - id_registro : int {PK}
+  - fecha : date
+  - horas : Decimal
+  - valor_hora_uf : Decimal
+  - anulado : bool
+  + costo_total_uf «property»
+  + clean()
+}
+}
+ActivableModel <|-- Empleado
+TimeStampedModel <|-- OrdenTrabajo
+HistorialEstadoModel <|-- OrdenTrabajoHistorial
+Empleado "0..1" --> "0..1" Usuario : usuario
+TarifaHoraHombre "*" --> "1" Empleado : empleado
+OrdenTrabajo "*" --> "1" OrdenCompra : orden_compra
+OrdenTrabajo "*" --> "1" ModeloProducto : modelo
+OrdenTrabajo "*" --> "1" EstadoDocumento : estado
+OrdenTrabajoHistorial "*" --> "1" OrdenTrabajo : orden_trabajo
+TareaOT "*" --> "1" OrdenTrabajo : orden_trabajo
+TareaOT "*" --> "0..1" Empleado : empleado
+ConsumoMaterial "*" --> "1" TareaOT : tarea
+ConsumoMaterial "*" --> "1" Material : material
+ConsumoMaterial "*" --> "1" Bodega : bodega
+ConsumoMaterial "*" --> "1" Empleado : empleado
+RegistroHoraHombre "*" --> "1" TareaOT : tarea
+RegistroHoraHombre "*" --> "1" Empleado : empleado
+RegistroHoraHombre "*" --> "1" Usuario : usuario_registro
+@enduml

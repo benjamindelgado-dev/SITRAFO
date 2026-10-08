@@ -1,0 +1,113 @@
+@startuml MER_Produccion
+title Dominio 5 — Ejecución productiva
+!include _skin_er.txt
+
+entity "empleado" as t0 {
+  * id_empleado : serial <<PK>>
+  --
+  id_usuario : integer <<FK,UQ>>
+  * activo : boolean
+  * rut : varchar(12) <<UQ>>
+  * nombre : varchar(120)
+  * cargo : varchar(80)
+}
+entity "tarifa_hora_hombre" as t1 {
+  * id_tarifa : serial <<PK>>
+  --
+  * id_empleado : integer <<FK>>
+  * valor_hora_uf : numeric(10,4)
+  * vigente_desde : date
+  vigente_hasta : date
+}
+entity "orden_trabajo" as t2 {
+  * id_orden_trabajo : serial <<PK>>
+  --
+  * id_orden_compra : integer <<FK>>
+  * id_modelo : integer <<FK>>
+  * id_estado : integer <<FK>>
+  * numero : varchar(20) <<UQ>>
+  * cantidad : integer
+  * costo_estimado_uf : numeric(14,4)
+  costo_real_uf : numeric(14,4)
+  avance_pct : numeric(5,2)
+  fecha_inicio : date
+  fecha_cierre : date
+  * creado_en : timestamptz
+  * modificado_en : timestamptz
+}
+entity "orden_trabajo_historial" as t3 {
+  * id_historial : bigserial <<PK>>
+  --
+  estado_anterior_id : integer <<FK>>
+  * estado_nuevo_id : integer <<FK>>
+  * usuario_id : integer <<FK>>
+  * id_orden_trabajo : integer <<FK>>
+  * fecha_hora : timestamptz
+  observacion : varchar(300)
+  * creado_en : timestamptz
+  * modificado_en : timestamptz
+}
+entity "tarea_ot" as t4 {
+  * id_tarea : serial <<PK>>
+  --
+  * id_orden_trabajo : integer <<FK>>
+  id_empleado : integer <<FK>>
+  * nombre : varchar(120)
+  * secuencia : smallint
+  * horas_estimadas : numeric(8,2)
+  * estado : varchar(20)
+  fecha_estimada : date
+}
+entity "consumo_material" as t5 {
+  * id_consumo : serial <<PK>>
+  --
+  * id_tarea : integer <<FK>>
+  * id_material : integer <<FK>>
+  * id_bodega : integer <<FK>>
+  * id_empleado : integer <<FK>>
+  * cantidad : numeric(12,4)
+  * costo_unitario_uf : numeric(12,4)
+  * planificado : boolean
+  * fecha : timestamptz
+}
+entity "registro_hora_hombre" as t6 {
+  * id_registro : serial <<PK>>
+  --
+  * id_tarea : integer <<FK>>
+  * id_empleado : integer <<FK>>
+  * id_usuario_registro : integer <<FK>>
+  * fecha : date
+  * horas : numeric(6,2)
+  * valor_hora_uf : numeric(10,4)
+  * anulado : boolean
+}
+entity "orden_compra" as x_orden_compra #EEF2F7 {
+  * id_orden_compra : serial <<PK>>
+}
+entity "modelo_producto" as x_modelo_producto #EEF2F7 {
+  * id_modelo : serial <<PK>>
+}
+entity "estado_documento" as x_estado_documento #EEF2F7 {
+  * id_estado : serial <<PK>>
+}
+entity "material" as x_material #EEF2F7 {
+  * id_material : serial <<PK>>
+}
+entity "bodega" as x_bodega #EEF2F7 {
+  * id_bodega : serial <<PK>>
+}
+
+t0 ||--o{ t1
+x_orden_compra ||--o{ t2
+x_modelo_producto ||--o{ t2
+x_estado_documento ||--o{ t2
+t2 ||--o{ t3
+t2 ||--o{ t4
+t0 |o--o{ t4
+t4 ||--o{ t5
+x_material ||--o{ t5
+x_bodega ||--o{ t5
+t0 ||--o{ t5
+t4 ||--o{ t6
+t0 ||--o{ t6
+@enduml

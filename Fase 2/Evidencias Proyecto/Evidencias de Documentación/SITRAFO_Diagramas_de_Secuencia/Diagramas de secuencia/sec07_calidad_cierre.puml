@@ -1,0 +1,73 @@
+@startuml SEC-07_Calidad_cierre
+title SEC-07 — Control de calidad y cierre de la orden de trabajo (RF-CAL-03, CU-OT-07, CU-OT-08, RN-11, RN-12)
+!include _skin_secuencia.txt
+
+actor "Jefe de\nproducción" as J
+actor "Inspector de\ncalidad" as I
+boundary "Paneles Producción\ny Calidad (escritorio)" as P
+box "Servidor SITRAFO (Render)" #F7F9FC
+  boundary "OrdenTrabajoViewSet\nControlCalidadViewSet\nNoConformidadViewSet" as A
+  control "produccion.services" as SP
+  control "calidad.services" as SC
+  entity "OrdenTrabajo" as OT
+  control "pagos.services.cobros" as CB
+  database "PostgreSQL" as DB
+end box
+
+J -> P : enviar a calidad
+P -> A : POST ordenes-trabajo/{id}/enviar_calidad/
+A -> SP : enviar_a_calidad(ot) — exige todas las tareas terminadas
+SP -> DB : estado → en_calidad + historial
+
+I -> P : inicia el control con el protocolo del modelo
+P -> A : POST controles-calidad/
+A -> SC : iniciar_control(ot, protocolo, inspector)
+SC -> DB : INSERT control_calidad (en_proceso)
+
+loop por cada punto de control
+  I -> P : registra el valor medido
+  P -> A : POST controles-calidad/{id}/registrar_resultado/
+  A -> SC : registrar_resultado(control, punto, valor, usuario)
+  SC -> DB : INSERT resultado_control\n(conforme = punto.evaluar(valor))
+  alt fuera de tolerancia
+    SC -> DB : INSERT no_conformidad (abierta,\nseveridad, responsable)
+  end
+  SC -> SC : recalcular_estado(control)\n(en_proceso / con_nc / conforme)
+end
+
+opt hay no conformidades abiertas
+  I -> P : registra la acción correctiva
+  P -> A : POST no-conformidades/{id}/cerrar/
+  A -> SC : cerrar_no_conformidad(nc, usuario, acción)
+  SC -> DB : no_conformidad → cerrada + auditoria
+  note over I, SC : Luego el ensayo se repite y se registra\nun nuevo resultado sin borrar el anterior.
+end
+
+J -> P : cerrar la orden de trabajo
+P -> A : POST ordenes-trabajo/{id}/cerrar/ {justificación?}
+A -> SP : cerrar(ot, usuario, justificación)
+SP -> OT : puede_cerrarse()
+note right of OT
+  Impedimentos (RN-12):
+  - tareas sin terminar
+  - sin control de calidad ejecutado
+  - puntos obligatorios sin resultado
+  - no conformidades abiertas
+end note
+alt hay impedimentos
+  A --> P : 409 «No se puede cerrar: ...»
+else apta
+  SP -> OT : recalcular_costo_real()
+  alt desviación sobre el umbral sin justificación (RN-11)
+    A --> P : 409 «debe justificar la desviación»
+  else
+    SP -> DB : fecha_cierre, estado → cerrada + historial
+    SP -> CB : emitir_saldo(orden_compra)
+    alt era la última OT de la compra
+      CB -> DB : INSERT documento_cobro (saldo,\nUF del día de emisión)
+      CB -> CB : on_commit: aviso de saldo al cliente
+    end
+    A --> P : 200 orden cerrada
+  end
+end
+@enduml

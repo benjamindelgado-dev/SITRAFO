@@ -1,0 +1,60 @@
+@startuml Clases_Base
+title Diagrama de clases — Modelos base abstractos (apps.common)
+!include _skin_clases.txt
+set separator none
+
+package "django.db.models" {
+  abstract class Model #EEF2F7
+}
+package "apps.common" {
+  abstract class TimeStampedModel {
+    - creado_en : datetime
+    - modificado_en : datetime
+  }
+  abstract class ActivableModel {
+    - activo : bool
+  }
+  abstract class VigenciaModel {
+    - vigente_desde : date
+    - vigente_hasta : date [0..1]
+    + esta_vigente «property»
+  }
+  abstract class HistorialEstadoModel {
+    - fecha_hora : datetime
+    - observacion : str [0..1]
+  }
+}
+package "apps.comercial" {
+  class EstadoDocumento #EEF2F7
+}
+package "apps.seguridad" {
+  class Usuario #EEF2F7
+}
+Model <|-- TimeStampedModel
+Model <|-- ActivableModel
+Model <|-- VigenciaModel
+TimeStampedModel <|-- HistorialEstadoModel
+HistorialEstadoModel "*" --> "0..1" EstadoDocumento : estado_anterior
+HistorialEstadoModel "*" --> "1" EstadoDocumento : estado_nuevo
+HistorialEstadoModel "*" --> "1" Usuario : usuario
+
+note bottom of TimeStampedModel
+  Cliente, SolicitudPresupuesto,
+  Cotizacion, OrdenCompra, OrdenTrabajo
+end note
+note bottom of ActivableModel
+  Rol, FamiliaProducto, ValorParametro,
+  ModeloProducto, Empleado, CategoriaMaterial,
+  Material, Proveedor, Bodega, ProtocoloCalidad
+  (RN-13: no hay eliminación física)
+end note
+note bottom of VigenciaModel
+  PrecioBaseModelo, PrecioMaterial
+  (RN-17: precios versionados)
+end note
+note right of HistorialEstadoModel
+  SolicitudHistorial, CotizacionHistorial,
+  OrdenCompraHistorial, OrdenTrabajoHistorial
+  (RN-14: una tabla por documento)
+end note
+@enduml

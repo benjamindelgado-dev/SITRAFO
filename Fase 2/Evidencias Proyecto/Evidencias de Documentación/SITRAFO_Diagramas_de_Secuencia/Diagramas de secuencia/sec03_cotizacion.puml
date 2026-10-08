@@ -1,0 +1,68 @@
+@startuml SEC-03_Cotizacion
+title SEC-03 — Elaboración y emisión de la cotización (CU-COM-03 a CU-COM-07)
+!include _skin_secuencia.txt
+
+actor "Ejecutivo\ncomercial" as U
+boundary "Panel Comercial\n(escritorio)" as P
+box "Servidor SITRAFO (Render)" #F7F9FC
+  boundary "SolicitudPresupuestoViewSet\nCotizacionViewSet" as A
+  control "comercial.services" as S
+  control "indicadores / feriados" as IF
+  control "notificaciones" as NT
+  database "PostgreSQL" as DB
+end box
+participant "mindicador.cl" as MI
+participant "Brevo" as B
+
+U -> P : selecciona la solicitud recibida
+P -> A : GET solicitudes/{id}/costeo/
+A -> S : costear_modelo(modelo, margen)
+S -> DB : BOM con costo vigente de materiales,\nhoras estándar y tarifas vigentes
+S --> A : Costeo (materiales, HH, recargo\nindirecto, precio sugerido)
+A -> IF : valor_uf()
+IF -> DB : indicador UF del día
+opt no hay UF almacenada
+  IF -> MI : GET /api (UF, UTM, dólar)
+  MI --> IF : valores del día
+  IF -> DB : INSERT indicador_economico\n+ log_integracion
+end
+A --> P : costeo + UF + plazo por defecto
+P --> U : formulario prellenado
+
+U -> P : ajusta precio, margen, descuento y plazo
+P -> A : POST solicitudes/{id}/cotizar/
+A -> S : cotizar_solicitud(solicitud, usuario, ...)
+group transacción atómica
+  S -> IF : valor_uf() — congela la UF (RN-03)
+  S -> IF : plazo_en_dias_habiles(hoy, plazo)
+  IF -> DB : feriados almacenados (RN-08)
+  S -> DB : INSERT cotizacion (borrador)\n+ cotizacion_linea + historial
+  S -> DB : UPDATE solicitud → cotizada\n+ solicitud_historial
+end
+S --> A : Cotizacion
+A --> P : 201 cotización en borrador
+
+opt descuento sobre el umbral (RN-05)
+  U -> P : solicitar aprobación
+  P -> A : POST cotizaciones/{id}/solicitar_aprobacion/
+  A -> DB : estado → en_aprobacion
+  note over P, A : La aprueba otro usuario con permiso\ncotizacion.aprobar (no quien la elaboró).
+end
+
+U -> P : emitir
+P -> A : POST cotizaciones/{id}/emitir/
+A -> A : verifica estado, aprobación y líneas
+A -> IF : valor_uf() del día de emisión
+A -> DB : UPDATE valor_uf, fecha_valor_uf,\nvence_el (vigencia desde hoy)
+A -> DB : estado → emitida + historial
+A -> NT : notificar_cotizacion_emitida()
+NT -> NT : genera PDF de la cotización
+NT -> B : correo con PDF adjunto y enlace al portal
+alt Brevo responde
+  B --> NT : 201
+  A --> P : 200 {correo_enviado: true}
+else correo falla
+  A --> P : 200 {correo_enviado: false,\naviso: reenviar desde el panel}
+end
+P --> U : cotización emitida
+@enduml

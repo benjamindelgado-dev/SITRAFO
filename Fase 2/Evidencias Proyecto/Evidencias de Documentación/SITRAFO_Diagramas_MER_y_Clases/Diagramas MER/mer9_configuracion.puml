@@ -1,0 +1,53 @@
+@startuml MER_Configuracion
+title Dominio 9 — Configuración, canal web e integraciones
+!include _skin_er.txt
+
+entity "parametro_sistema" as t0 {
+  * id_parametro_sistema : serial <<PK>>
+  --
+  * id_usuario : integer <<FK>>
+  * clave : varchar(60) <<UQ>>
+  * valor : varchar(300)
+  * tipo_dato : varchar(20)
+  * ambito : varchar(30)
+  descripcion : varchar(200)
+  * modificado_en : timestamptz
+}
+entity "aviso_sitio" as t1 {
+  * id_aviso : serial <<PK>>
+  --
+  * id_usuario : integer <<FK>>
+  * titulo : varchar(120)
+  * cuerpo : text
+  * tipo : varchar(20)
+  * vigente_desde : timestamptz
+  vigente_hasta : timestamptz
+  * activo : boolean
+}
+entity "feriado" as t2 {
+  * id_feriado : serial <<PK>>
+  --
+  * fecha : date <<UQ>>
+  * nombre : varchar(120)
+  * tipo : varchar(30)
+  * obtenido_en : timestamptz
+}
+entity "log_integracion" as t3 {
+  * id_log : bigserial <<PK>>
+  --
+  * servicio : varchar(40)
+  * endpoint : varchar(255)
+  * metodo : varchar(10)
+  * codigo_respuesta : smallint
+  * latencia_ms : integer
+  * exitoso : boolean
+  mensaje_error : varchar(500)
+  * fecha_hora : timestamptz
+}
+entity "usuario" as x_usuario #EEF2F7 {
+  * id_usuario : serial <<PK>>
+}
+
+x_usuario ||--o{ t0
+x_usuario ||--o{ t1
+@enduml

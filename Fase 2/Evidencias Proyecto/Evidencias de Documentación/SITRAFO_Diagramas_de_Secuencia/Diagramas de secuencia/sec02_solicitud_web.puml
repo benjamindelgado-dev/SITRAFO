@@ -1,0 +1,54 @@
+@startuml SEC-02_Solicitud_presupuesto
+title SEC-02 — Solicitud de presupuesto desde la web del cliente (CU-COM-01)
+!include _skin_secuencia.txt
+
+actor "Cliente" as U
+boundary "Navegador" as N
+box "Servidor SITRAFO (Render)" #F7F9FC
+  control "Middleware\n(mantención y cuenta)" as MW
+  boundary "solicitar_presupuesto\n(vista web Django)" as W
+  control "SolicitudPresupuestoForm" as F
+  entity "SolicitudPresupuesto\nSolicitudEspecificacion\nSolicitudHistorial" as E
+  control "notificaciones" as NT
+  database "PostgreSQL" as DB
+end box
+participant "Brevo\n(correo transaccional)" as B
+
+U -> N : abre «Solicitar presupuesto»\n(desde el catálogo o el menú)
+N -> MW : GET /solicitar/?modelo=id
+MW -> DB : leer web.modo_mantencion
+alt sitio en mantención
+  MW --> N : 503 página de mantención
+else sitio disponible
+  MW -> W : continúa
+  W -> F : construir formulario\n(direcciones y parámetros del cliente)
+  W --> N : formulario
+  U -> N : completa modelo, cantidad,\nfecha deseada y especificación técnica
+  N -> W : POST /solicitar/
+  W -> F : is_valid()
+  alt datos inválidos
+    W --> N : formulario con errores
+  else datos válidos
+    group transacción atómica
+      W -> E : generar_numero()
+      W -> E : crear solicitud\n(cliente = cuenta autenticada, RN-16;\nestado = recibida)
+      E -> DB : INSERT solicitud_presupuesto
+      loop por cada parámetro informado
+        W -> E : crear especificación
+        E -> DB : INSERT solicitud_especificacion
+      end
+      W -> E : crear historial (estado recibida)
+      E -> DB : INSERT solicitud_historial
+    end
+    W -> NT : on_commit: notificar_solicitud_recibida()
+    NT -> B : POST /v3/smtp/email (acuse de recibo)
+    B --> NT : 201
+    NT -> DB : INSERT log_integracion
+    W --> N : redirección a «Mis solicitudes»\ncon mensaje de éxito
+  end
+end
+note over W, E
+  El cliente lo asigna el sistema desde la sesión, nunca el formulario:
+  un cliente no puede crear solicitudes a nombre de otro (RN-16).
+end note
+@enduml

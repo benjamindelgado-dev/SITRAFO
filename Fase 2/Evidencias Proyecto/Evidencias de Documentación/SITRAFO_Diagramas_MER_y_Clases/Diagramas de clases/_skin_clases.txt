@@ -1,0 +1,39 @@
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Calibri
+skinparam defaultFontSize 12
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #2E5496
+  HeaderBackgroundColor #DCE4EF
+  FontColor #1A1A1A
+  AttributeFontColor #1A1A1A
+  AttributeFontSize 11
+  StereotypeFontColor #44546A
+  StereotypeFontSize 10
+}
+skinparam enum {
+  BackgroundColor #FBF3EC
+  BorderColor #B5651D
+  HeaderBackgroundColor #F3DCC7
+}
+skinparam package {
+  BorderColor #8496B0
+  FontColor #2E5496
+  BackgroundColor transparent
+}
+skinparam note {
+  BackgroundColor #FFFBEA
+  BorderColor #C9B458
+}
+skinparam arrow {
+  Color #44546A
+  FontColor #44546A
+  FontSize 10
+}
+skinparam dpi 160

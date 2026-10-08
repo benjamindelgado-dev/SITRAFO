@@ -1,0 +1,93 @@
+@startuml Clases_Seguridad
+title Diagrama de clases — Seguridad y auditoría
+!include _skin_clases.txt
+
+set separator none
+abstract class AbstractBaseUser <<django.contrib.auth>> #EEF2F7
+abstract class ActivableModel <<apps.common>> #EEF2F7
+class Cliente <<apps.clientes>> #EEF2F7
+package "apps.seguridad" {
+class Rol {
+  - id_rol : int {PK}
+  - nombre : str {UQ}
+  - descripcion : str [0..1]
+}
+class Permiso {
+  - id_permiso : int {PK}
+  - codigo : str {UQ}
+  - modulo : str
+  - operacion : Operacion
+}
+enum "Permiso.Operacion" as Permiso_Operacion {
+  crear
+  leer
+  actualizar
+  anular
+}
+Permiso ..> Permiso_Operacion
+class RolPermiso {
+  - id : int {PK}
+  - otorgado_en : datetime
+}
+class Usuario {
+  - id_usuario : int {PK}
+  - username : str {UQ}
+  - email : str {UQ}
+  - es_interno : bool
+  - estado : Estado
+  - intentos_fallidos : int
+  - ultimo_acceso : datetime [0..1]
+  - bloqueado_hasta : datetime [0..1]
+  - is_staff : bool
+  - is_superuser : bool
+  - is_active : bool
+  - creado_en : datetime
+  + puede_ingresar «property»
+  + codigos_permiso()
+  + levantar_bloqueo_vencido()
+  + registrar_acceso_exitoso()
+  + registrar_intento_fallido(maximo, minutos_bloqueo)
+}
+enum "Usuario.Estado" as Usuario_Estado {
+  activo
+  suspendido
+  bloqueado
+}
+Usuario ..> Usuario_Estado
+class UsuarioRol {
+  - id : int {PK}
+  - asignado_en : datetime
+}
+class Auditoria {
+  - id_auditoria : int {PK}
+  - entidad : str
+  - id_registro : str
+  - accion : Accion
+  - valor_anterior : dict [0..1]
+  - valor_nuevo : dict [0..1]
+  - fecha_hora : datetime
+  - origen : Origen [0..1]
+}
+enum "Auditoria.Accion" as Auditoria_Accion {
+  creacion
+  modificacion
+  anulacion
+  acceso_denegado
+}
+Auditoria ..> Auditoria_Accion
+enum "Auditoria.Origen" as Auditoria_Origen {
+  escritorio
+  web
+  sistema
+}
+Auditoria ..> Auditoria_Origen
+}
+ActivableModel <|-- Rol
+AbstractBaseUser <|-- Usuario
+RolPermiso "*" --> "1" Rol : rol
+RolPermiso "*" --> "1" Permiso : permiso
+Usuario "*" --> "0..1" Cliente : cliente
+UsuarioRol "*" --> "1" Usuario : usuario
+UsuarioRol "*" --> "1" Rol : rol
+Auditoria "*" --> "1" Usuario : usuario
+@enduml

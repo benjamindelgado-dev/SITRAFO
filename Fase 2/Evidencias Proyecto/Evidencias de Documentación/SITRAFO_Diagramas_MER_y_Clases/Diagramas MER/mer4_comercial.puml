@@ -1,0 +1,152 @@
+@startuml MER_Comercial
+title Dominio 4 — Proceso comercial
+!include _skin_er.txt
+
+entity "estado_documento" as t0 {
+  * id_estado : serial <<PK>>
+  --
+  * tipo_documento : varchar(30)
+  * codigo : varchar(30)
+  * nombre : varchar(60)
+  * es_final : boolean
+}
+entity "solicitud_presupuesto" as t1 {
+  * id_solicitud : serial <<PK>>
+  --
+  * id_cliente : integer <<FK>>
+  id_modelo : integer <<FK>>
+  id_direccion : integer <<FK>>
+  * id_estado : integer <<FK>>
+  id_ejecutivo : integer <<FK>>
+  * numero : varchar(20) <<UQ>>
+  * cantidad : integer
+  fecha_deseada : date
+  * creado_en : timestamptz
+  * modificado_en : timestamptz
+}
+entity "solicitud_especificacion" as t2 {
+  * id : bigserial <<PK>>
+  --
+  * id_solicitud : integer <<FK>>
+  * id_parametro : integer <<FK>>
+  * valor : varchar(60)
+}
+entity "solicitud_historial" as t3 {
+  * id_historial : bigserial <<PK>>
+  --
+  estado_anterior_id : integer <<FK>>
+  * estado_nuevo_id : integer <<FK>>
+  * usuario_id : integer <<FK>>
+  * id_solicitud : integer <<FK>>
+  * fecha_hora : timestamptz
+  observacion : varchar(300)
+  * creado_en : timestamptz
+  * modificado_en : timestamptz
+}
+entity "cotizacion" as t4 {
+  * id_cotizacion : serial <<PK>>
+  --
+  * id_solicitud : integer <<FK>>
+  * id_cliente : integer <<FK>>
+  * id_estado : integer <<FK>>
+  * id_ejecutivo : integer <<FK>>
+  * numero : varchar(20)
+  * version : smallint
+  * valor_uf : numeric(12,2)
+  * fecha_valor_uf : date
+  * total_uf : numeric(14,4)
+  * descuento_pct : numeric(5,2)
+  plazo_dias_habiles : smallint
+  fecha_entrega : date
+  * vence_el : date
+  * creado_en : timestamptz
+  * modificado_en : timestamptz
+}
+entity "cotizacion_linea" as t5 {
+  * id_linea : serial <<PK>>
+  --
+  * id_cotizacion : integer <<FK>>
+  * id_modelo : integer <<FK>>
+  * cantidad : integer
+  * costo_material_uf : numeric(12,4)
+  * costo_hh_uf : numeric(12,4)
+  * margen_pct : numeric(5,2)
+  * precio_uf : numeric(12,4)
+}
+entity "cotizacion_historial" as t6 {
+  * id_historial : bigserial <<PK>>
+  --
+  estado_anterior_id : integer <<FK>>
+  * estado_nuevo_id : integer <<FK>>
+  * usuario_id : integer <<FK>>
+  * id_cotizacion : integer <<FK>>
+  * fecha_hora : timestamptz
+  observacion : varchar(300)
+  * creado_en : timestamptz
+  * modificado_en : timestamptz
+}
+entity "orden_compra" as t7 {
+  * id_orden_compra : serial <<PK>>
+  --
+  * id_cotizacion : integer <<FK>>
+  * id_cliente : integer <<FK>>
+  * id_estado : integer <<FK>>
+  * numero : varchar(20) <<UQ>>
+  * total_uf : numeric(14,4)
+  anticipo_pct : numeric(5,2)
+  * creado_en : timestamptz
+  * modificado_en : timestamptz
+}
+entity "orden_compra_linea" as t8 {
+  * id_linea_oc : serial <<PK>>
+  --
+  * id_orden_compra : integer <<FK>>
+  * id_cotizacion_linea : integer <<FK>>
+  * cantidad : integer
+  * precio_uf : numeric(12,4)
+}
+entity "orden_compra_historial" as t9 {
+  * id_historial : bigserial <<PK>>
+  --
+  estado_anterior_id : integer <<FK>>
+  * estado_nuevo_id : integer <<FK>>
+  * usuario_id : integer <<FK>>
+  * id_orden_compra : integer <<FK>>
+  * fecha_hora : timestamptz
+  observacion : varchar(300)
+  * creado_en : timestamptz
+  * modificado_en : timestamptz
+}
+entity "cliente" as x_cliente #EEF2F7 {
+  * id_cliente : serial <<PK>>
+}
+entity "modelo_producto" as x_modelo_producto #EEF2F7 {
+  * id_modelo : serial <<PK>>
+}
+entity "direccion_cliente" as x_direccion_cliente #EEF2F7 {
+  * id_direccion : serial <<PK>>
+}
+entity "parametro_tecnico" as x_parametro_tecnico #EEF2F7 {
+  * id_parametro : serial <<PK>>
+}
+
+x_cliente ||--o{ t1
+x_modelo_producto |o--o{ t1
+x_direccion_cliente |o--o{ t1
+t0 ||--o{ t1
+t1 ||--o{ t2
+x_parametro_tecnico ||--o{ t2
+t1 ||--o{ t3
+t1 ||--o{ t4
+x_cliente ||--o{ t4
+t0 ||--o{ t4
+t4 ||--o{ t5
+x_modelo_producto ||--o{ t5
+t4 ||--o{ t6
+t4 ||--o{ t7
+x_cliente ||--o{ t7
+t0 ||--o{ t7
+t7 ||--o{ t8
+t5 ||--o{ t8
+t7 ||--o{ t9
+@enduml

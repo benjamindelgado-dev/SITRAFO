@@ -1,0 +1,33 @@
+@startuml EST-04_Orden_trabajo
+title EST-04 — Estados de la orden de trabajo
+!include _skin_arq.txt
+hide empty description
+
+state "Planificada" as planificada
+state "En ejecución" as en_ejecucion {
+  state "Registro en taller" as taller
+  taller : horas hombre (RN-10)
+  taller : consumos de material (RN-09)
+  taller : recálculo de costo real y avance
+}
+state "En control de calidad" as en_calidad {
+  state "Ensayos" as ensayos
+  ensayos : resultados por punto de control
+  ensayos : no conformidades y acciones correctivas
+}
+state "Cerrada" as cerrada
+state "Anulada" as anulada
+
+[*] --> planificada : generada desde la OC confirmada\n/ copia tareas estándar
+planificada --> en_ejecucion : iniciar\n[tiene tareas]\n/ aviso al cliente (primera OT)
+en_ejecucion --> en_calidad : enviar_calidad\n[todas las tareas terminadas]
+en_calidad --> cerrada : cerrar\n[control ejecutado, puntos obligatorios\ncon resultado, sin NC abiertas (RN-12)\ny desviación justificada (RN-11)]\n/ emite saldo si es la última OT
+planificada --> anulada : la orden de compra se anula\n[OT aún planificada]
+note bottom of anulada
+  Estado previsto en el modelo. Con las reglas vigentes
+  una OC con órdenes de trabajo ya tiene el anticipo
+  pagado y no puede anularse, por lo que es excepcional.
+end note
+cerrada --> [*]
+anulada --> [*]
+@enduml

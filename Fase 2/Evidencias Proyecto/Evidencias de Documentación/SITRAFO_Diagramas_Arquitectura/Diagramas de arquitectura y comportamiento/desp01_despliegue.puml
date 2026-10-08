@@ -1,0 +1,53 @@
+@startuml DESP-01_Despliegue
+title DESP-01 — Diagrama de despliegue de SITRAFO en producción
+!include _skin_arq.txt
+
+node "Equipo del usuario interno\n(Windows)" as PCI {
+  artifact "SITRAFO.exe\n(PySide6 + PyInstaller)" as EXE
+}
+node "Dispositivo del cliente" as PCC {
+  component "Navegador web" as NAV
+}
+
+node "GitHub" as GH {
+  artifact "Repositorio SITRAFO\n(rama main)" as REPO
+  component "GitHub Actions\nci.yml: ruff, migraciones,\npruebas, cobertura ≥ 70 %" as CI
+  component "GitHub Actions\nescritorio.yml: construye\nSITRAFO.exe (Release)" as CIE
+}
+
+cloud "Render (región Virginia)" as RENDER {
+  node "Web Service «sitrafo»\n(plan starter, Python 3.12)" as WS {
+    component "Proxy HTTPS de Render\n(TLS, sitrafo.onrender.com)" as PX
+    component "gunicorn (2 workers)\nDjango 5.1 + DRF\nWhiteNoise (estáticos)" as APP
+  }
+  node "Cron Job «sitrafo-tareas-diarias»\n(09:00 UTC)" as CJ {
+    component "manage.py tareas_diarias" as TD
+  }
+  database "PostgreSQL 16\n«sitrafo-db» (basic-256mb)\nsin acceso desde internet" as PG
+}
+
+cloud "Servicios externos" as EXT {
+  component "mindicador.cl" as MI
+  component "Nager.Date" as NG
+  component "Nominatim" as NO
+  component "PayPal (sandbox)" as PP
+  component "Brevo" as BR
+}
+
+EXE --> PX : HTTPS\n/api/v1/ (JSON + JWT)
+NAV --> PX : HTTPS\nportal web (sesión)
+PX --> APP : HTTP interno\nX-Forwarded-Proto
+APP --> PG : red privada\n(DATABASE_URL)
+TD --> PG : red privada
+APP --> MI
+APP --> NO
+APP --> PP
+APP --> BR
+TD --> MI
+TD --> NG
+REPO --> CI : push
+CI --> WS : despliegue automático\n[checksPass] + migrate
+CI --> CJ : despliegue automático
+REPO --> CIE : cambios en escritorio/\no etiqueta escritorio-v*
+CIE ..> EXE : descarga desde Releases
+@enduml

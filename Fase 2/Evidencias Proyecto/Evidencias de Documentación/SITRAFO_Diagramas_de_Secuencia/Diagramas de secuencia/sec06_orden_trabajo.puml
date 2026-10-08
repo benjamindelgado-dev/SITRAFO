@@ -1,0 +1,71 @@
+@startuml SEC-06_Orden_trabajo
+title SEC-06 — Generación y ejecución de la orden de trabajo (CU-OT-01, CU-OT-04 a CU-OT-06)
+!include _skin_secuencia.txt
+
+actor "Jefe de\nproducción" as J
+actor "Operario" as O
+boundary "Panel Producción /\nTaller (escritorio)" as P
+box "Servidor SITRAFO (Render)" #F7F9FC
+  boundary "OrdenCompraViewSet\nOrdenTrabajoViewSet\nTareaViewSet" as A
+  control "produccion.services" as S
+  entity "OrdenTrabajo" as OT
+  entity "MovimientoInventario" as MV
+  control "notificaciones" as NT
+  database "PostgreSQL" as DB
+end box
+
+== Planificación ==
+J -> P : generar órdenes de trabajo de la OC confirmada
+P -> A : POST ordenes-compra/{id}/generar_ordenes_trabajo/
+A -> S : generar_ordenes_trabajo(orden_compra, usuario)
+S -> S : exige OC confirmada (RN-07)\ny modelos con tareas estándar
+loop por cada línea de la orden de compra
+  S -> DB : INSERT orden_trabajo (planificada,\ncosto_estimado = costo de la línea × cantidad\n× factor indirecto)
+  S -> DB : copia tarea_estandar_modelo → tarea_ot\n(horas × cantidad, empleado sugerido)
+  S -> DB : INSERT orden_trabajo_historial
+end
+S -> DB : orden_compra → en_produccion + historial
+A --> P : 201 órdenes de trabajo creadas
+
+J -> P : iniciar fabricación
+P -> A : POST ordenes-trabajo/{id}/iniciar/
+A -> S : iniciar(ot, usuario)
+S -> DB : fecha_inicio, estado → en_ejecucion + historial
+opt primera OT de la compra que entra al taller
+  S -> NT : on_commit: aviso al cliente\n«su pedido entró en fabricación»
+end
+
+== Registro en taller ==
+O -> P : registra horas de su tarea
+P -> A : POST tareas/{id}/registrar_horas/
+A -> S : registrar_horas(tarea, empleado, fecha, horas, usuario)
+S -> S : solo tareas asignadas al operario;\nsin horas futuras; máximo diario
+S -> DB : Empleado.tarifa_vigente_a(fecha) (RN-10)
+alt sin tarifa vigente o supera el máximo diario
+  A --> P : 409 con el motivo
+else válido
+  S -> DB : INSERT registro_hora_hombre\n(valor_hora_uf congelado)
+  S -> OT : recalcular_costo_real()\nrecalcular_avance()
+  OT -> DB : UPDATE costo_real_uf, avance_pct
+  A --> P : 201
+end
+
+O -> P : registra consumo de material
+P -> A : POST tareas/{id}/registrar_consumo/
+A -> S : registrar_consumo(tarea, material, bodega, cantidad, ...)
+S -> MV : stock_actual(material, bodega)
+MV -> DB : SUM(cantidad) de movimientos
+alt stock insuficiente
+  A --> P : 409 «disponible: n unidades»
+else hay stock
+  S -> DB : INSERT consumo_material\n(costo_unitario_uf congelado, planificado sí/no)
+  S -> DB : INSERT movimiento_inventario\n(tipo consumo, cantidad negativa,\nenlazado al consumo — RN-09)
+  S -> OT : recalcular costo real y avance
+  A --> P : 201
+end
+
+O -> P : terminar tarea
+P -> A : POST tareas/{id}/terminar/
+A -> S : terminar_tarea() — exige horas registradas
+S -> DB : tarea → terminada; recalcular avance
+@enduml

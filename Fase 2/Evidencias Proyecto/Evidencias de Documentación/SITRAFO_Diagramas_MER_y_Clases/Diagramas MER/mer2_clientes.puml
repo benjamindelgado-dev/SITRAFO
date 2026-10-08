@@ -1,0 +1,56 @@
+@startuml MER_Clientes
+title Dominio 2 — Clientes
+!include _skin_er.txt
+
+entity "region" as t0 {
+  * id_region : serial <<PK>>
+  --
+  * nombre : varchar(80) <<UQ>>
+  * codigo : varchar(10)
+}
+entity "comuna" as t1 {
+  * id_comuna : serial <<PK>>
+  --
+  * id_region : integer <<FK>>
+  * nombre : varchar(80)
+}
+entity "cliente" as t2 {
+  * id_cliente : serial <<PK>>
+  --
+  * rut : varchar(12) <<UQ>>
+  * razon_social : varchar(150)
+  nombre_fantasia : varchar(150)
+  * tipo_persona : varchar(10)
+  giro : varchar(150)
+  * estado : varchar(20)
+  * creado_en : timestamptz
+  * modificado_en : timestamptz
+}
+entity "contacto_cliente" as t3 {
+  * id_contacto : serial <<PK>>
+  --
+  * id_cliente : integer <<FK>>
+  * nombre : varchar(120)
+  cargo : varchar(80)
+  email : varchar(150)
+  telefono : varchar(30)
+  * principal : boolean
+}
+entity "direccion_cliente" as t4 {
+  * id_direccion : serial <<PK>>
+  --
+  * id_cliente : integer <<FK>>
+  * id_comuna : integer <<FK>>
+  * tipo : varchar(20)
+  * calle : varchar(200)
+  numero : varchar(20)
+  latitud : numeric(9,6)
+  longitud : numeric(9,6)
+  * validada : boolean
+}
+
+t0 ||--o{ t1
+t2 ||--o{ t3
+t2 ||--o{ t4
+t1 ||--o{ t4
+@enduml

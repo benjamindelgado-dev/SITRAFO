@@ -1,0 +1,72 @@
+@startuml MER_Inventario
+title Dominio 6 — Inventario
+!include _skin_er.txt
+
+entity "categoria_material" as t0 {
+  * id_categoria : serial <<PK>>
+  --
+  * activo : boolean
+  * nombre : varchar(80) <<UQ>>
+}
+entity "material" as t1 {
+  * id_material : serial <<PK>>
+  --
+  * id_categoria : integer <<FK>>
+  * activo : boolean
+  * codigo : varchar(40) <<UQ>>
+  * nombre : varchar(150)
+  * unidad_medida : varchar(20)
+  stock_minimo : numeric(12,4)
+}
+entity "proveedor" as t2 {
+  * id_proveedor : serial <<PK>>
+  --
+  * activo : boolean
+  * rut : varchar(12) <<UQ>>
+  * razon_social : varchar(150)
+  email : varchar(150)
+  telefono : varchar(30)
+}
+entity "bodega" as t3 {
+  * id_bodega : serial <<PK>>
+  --
+  * activo : boolean
+  * codigo : varchar(20) <<UQ>>
+  * nombre : varchar(100)
+  ubicacion : varchar(150)
+}
+entity "precio_material" as t4 {
+  * id_precio_material : serial <<PK>>
+  --
+  * id_material : integer <<FK>>
+  id_proveedor : integer <<FK>>
+  * vigente_desde : date
+  vigente_hasta : date
+  * costo_uf : numeric(12,4)
+}
+entity "movimiento_inventario" as t5 {
+  * id_movimiento : bigserial <<PK>>
+  --
+  * id_material : integer <<FK>>
+  * id_bodega : integer <<FK>>
+  id_proveedor : integer <<FK>>
+  id_consumo : integer <<FK,UQ>>
+  * id_usuario : integer <<FK>>
+  * tipo : varchar(20)
+  * cantidad : numeric(12,4)
+  * costo_unitario_uf : numeric(12,4)
+  * fecha_hora : timestamptz
+  observacion : varchar(300)
+}
+entity "consumo_material" as x_consumo_material #EEF2F7 {
+  * id_consumo : serial <<PK>>
+}
+
+t0 ||--o{ t1
+t1 ||--o{ t4
+t2 |o--o{ t4
+t1 ||--o{ t5
+t3 ||--o{ t5
+t2 |o--o{ t5
+x_consumo_material |o--o| t5
+@enduml

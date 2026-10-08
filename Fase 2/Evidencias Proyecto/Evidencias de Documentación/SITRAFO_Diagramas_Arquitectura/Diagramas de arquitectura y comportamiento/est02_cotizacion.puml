@@ -1,0 +1,41 @@
+@startuml EST-02_Cotizacion
+title EST-02 — Estados de la cotización
+!include _skin_arq.txt
+hide empty description
+
+state "Borrador" as borrador
+state "En aprobación" as en_aprobacion
+state "Emitida" as emitida
+state "Aceptada" as aceptada
+state "Rechazada" as rechazada
+state "Vencida" as vencida
+state "Anulada" as anulada
+
+[*] --> borrador : cotizar solicitud\no nueva versión (RF-COM-10)
+borrador --> borrador : editar líneas
+borrador --> en_aprobacion : solicitar_aprobacion\n[descuento sobre el umbral]
+en_aprobacion --> borrador : devolver\n[aprobador ≠ elaborador, con motivo]
+borrador --> emitida : emitir\n[sin descuento sobre el umbral]\n/ congela UF, vigencia, envía PDF
+en_aprobacion --> emitida : emitir (aprobar)\n[aprobador ≠ elaborador] (RN-05)
+emitida --> aceptada : aceptar (cliente)\n[vigente]\n/ genera orden de compra y anticipo
+emitida --> rechazada : rechazar (cliente)\n[con motivo]
+emitida --> vencida : aceptar fuera de plazo\no tarea diaria [vence_el < hoy]
+emitida --> anulada : anular [sin OC]\no reemplazo por nueva versión
+borrador --> anulada : anular [motivo]
+en_aprobacion --> anulada : anular [motivo]
+
+aceptada --> [*]
+rechazada --> [*]
+vencida --> [*]
+anulada --> [*]
+
+note bottom of vencida
+  Una cotización emitida, rechazada o vencida
+  puede originar una nueva versión, que nace
+  en borrador con el mismo número.
+end note
+note right of borrador
+  El cliente no ve las cotizaciones
+  en borrador ni en aprobación.
+end note
+@enduml

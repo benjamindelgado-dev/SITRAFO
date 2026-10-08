@@ -1,0 +1,67 @@
+@startuml SEC-01_Ingreso_escritorio
+title SEC-01 — Ingreso a la aplicación de escritorio (JWT con bloqueo por intentos)
+!include _skin_secuencia.txt
+
+actor "Usuario interno" as U
+box "Equipo del usuario" #F7F9FC
+  boundary "VentanaLogin\n(PySide6)" as V
+  control "ClienteAPI\n(escritorio)" as C
+end box
+box "Servidor SITRAFO (Render)" #F7F9FC
+  boundary "IngresoConControl\nPOST /api/v1/auth/token/" as I
+  entity "Usuario\n(modelo)" as M
+  control "PermisoPorRol\n/ vista yo" as Y
+  database "PostgreSQL" as DB
+end box
+
+U -> V : ingresa nombre de acceso y contraseña
+V -> C : login(username, password)
+C -> I : POST auth/token/ {username, password}
+I -> M : buscar por username
+M -> DB : SELECT usuario
+I -> M : levantar_bloqueo_vencido()
+note right of M : Si el bloqueo temporal ya venció,\nla cuenta vuelve a activo (RF-SEG-04).
+
+alt cuenta suspendida o bloqueada
+  I --> C : 403 «cuenta bloqueada hasta HH:MM»
+  C --> V : ErrorAPI
+  V --> U : muestra el motivo
+else cuenta operativa
+  I -> I : validar credenciales (simplejwt)
+  alt contraseña incorrecta
+    I -> M : registrar_intento_fallido(máximo, minutos)
+    M -> DB : UPDATE intentos_fallidos\n(+ estado = bloqueado y bloqueado_hasta\nal llegar al máximo)
+    I --> C : 401 / 403 si quedó bloqueada
+    C --> V : ErrorAPI
+    V --> U : «Credenciales inválidas» o aviso de bloqueo
+  else contraseña correcta
+    I -> M : registrar_acceso_exitoso()
+    M -> DB : UPDATE intentos_fallidos = 0,\nultimo_acceso = ahora
+    I --> C : 200 {access, refresh}
+    C -> C : guarda tokens y cabecera\nAuthorization: Bearer
+    C -> Y : GET auth/yo/
+    Y -> DB : roles y permisos del usuario
+    Y --> C : {roles, permisos}
+    C --> V : identidad cargada
+    V --> U : abre VentanaPrincipal con los\npaneles que autoriza su rol
+  end
+end
+
+== Operación posterior ==
+U -> C : cualquier acción del panel
+C -> I : petición con token de acceso
+alt token vencido (401)
+  C -> I : POST auth/token/refresh/ {refresh}
+  I --> C : nuevo access
+  C -> I : reintenta la petición una vez
+end
+note over C, Y
+  La interfaz solo oculta lo que el rol no autoriza;
+  la API vuelve a verificar cada operación con PermisoPorRol
+  y registra los accesos denegados en auditoria.
+end note
+== Cierre de sesión ==
+U -> C : cerrar sesión
+C -> I : POST auth/salir/ {refresh}
+I -> DB : INSERT token en lista de revocación
+@enduml

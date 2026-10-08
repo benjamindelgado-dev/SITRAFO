@@ -1,0 +1,52 @@
+@startuml Clases_Paquetes
+title Diagrama de paquetes — Dependencias entre módulos del modelo
+!include _skin_clases.txt
+set separator none
+skinparam linetype polyline
+
+package "apps.seguridad" as p_seguridad {
+  class "Seguridad y auditoría" as c_seguridad <<6 clases>> #DCE4EF
+}
+package "apps.clientes" as p_clientes {
+  class "Clientes" as c_clientes <<5 clases>> #DCE4EF
+}
+package "apps.catalogo" as p_catalogo {
+  class "Catálogo de productos" as c_catalogo <<8 clases>> #DCE4EF
+}
+package "apps.comercial" as p_comercial {
+  class "Proceso comercial" as c_comercial <<10 clases>> #DCE4EF
+}
+package "apps.produccion" as p_produccion {
+  class "Ejecución productiva" as c_produccion <<7 clases>> #DCE4EF
+}
+package "apps.inventario" as p_inventario {
+  class "Inventario" as c_inventario <<6 clases>> #DCE4EF
+}
+package "apps.calidad" as p_calidad {
+  class "Control de calidad" as c_calidad <<5 clases>> #DCE4EF
+}
+package "apps.pagos" as p_pagos {
+  class "Pagos y moneda" as c_pagos <<3 clases>> #DCE4EF
+}
+package "apps.configuracion" as p_configuracion {
+  class "Configuración, canal web e integraciones" as c_configuracion <<4 clases>> #DCE4EF
+}
+p_calidad ..> p_catalogo
+p_calidad ..> p_produccion
+p_calidad ..> p_seguridad
+p_catalogo ..> p_inventario
+p_catalogo ..> p_produccion
+p_catalogo ..> p_seguridad
+p_comercial ..> p_catalogo
+p_comercial ..> p_clientes
+p_comercial ..> p_seguridad
+p_configuracion ..> p_seguridad
+p_inventario ..> p_produccion
+p_inventario ..> p_seguridad
+p_pagos ..> p_comercial
+p_produccion ..> p_catalogo
+p_produccion ..> p_comercial
+p_produccion ..> p_inventario
+p_produccion ..> p_seguridad
+p_seguridad ..> p_clientes
+@enduml

@@ -1,0 +1,25 @@
+@startuml EST-01_Solicitud
+title EST-01 — Estados de la solicitud de presupuesto
+!include _skin_arq.txt
+hide empty description
+
+[*] --> recibida : el cliente envía la solicitud\n(web, CU-COM-01)
+state "Recibida" as recibida
+state "Asignada" as asignada
+state "Cotizada" as cotizada
+state "Desestimada" as desestimada <<end>>
+
+recibida --> asignada : asignar\n[ejecutivo comercial]
+recibida --> cotizada : cotizar\n[indica modelo del catálogo]
+asignada --> cotizada : cotizar\n[indica modelo del catálogo]
+cotizada --> asignada : la cotización se anula\n(queda disponible para cotizar de nuevo)
+recibida --> desestimada : anular\n[motivo ≥ 10 caracteres]
+asignada --> desestimada : anular\n[sin cotización vigente]
+cotizada --> desestimada : anular\n[sin cotización vigente]
+desestimada --> [*]
+
+note right of cotizada
+  Cada cambio registra una fila en
+  solicitud_historial (RN-14).
+end note
+@enduml

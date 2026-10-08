@@ -1,0 +1,74 @@
+@startuml MER_Calidad
+title Dominio 7 — Control de calidad
+!include _skin_er.txt
+
+entity "protocolo_calidad" as t0 {
+  * id_protocolo : serial <<PK>>
+  --
+  * id_modelo : integer <<FK>>
+  * activo : boolean
+  * nombre : varchar(120)
+  * version : smallint
+  norma_referencia : varchar(80)
+}
+entity "punto_control" as t1 {
+  * id_punto : serial <<PK>>
+  --
+  * id_protocolo : integer <<FK>>
+  * nombre : varchar(120)
+  * tipo_ensayo : varchar(60)
+  * unidad : varchar(20)
+  valor_esperado : numeric(14,4)
+  tolerancia_inf : numeric(14,4)
+  tolerancia_sup : numeric(14,4)
+  * obligatorio : boolean
+  * secuencia : smallint
+}
+entity "control_calidad" as t2 {
+  * id_control : serial <<PK>>
+  --
+  * id_orden_trabajo : integer <<FK>>
+  * id_protocolo : integer <<FK>>
+  * id_inspector : integer <<FK>>
+  * fecha_hora : timestamptz
+  * estado : varchar(20)
+  observacion : varchar(300)
+}
+entity "resultado_control" as t3 {
+  * id_resultado : serial <<PK>>
+  --
+  * id_control : integer <<FK>>
+  * id_punto : integer <<FK>>
+  * valor_medido : numeric(14,4)
+  * conforme : boolean
+  observacion : varchar(300)
+  * registrado_en : timestamptz
+}
+entity "no_conformidad" as t4 {
+  * id_no_conformidad : serial <<PK>>
+  --
+  * id_resultado : integer <<FK,UQ>>
+  * id_responsable : integer <<FK>>
+  id_usuario_cierre : integer <<FK>>
+  * descripcion : varchar(300)
+  * severidad : varchar(20)
+  accion_correctiva : text
+  * estado : varchar(20)
+  * abierta_en : timestamptz
+  cerrada_en : timestamptz
+}
+entity "modelo_producto" as x_modelo_producto #EEF2F7 {
+  * id_modelo : serial <<PK>>
+}
+entity "orden_trabajo" as x_orden_trabajo #EEF2F7 {
+  * id_orden_trabajo : serial <<PK>>
+}
+
+x_modelo_producto ||--o{ t0
+t0 ||--o{ t1
+x_orden_trabajo ||--o{ t2
+t0 ||--o{ t2
+t2 ||--o{ t3
+t1 ||--o{ t3
+t3 ||--o| t4
+@enduml

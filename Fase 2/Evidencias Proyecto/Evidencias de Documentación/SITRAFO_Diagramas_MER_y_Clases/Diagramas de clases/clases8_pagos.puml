@@ -1,0 +1,72 @@
+@startuml Clases_Pagos
+title Diagrama de clases — Pagos y moneda
+!include _skin_clases.txt
+
+set separator none
+class OrdenCompra <<apps.comercial>> #EEF2F7
+package "apps.pagos" {
+class IndicadorEconomico {
+  - id_indicador : int {PK}
+  - codigo : Codigo
+  - fecha : date
+  - valor : Decimal
+  - obtenido_en : datetime
+}
+enum "IndicadorEconomico.Codigo" as IndicadorEconomico_Codigo {
+  UF
+  UTM
+  USD
+}
+IndicadorEconomico ..> IndicadorEconomico_Codigo
+class DocumentoCobro {
+  - id_documento_cobro : int {PK}
+  - numero : str {UQ}
+  - tipo : Tipo
+  - monto_uf : Decimal
+  - valor_uf : Decimal
+  - monto_clp : Decimal
+  - estado : Estado
+  - vence_el : date
+  - creado_en : datetime
+  + esta_vencido «property»
+  + total_pagado_clp «property»
+  + calcular_monto_clp()
+  + {static} generar_numero()
+}
+enum "DocumentoCobro.Tipo" as DocumentoCobro_Tipo {
+  anticipo
+  saldo
+}
+DocumentoCobro ..> DocumentoCobro_Tipo
+enum "DocumentoCobro.Estado" as DocumentoCobro_Estado {
+  pendiente
+  pagado
+  anulado
+}
+DocumentoCobro ..> DocumentoCobro_Estado
+class TransaccionPago {
+  - id_transaccion : int {PK}
+  - id_externo : str
+  - pasarela : str
+  - monto : Decimal
+  - moneda : str
+  - estado : Estado
+  - iniciada_en : datetime
+  - resuelta_en : datetime [0..1]
+  - respuesta : dict [0..1]
+  + monto_capturado «property»
+  + monto_coincide «property»
+  + conciliar()
+}
+enum "TransaccionPago.Estado" as TransaccionPago_Estado {
+  iniciada
+  aprobada
+  rechazada
+  cancelada
+  pendiente_conciliacion
+}
+TransaccionPago ..> TransaccionPago_Estado
+}
+DocumentoCobro "*" --> "1" OrdenCompra : orden_compra
+TransaccionPago "*" --> "1" DocumentoCobro : documento_cobro
+@enduml
