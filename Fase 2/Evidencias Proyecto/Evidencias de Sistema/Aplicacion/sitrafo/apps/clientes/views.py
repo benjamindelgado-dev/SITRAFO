@@ -36,6 +36,9 @@ class ComunaViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["region"]
     search_fields = ["nombre"]
+    # Catalogo acotado (346 comunas): sin paginar, igual que las regiones, para
+    # que el escritorio reciba la lista completa en una sola llamada.
+    pagination_class = None
 
 
 class ClienteViewSet(viewsets.ModelViewSet):

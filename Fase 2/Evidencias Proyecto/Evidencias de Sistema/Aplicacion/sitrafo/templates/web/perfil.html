@@ -58,8 +58,7 @@
               <span class="text-secondary" style="font-size:.8rem"> · {{ d.get_tipo_display }}{% if d.validada %} · ubicacion verificada{% endif %}</span>
             </span>
             <span class="d-flex gap-2 align-items-center">
-              {# Ambas acciones con la misma clase: un enlace y un boton de formulario #}
-              {# se alinean distinto si no comparten estilo (padding, linea y margen). #}
+
               <a href="{% url 'web:direccion_editar' d.pk %}"
                  class="btn btn-link p-0 border-0 lh-base align-baseline"
                  style="font-size:inherit">Editar</a>

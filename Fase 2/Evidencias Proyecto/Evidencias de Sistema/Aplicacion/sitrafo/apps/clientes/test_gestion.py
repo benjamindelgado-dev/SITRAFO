@@ -8,7 +8,7 @@ from django.test import Client
 from rest_framework.test import APIClient
 
 from apps.catalogo.models import FamiliaProducto, ModeloProducto
-from apps.clientes.models import Cliente
+from apps.clientes.models import Cliente, Comuna, Region
 from apps.seguridad import matriz
 from apps.seguridad.models import Auditoria, Rol, Usuario, UsuarioRol
 
@@ -111,3 +111,13 @@ def test_direccion_se_geocodifica_y_sin_servicio_queda_sin_validar(base):
                                format="json")
     assert sin_red.status_code == 201
     assert DireccionCliente.objects.filter(validada=False).count() == 1
+
+
+@pytest.mark.django_db
+def test_catalogo_de_regiones_y_comunas_completo():
+    """RF-CLI-04: la migracion deja las 16 regiones y las 346 comunas de Chile."""
+    assert Region.objects.count() == 16
+    assert Comuna.objects.count() == 346
+    rm = Region.objects.get(nombre="Metropolitana de Santiago")
+    assert rm.comunas.filter(nombre="Puente Alto").exists()
+    assert rm.comunas.count() == 52
