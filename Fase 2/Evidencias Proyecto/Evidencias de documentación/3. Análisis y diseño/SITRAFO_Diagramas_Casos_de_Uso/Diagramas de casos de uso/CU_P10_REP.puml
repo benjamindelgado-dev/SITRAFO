@@ -1,0 +1,22 @@
+@startuml CU_P10_REP
+title Paquete 10 — Reportes, integraciones y tareas programadas
+!include _skin_cu.txt
+actor "Administrador" as ADM
+actor "Ejecutivo comercial" as EJE
+actor "Jefe de producción" as JP
+actor "Programador de tareas" as CRON <<sistema>>
+actor "mindicador.cl" as UF <<sistema>>
+actor "Nager.Date" as FER <<sistema>>
+rectangle "Reportes, integraciones y tareas programadas" {
+  usecase "CU-REP-01\nGenerar y exportar reportes de gestión" as CU_REP_01 <<nuevo>>
+  usecase "CU-REP-02\nConsultar registro de integraciones" as CU_REP_02 <<nuevo>>
+  usecase "CU-REP-03\nEjecutar tareas diarias" as CU_REP_03 <<nuevo>>
+}
+ADM --> CU_REP_01
+EJE --> CU_REP_01
+JP --> CU_REP_01
+ADM --> CU_REP_02
+CRON --> CU_REP_03
+CU_REP_03 --> UF
+CU_REP_03 --> FER
+@enduml

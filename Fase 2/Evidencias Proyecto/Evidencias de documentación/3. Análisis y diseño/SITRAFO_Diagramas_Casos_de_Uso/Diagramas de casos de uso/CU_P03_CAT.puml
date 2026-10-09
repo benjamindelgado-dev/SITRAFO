@@ -1,0 +1,26 @@
+@startuml CU_P03_CAT
+title Paquete 3 — Catálogo de productos
+!include _skin_cu.txt
+actor "Administrador" as ADM
+actor "Jefe de producción" as JP
+actor "Cliente" as CLI
+rectangle "Catálogo de productos" {
+  usecase "CU-CAT-01\nGestionar familias" as CU_CAT_01
+  usecase "CU-CAT-02\nGestionar modelos base" as CU_CAT_02
+  usecase "CU-CAT-03\nAsignar parámetros técnicos al modelo" as CU_CAT_03
+  usecase "CU-CAT-04\nDefinir lista de materiales" as CU_CAT_04
+  usecase "CU-CAT-05\nDefinir tareas estándar y HH" as CU_CAT_05
+  usecase "CU-CAT-06\nGestionar precios base vigentes" as CU_CAT_06
+  usecase "CU-CAT-07\nConsultar catálogo web" as CU_CAT_07
+  usecase "CU-CAT-08\nDescargar ficha técnica" as CU_CAT_08
+}
+ADM --> CU_CAT_01
+ADM --> CU_CAT_02
+ADM --> CU_CAT_03
+ADM --> CU_CAT_06
+JP --> CU_CAT_04
+JP --> CU_CAT_05
+CLI --> CU_CAT_07
+CU_CAT_02 ..> CU_CAT_03 : <<include>>
+CU_CAT_08 ..> CU_CAT_07 : <<extend>>
+@enduml

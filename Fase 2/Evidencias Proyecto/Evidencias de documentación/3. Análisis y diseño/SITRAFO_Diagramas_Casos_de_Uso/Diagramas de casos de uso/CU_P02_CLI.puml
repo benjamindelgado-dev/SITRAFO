@@ -1,0 +1,26 @@
+@startuml CU_P02_CLI
+title Paquete 2 — Clientes
+!include _skin_cu.txt
+actor "Ejecutivo comercial" as EJE
+actor "Cliente" as CLI
+actor "Nominatim" as GEO <<sistema>>
+rectangle "Clientes" {
+  usecase "CU-CLI-01\nGestionar clientes" as CU_CLI_01
+  usecase "CU-CLI-02\nGestionar contactos" as CU_CLI_02
+  usecase "CU-CLI-03\nGestionar direcciones" as CU_CLI_03
+  usecase "CU-CLI-04\nValidar dirección" as CU_CLI_04
+  usecase "CU-CLI-05\nRegistrarse como cliente web" as CU_CLI_05
+  usecase "CU-CLI-06\nConsultar historial del cliente" as CU_CLI_06
+  usecase "CU-CLI-07\nMantener perfil" as CU_CLI_07
+}
+EJE --> CU_CLI_01
+EJE --> CU_CLI_02
+EJE --> CU_CLI_03
+EJE --> CU_CLI_06
+CLI --> CU_CLI_03
+CLI --> CU_CLI_05
+CLI --> CU_CLI_07
+CU_CLI_04 --> GEO
+CU_CLI_03 ..> CU_CLI_04 : <<include>>
+CU_CLI_07 ..> CU_CLI_03 : <<include>>
+@enduml

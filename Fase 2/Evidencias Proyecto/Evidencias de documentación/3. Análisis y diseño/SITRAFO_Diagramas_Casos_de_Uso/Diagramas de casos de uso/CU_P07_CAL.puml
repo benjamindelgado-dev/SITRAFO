@@ -1,0 +1,22 @@
+@startuml CU_P07_CAL
+title Paquete 7 — Control de calidad
+!include _skin_cu.txt
+actor "Inspector de calidad" as INS
+actor "Cliente" as CLI
+actor "Sistema" as SIS <<sistema>>
+rectangle "Control de calidad" {
+  usecase "CU-CAL-01\nGestionar protocolos" as CU_CAL_01
+  usecase "CU-CAL-02\nDefinir puntos de control" as CU_CAL_02
+  usecase "CU-CAL-03\nEjecutar control de calidad" as CU_CAL_03
+  usecase "CU-CAL-04\nRegistrar no conformidad" as CU_CAL_04
+  usecase "CU-CAL-05\nCerrar no conformidad" as CU_CAL_05
+  usecase "CU-CAL-06\nDescargar informe de ensayos" as CU_CAL_06
+}
+INS --> CU_CAL_01
+INS --> CU_CAL_03
+INS --> CU_CAL_05
+CLI --> CU_CAL_06
+CU_CAL_04 --> SIS
+CU_CAL_01 ..> CU_CAL_02 : <<include>>
+CU_CAL_04 ..> CU_CAL_03 : <<extend>>
+@enduml

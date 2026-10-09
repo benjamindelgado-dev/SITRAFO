@@ -1,0 +1,54 @@
+@startuml CU_P04_COM
+title Paquete 4 — Proceso comercial
+!include _skin_cu.txt
+actor "Cliente" as CLI
+actor "Ejecutivo comercial" as EJE
+actor "Ejecutivo aprobador" as APR
+actor "Sistema" as SIS <<sistema>>
+actor "mindicador.cl" as UF <<sistema>>
+actor "Nager.Date" as FER <<sistema>>
+actor "Brevo" as MAIL <<sistema>>
+rectangle "Proceso comercial" {
+  usecase "CU-COM-01\nSolicitar presupuesto" as CU_COM_01
+  usecase "CU-COM-02\nAsignar solicitud" as CU_COM_02
+  usecase "CU-COM-03\nElaborar cotización" as CU_COM_03
+  usecase "CU-COM-04\nCalcular costo estimado" as CU_COM_04
+  usecase "CU-COM-05\nCalcular plazo en días hábiles" as CU_COM_05
+  usecase "CU-COM-06\nAprobar cotización" as CU_COM_06
+  usecase "CU-COM-07\nEmitir y enviar cotización" as CU_COM_07
+  usecase "CU-COM-08\nAceptar o rechazar cotización" as CU_COM_08
+  usecase "CU-COM-09\nGenerar orden de compra" as CU_COM_09
+  usecase "CU-COM-10\nConfirmar orden de compra" as CU_COM_10
+  usecase "CU-COM-11\nAnular documento comercial" as CU_COM_11
+  usecase "CU-COM-12\nConsultar historial de estados" as CU_COM_12
+  usecase "CU-COM-13\nDevolver cotización al autor" as CU_COM_13 <<nuevo>>
+  usecase "CU-COM-14\nCrear nueva versión de cotización" as CU_COM_14 <<nuevo>>
+  usecase "CU-COM-15\nReenviar o descargar la cotización en PDF" as CU_COM_15 <<nuevo>>
+  usecase "CU-COM-16\nRegistrar entrega del pedido" as CU_COM_16 <<nuevo>>
+}
+CLI --> CU_COM_01
+CLI --> CU_COM_08
+CLI --> CU_COM_12
+CLI --> CU_COM_15
+EJE --> CU_COM_02
+EJE --> CU_COM_03
+EJE --> CU_COM_07
+EJE --> CU_COM_11
+EJE --> CU_COM_12
+EJE --> CU_COM_14
+EJE --> CU_COM_15
+EJE --> CU_COM_16
+APR --> CU_COM_06
+APR --> CU_COM_13
+SIS --> CU_COM_09
+SIS --> CU_COM_10
+CU_COM_03 --> UF
+CU_COM_05 --> FER
+CU_COM_07 --> MAIL
+CU_COM_03 ..> CU_COM_04 : <<include>>
+CU_COM_03 ..> CU_COM_05 : <<include>>
+CU_COM_06 ..> CU_COM_03 : <<extend>>
+CU_COM_13 ..> CU_COM_06 : <<extend>>
+CU_COM_09 ..> CU_COM_08 : <<extend>>
+APR --|> EJE
+@enduml

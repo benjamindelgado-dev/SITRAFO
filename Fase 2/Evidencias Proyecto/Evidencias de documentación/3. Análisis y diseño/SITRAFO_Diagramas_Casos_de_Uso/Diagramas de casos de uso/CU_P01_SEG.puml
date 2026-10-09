@@ -1,0 +1,31 @@
+@startuml CU_P01_SEG
+title Paquete 1 — Seguridad, roles y auditoría
+!include _skin_cu.txt
+actor "Usuario interno" as UI
+actor "Cliente" as CLI
+actor "Administrador" as ADM
+actor "Sistema" as SIS <<sistema>>
+rectangle "Seguridad, roles y auditoría" {
+  usecase "CU-SEG-01\nAutenticarse" as CU_SEG_01
+  usecase "CU-SEG-02\nGestionar usuarios" as CU_SEG_02
+  usecase "CU-SEG-03\nGestionar permisos por rol" as CU_SEG_03
+  usecase "CU-SEG-04\nRecuperar contraseña" as CU_SEG_04
+  usecase "CU-SEG-05\nConsultar bitácora de auditoría" as CU_SEG_05
+  usecase "CU-SEG-06\nCerrar sesión" as CU_SEG_06
+  usecase "CU-SEG-07\nValidar permiso de operación" as CU_SEG_07
+}
+UI --> CU_SEG_01
+CLI --> CU_SEG_01
+UI --> CU_SEG_06
+CLI --> CU_SEG_06
+CLI --> CU_SEG_04
+ADM --> CU_SEG_02
+ADM --> CU_SEG_03
+ADM --> CU_SEG_04
+ADM --> CU_SEG_05
+CU_SEG_07 --> SIS
+CU_SEG_02 ..> CU_SEG_07 : <<include>>
+CU_SEG_03 ..> CU_SEG_07 : <<include>>
+CU_SEG_05 ..> CU_SEG_07 : <<include>>
+ADM --|> UI
+@enduml

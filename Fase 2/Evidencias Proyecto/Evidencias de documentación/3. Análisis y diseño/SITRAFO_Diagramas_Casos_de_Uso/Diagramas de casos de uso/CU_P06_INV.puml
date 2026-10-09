@@ -1,0 +1,29 @@
+@startuml CU_P06_INV
+title Paquete 6 — Inventario
+!include _skin_cu.txt
+actor "Encargado de bodega" as BOD
+actor "Sistema" as SIS <<sistema>>
+rectangle "Inventario" {
+  usecase "CU-INV-01\nGestionar materiales" as CU_INV_01
+  usecase "CU-INV-02\nGestionar proveedores" as CU_INV_02
+  usecase "CU-INV-03\nGestionar bodegas" as CU_INV_03
+  usecase "CU-INV-04\nRegistrar recepción" as CU_INV_04
+  usecase "CU-INV-05\nRegistrar ajuste por conteo" as CU_INV_05
+  usecase "CU-INV-06\nRegistrar movimiento de stock" as CU_INV_06
+  usecase "CU-INV-07\nConsultar kardex" as CU_INV_07
+  usecase "CU-INV-08\nRevisar alertas de stock mínimo" as CU_INV_08
+  usecase "CU-INV-09\nRegistrar devolución de material" as CU_INV_09 <<nuevo>>
+}
+BOD --> CU_INV_01
+BOD --> CU_INV_02
+BOD --> CU_INV_03
+BOD --> CU_INV_04
+BOD --> CU_INV_05
+BOD --> CU_INV_07
+BOD --> CU_INV_08
+BOD --> CU_INV_09
+CU_INV_06 --> SIS
+CU_INV_04 ..> CU_INV_06 : <<include>>
+CU_INV_05 ..> CU_INV_06 : <<include>>
+CU_INV_09 ..> CU_INV_06 : <<include>>
+@enduml

@@ -1,0 +1,35 @@
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName Calibri
+skinparam defaultFontSize 13
+skinparam dpi 160
+skinparam usecase {
+  BackgroundColor #EEF2F7
+  BorderColor #2E5496
+  FontColor #1A1A1A
+}
+skinparam usecase<<nuevo>> {
+  BackgroundColor #FBF3EC
+  BorderColor #B5651D
+}
+skinparam actorStyle awesome
+skinparam actor {
+  BorderColor #1F3864
+  Color #1F3864
+  FontColor #1A1A1A
+}
+skinparam actor<<sistema>> {
+  BorderColor #8496B0
+  Color #8496B0
+}
+skinparam rectangle {
+  BorderColor #B4C2D4
+  FontColor #1F3864
+  FontStyle bold
+}
+skinparam arrow {
+  Color #44546A
+  FontColor #44546A
+  FontSize 11
+}
+left to right direction

@@ -1,0 +1,28 @@
+@startuml CU_P08_PAG
+title Paquete 8 — Pagos y moneda
+!include _skin_cu.txt
+actor "Cliente" as CLI
+actor "Ejecutivo comercial" as EJE
+actor "Sistema" as SIS <<sistema>>
+actor "PayPal" as PP <<sistema>>
+actor "mindicador.cl" as UF <<sistema>>
+actor "Brevo" as MAIL <<sistema>>
+rectangle "Pagos y moneda" {
+  usecase "CU-PAG-01\nEmitir documento de cobro" as CU_PAG_01
+  usecase "CU-PAG-02\nPagar en línea" as CU_PAG_02
+  usecase "CU-PAG-03\nConciliar transacción" as CU_PAG_03
+  usecase "CU-PAG-04\nNotificar pago confirmado" as CU_PAG_04
+  usecase "CU-PAG-05\nActualizar indicadores económicos" as CU_PAG_05
+  usecase "CU-PAG-06\nConsultar estado de pagos" as CU_PAG_06
+}
+SIS --> CU_PAG_01
+SIS --> CU_PAG_05
+CLI --> CU_PAG_02
+CLI --> CU_PAG_06
+EJE --> CU_PAG_06
+CU_PAG_02 --> PP
+CU_PAG_04 --> MAIL
+CU_PAG_05 --> UF
+CU_PAG_02 ..> CU_PAG_03 : <<include>>
+CU_PAG_02 ..> CU_PAG_04 : <<include>>
+@enduml

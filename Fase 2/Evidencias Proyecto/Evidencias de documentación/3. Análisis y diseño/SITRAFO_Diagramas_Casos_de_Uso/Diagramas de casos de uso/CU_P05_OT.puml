@@ -1,0 +1,36 @@
+@startuml CU_P05_OT
+title Paquete 5 — Ejecución productiva
+!include _skin_cu.txt
+actor "Jefe de producción" as JP
+actor "Operario de taller" as OP
+actor "Cliente" as CLI
+actor "Administrador" as ADM
+actor "Sistema" as SIS <<sistema>>
+rectangle "Ejecución productiva" {
+  usecase "CU-OT-01\nGenerar orden de trabajo" as CU_OT_01
+  usecase "CU-OT-02\nPlanificar tareas" as CU_OT_02
+  usecase "CU-OT-03\nAsignar empleados a tareas" as CU_OT_03
+  usecase "CU-OT-04\nRegistrar consumo de materiales" as CU_OT_04
+  usecase "CU-OT-05\nRegistrar horas hombre" as CU_OT_05
+  usecase "CU-OT-06\nValorizar horas hombre" as CU_OT_06
+  usecase "CU-OT-07\nConsultar costo real y desviación" as CU_OT_07
+  usecase "CU-OT-08\nCerrar orden de trabajo" as CU_OT_08
+  usecase "CU-OT-09\nSeguir avance de fabricación" as CU_OT_09
+  usecase "CU-OT-10\nGestionar empleados y tarifas" as CU_OT_10
+  usecase "CU-OT-11\nEjecutar el ciclo de fabricación" as CU_OT_11 <<nuevo>>
+}
+SIS --> CU_OT_01
+JP --> CU_OT_01
+JP --> CU_OT_02
+JP --> CU_OT_03
+JP --> CU_OT_07
+JP --> CU_OT_08
+JP --> CU_OT_11
+OP --> CU_OT_04
+OP --> CU_OT_05
+OP --> CU_OT_11
+CLI --> CU_OT_09
+ADM --> CU_OT_10
+CU_OT_05 ..> CU_OT_06 : <<include>>
+CU_OT_08 ..> CU_OT_07 : <<include>>
+@enduml

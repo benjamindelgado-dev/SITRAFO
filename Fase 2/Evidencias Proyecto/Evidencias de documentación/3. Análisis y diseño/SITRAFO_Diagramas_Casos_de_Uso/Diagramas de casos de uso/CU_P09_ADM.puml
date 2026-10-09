@@ -1,0 +1,31 @@
+@startuml CU_P09_ADM
+title Paquete 9 — Administración del canal web
+!include _skin_cu.txt
+actor "Administrador" as ADM
+actor "Ejecutivo comercial" as EJE
+actor "Sistema" as SIS <<sistema>>
+rectangle "Administración del canal web" {
+  usecase "CU-ADM-01\nActivar modo mantención" as CU_ADM_01
+  usecase "CU-ADM-02\nHabilitar o deshabilitar pago en línea" as CU_ADM_02
+  usecase "CU-ADM-03\nSuspender cuenta de cliente web" as CU_ADM_03
+  usecase "CU-ADM-04\nConfigurar formulario de solicitud" as CU_ADM_04
+  usecase "CU-ADM-05\nGestionar avisos del sitio" as CU_ADM_05
+  usecase "CU-ADM-06\nPublicar o retirar modelo" as CU_ADM_06
+  usecase "CU-ADM-07\nRegistrar cambio de configuración" as CU_ADM_07
+  usecase "CU-ADM-08\nHabilitar o deshabilitar el registro de clientes" as CU_ADM_08 <<nuevo>>
+}
+ADM --> CU_ADM_01
+ADM --> CU_ADM_02
+ADM --> CU_ADM_03
+EJE --> CU_ADM_03
+ADM --> CU_ADM_04
+ADM --> CU_ADM_05
+ADM --> CU_ADM_06
+ADM --> CU_ADM_08
+CU_ADM_07 --> SIS
+CU_ADM_01 ..> CU_ADM_07 : <<include>>
+CU_ADM_02 ..> CU_ADM_07 : <<include>>
+CU_ADM_03 ..> CU_ADM_07 : <<include>>
+CU_ADM_06 ..> CU_ADM_07 : <<include>>
+CU_ADM_08 ..> CU_ADM_07 : <<include>>
+@enduml
