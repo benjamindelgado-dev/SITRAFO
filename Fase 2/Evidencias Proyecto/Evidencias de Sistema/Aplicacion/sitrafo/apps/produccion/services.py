@@ -88,6 +88,8 @@ def generar_ordenes_trabajo(orden_compra, usuario) -> list[OrdenTrabajo]:
         raise ErrorProduccion(f"La orden {orden_compra.numero} ya tiene ordenes de trabajo.")
 
     lineas = list(orden_compra.lineas.select_related("cotizacion_linea__modelo"))
+    if not lineas:
+        raise ErrorProduccion(f"La orden {orden_compra.numero} no tiene lineas.")
     sin_tareas = sorted({l.cotizacion_linea.modelo.codigo for l in lineas  # noqa: E741
                          if not l.cotizacion_linea.modelo.tareas_estandar.exists()})
     if sin_tareas:

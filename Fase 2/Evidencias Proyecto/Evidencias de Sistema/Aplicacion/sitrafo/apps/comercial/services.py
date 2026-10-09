@@ -15,6 +15,7 @@ Costeo (RF-COM-04):
   costeo cargado, se sugiere el precio base del catalogo. El ejecutivo puede
   ajustar el precio antes de crear la cotizacion.
 """
+import logging
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -38,6 +39,7 @@ from .models import (
 )
 
 CUATRO = Decimal("0.0001")
+logger = logging.getLogger(__name__)
 PLAZO_DEFECTO_DIAS_HABILES = 30
 
 
@@ -431,14 +433,28 @@ def confirmar_orden_compra(orden, usuario, observacion: str = "Orden confirmada.
 
 
 def confirmar_si_anticipo(documento, usuario):
-    """Tras pagarse un documento: si es el anticipo, confirma la orden pendiente."""
+    """
+    Tras pagarse un documento: si es el anticipo, confirma la orden pendiente
+    y genera sus ordenes de trabajo (RN-07).
+
+    La generacion corre en un savepoint: si falla (por ejemplo, un modelo sin
+    tareas estandar), el pago y la confirmacion se conservan y la orden queda
+    confirmada para generar las OT a mano desde el escritorio.
+    """
     from apps.pagos.models import DocumentoCobro
+    from apps.produccion import services as produccion
 
     orden = documento.orden_compra
     if documento.tipo != DocumentoCobro.Tipo.ANTICIPO or orden.estado.codigo != "pendiente":
         return None
-    return confirmar_orden_compra(
+    orden = confirmar_orden_compra(
         orden, usuario, "Confirmada automaticamente al pagarse el anticipo.")
+    try:
+        with transaction.atomic():
+            produccion.generar_ordenes_trabajo(orden, usuario)
+    except (produccion.ErrorProduccion, EstadoDocumento.DoesNotExist) as error:
+        logger.warning("OC %s confirmada sin OT automaticas: %s", orden.numero, error)
+    return orden
 
 
 # ----------------------------------------------------------------------

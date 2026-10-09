@@ -356,3 +356,49 @@ def test_orden_sin_tareas_carga_las_estandar(planta):
     respuesta = planta["jefe"].post(f"/api/v1/ordenes-trabajo/{ot.pk}/cargar_tareas_estandar/")
     assert respuesta.status_code == 200
     assert ot.tareas.count() == 2
+
+
+# ---------------------------------------------------------------------------
+# Generacion automatica al pagarse el anticipo (RN-07)
+# ---------------------------------------------------------------------------
+def _oc_pendiente_con_anticipo_pagado(planta):
+    from apps.pagos.models import DocumentoCobro
+
+    orden = planta["orden"]
+    orden.estado = _estado("orden_compra", "pendiente")
+    orden.save(update_fields=["estado"])
+    documento = DocumentoCobro.objects.create(
+        numero="ANT-2026-0001", orden_compra=orden, tipo=DocumentoCobro.Tipo.ANTICIPO,
+        estado=DocumentoCobro.Estado.PAGADO, monto_uf=Decimal("25"),
+        valor_uf=Decimal("40000"), monto_clp=Decimal("1000000"),
+        vence_el=HOY + datetime.timedelta(days=10),
+    )
+    return orden, documento
+
+
+def test_pagar_anticipo_genera_las_ot_automaticamente(planta):
+    from apps.comercial import services as comercial
+
+    orden, documento = _oc_pendiente_con_anticipo_pagado(planta)
+    usuario = Usuario.objects.get(username="comercial")
+
+    comercial.confirmar_si_anticipo(documento, usuario)
+
+    orden.refresh_from_db()
+    assert orden.estado.codigo == "en_produccion"
+    ot = OrdenTrabajo.objects.get(orden_compra=orden)
+    assert ot.estado.codigo == "planificada"
+    assert ot.tareas.count() == 2
+
+
+def test_sin_tareas_estandar_la_oc_queda_confirmada(planta):
+    from apps.comercial import services as comercial
+
+    orden, documento = _oc_pendiente_con_anticipo_pagado(planta)
+    TareaEstandarModelo.objects.all().delete()
+
+    comercial.confirmar_si_anticipo(documento, Usuario.objects.get(username="comercial"))
+
+    orden.refresh_from_db()
+    assert orden.estado.codigo == "confirmada"     # el pago no se pierde
+    assert not OrdenTrabajo.objects.exists()       # se generan a mano desde escritorio
