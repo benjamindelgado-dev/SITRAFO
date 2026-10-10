@@ -492,7 +492,10 @@ class PanelOrdenesTrabajo(PanelBase):
 ESTILO_TALLER = """
 QLabel#tarea_titulo { font-size: 22px; font-weight: bold; color: #1f3864; }
 QLabel#tarea_detalle { font-size: 16px; color: #394b59; }
-QListWidget#lista_tareas { font-size: 17px; }
+QListWidget#lista_tareas {
+    font-size: 17px; background: white; color: #1a1a1a;
+    border: 1px solid #c9d4e2; border-radius: 6px;
+}
 QListWidget#lista_tareas::item { padding: 16px 10px; border-bottom: 1px solid #dde3ea; }
 QListWidget#lista_tareas::item:selected { background: #2f5597; color: white; }
 QPushButton#grande { font-size: 18px; padding: 18px 20px; min-height: 30px; }

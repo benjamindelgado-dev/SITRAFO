@@ -18,7 +18,7 @@ from pathlib import Path
 
 import configuracion_local
 from cliente_api import ClienteAPI
-from estilos import HOJA
+from estilos import aplicar_tema
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QDialog
 from ventana_login import VentanaLogin
@@ -46,7 +46,7 @@ def main() -> int:
 
     aplicacion = QApplication(sys.argv)
     aplicacion.setApplicationName("SITRAFO")
-    aplicacion.setStyleSheet(HOJA)
+    aplicar_tema(aplicacion)
     aplicacion.setWindowIcon(QIcon(recurso("sitrafo.ico")))
 
     cliente = ClienteAPI(servidor)
