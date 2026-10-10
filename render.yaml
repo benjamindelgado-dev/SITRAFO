@@ -22,7 +22,9 @@ envVarGroups:
         value: https://api-m.sandbox.paypal.com
       - key: CORREO_REMITENTE
         value: SITRAFO <benjadelgado123@gmail.com>
-      - key: CORREO_REDIRIGIR_A
+      # Marcha blanca: cada correo va a su destinatario y con copia oculta aqui.
+      # Los correos de la demostracion son alias de esta casilla (usar_alias_correo).
+      - key: CORREO_COPIA_A
         value: benjadelgado123@gmail.com
       - key: SESION_INACTIVIDAD_MINUTOS
         value: "30"
