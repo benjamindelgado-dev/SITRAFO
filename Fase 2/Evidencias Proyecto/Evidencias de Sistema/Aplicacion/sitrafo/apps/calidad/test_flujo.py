@@ -91,6 +91,11 @@ def _control(planta):
     return respuesta.data
 
 
+def _aprobar(planta, control, quien="calidad"):
+    return planta[quien].post(
+        f"/api/v1/controles-calidad/{control['id_control']}/aprobar/", {}, format="json")
+
+
 def _medir(planta, control, indice, valor, **extra):
     punto = control["puntos"][indice]["id_punto"]
     return planta["calidad"].post(
@@ -189,10 +194,61 @@ def test_la_orden_se_cierra_solo_con_calidad_completa(planta):
     planta["calidad"].post(f"/api/v1/no-conformidades/{nc.pk}/cerrar/",
                            {"accion_correctiva": "Ajuste de derivaciones del devanado"},
                            format="json")
-    # El ruido no es obligatorio: no impide cerrar
+    # Sin la aprobacion del inspector la orden sigue en calidad
+    sin_aprobar = planta["produccion"].post(cerrar, {}, format="json")
+    assert sin_aprobar.status_code == 409
+    assert "aprobar" in sin_aprobar.data["detalle"]
+
+    # El ruido no es obligatorio: no impide aprobar ni cerrar
+    assert _aprobar(planta, control).status_code == 200
     respuesta = planta["produccion"].post(cerrar, {}, format="json")
     assert respuesta.status_code == 200, respuesta.data
     assert respuesta.data["estado_codigo"] == "cerrada"
+
+
+# ---------------------------------------------------------------------------
+# Aprobacion explicita del control
+# ---------------------------------------------------------------------------
+def test_aprobar_exige_ensayos_conformes_y_libera_la_orden(planta):
+    control = _control(planta)
+    _medir(planta, control, 0, 2500)
+
+    pendiente = _aprobar(planta, control)
+    assert pendiente.status_code == 409
+    assert "sin medir" in pendiente.data["detalle"]
+
+    _medir(planta, control, 1, "0.9")
+    con_nc = _aprobar(planta, control)
+    assert con_nc.status_code == 409
+    assert "no conformidad" in con_nc.data["detalle"]
+
+    nc = NoConformidad.objects.get()
+    planta["calidad"].post(f"/api/v1/no-conformidades/{nc.pk}/cerrar/",
+                           {"accion_correctiva": "Ajuste de derivaciones del devanado"},
+                           format="json")
+    _medir(planta, control, 1, "0.1")
+
+    planta["ot"].refresh_from_db()
+    assert planta["ot"].estado.codigo == "en_calidad"     # todo conforme, pero no pasa solo
+
+    aprobado = _aprobar(planta, control)
+    assert aprobado.status_code == 200, aprobado.data
+    assert aprobado.data["estado"] == "aprobado"
+    assert aprobado.data["aprobado_por_nombre"] == "calidad"
+    planta["ot"].refresh_from_db()
+    assert planta["ot"].estado.codigo == "liberada"
+    assert planta["ot"].historial.filter(estado_nuevo__codigo="liberada").exists()
+
+
+def test_solo_calidad_aprueba_y_luego_no_se_mide_mas(planta):
+    control = _control(planta)
+    for i, valor in enumerate(["2500", "0.1"]):
+        _medir(planta, control, i, valor)
+
+    assert _aprobar(planta, control, "produccion").status_code == 403
+    assert _aprobar(planta, control).status_code == 200
+    assert _aprobar(planta, control).status_code == 409             # no se aprueba dos veces
+    assert _medir(planta, control, 2, "50").status_code == 409      # la orden ya salio de calidad
 
 
 # ---------------------------------------------------------------------------
@@ -212,6 +268,7 @@ def test_cerrar_la_ultima_ot_emite_el_saldo_y_la_entrega_exige_pagarlo(
     control = _control(planta)
     for i, valor in enumerate(["2500", "0.1", "50"]):
         _medir(planta, control, i, valor)
+    assert _aprobar(planta, control).status_code == 200
 
     with django_capture_on_commit_callbacks(execute=True):
         cierre = planta["produccion"].post(

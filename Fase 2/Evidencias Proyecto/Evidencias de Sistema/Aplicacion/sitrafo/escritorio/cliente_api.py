@@ -406,6 +406,9 @@ class ClienteAPI:
     def registrar_resultado(self, id_control: int, datos: dict):
         return self.accion(f"controles-calidad/{id_control}/registrar_resultado/", datos)
 
+    def aprobar_control(self, id_control: int):
+        return self.accion(f"controles-calidad/{id_control}/aprobar/")
+
     def no_conformidades(self, params=None):
         return self.obtener("no-conformidades/", params)
 

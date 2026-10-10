@@ -73,7 +73,8 @@ def _tabla(columnas: list[str], estirar: int = 0) -> QTableWidget:
 class PanelControlCalidad(PanelBase):
     titulo = "Control de calidad"
     subtitulo = ("Ordenes enviadas a calidad. Registre el valor medido de cada ensayo: "
-                 "el sistema evalua la conformidad contra el rango del protocolo.")
+                 "el sistema evalua la conformidad contra el rango del protocolo. Cuando "
+                 "todo este conforme, apruebe el control para liberar la orden.")
     columnas = ["Orden", "Cliente", "Modelo", "Control", "Estado del control"]
 
     def construir(self):
@@ -92,6 +93,12 @@ class PanelControlCalidad(PanelBase):
         self.b_iniciar = QPushButton("Iniciar control con protocolo")
         self.b_iniciar.clicked.connect(self._iniciar)
         barra.addWidget(self.b_iniciar)
+        self.b_aprobar = QPushButton("Aprobar y liberar la orden")
+        self.b_aprobar.setObjectName("exito")
+        self.b_aprobar.setToolTip("Disponible cuando todos los ensayos obligatorios estan "
+                                  "conformes y no quedan no conformidades abiertas.")
+        self.b_aprobar.clicked.connect(self._aprobar)
+        barra.addWidget(self.b_aprobar)
         capa.addLayout(barra)
 
         self.puntos = _tabla(["#", "Ensayo", "Rango aceptable", "Ultima medicion",
@@ -133,6 +140,7 @@ class PanelControlCalidad(PanelBase):
 
         self.ejecuta = self.cliente.puede("ensayo.crear")
         self.b_iniciar.setVisible(self.ejecuta)
+        self.b_aprobar.setVisible(self.cliente.puede("ensayo.actualizar"))
         medicion.setVisible(self.ejecuta)
         self.ordenes, self.controles, self.control = [], {}, None
         self._seleccion_ot()
@@ -175,6 +183,7 @@ class PanelControlCalidad(PanelBase):
         controles = self.controles.get(ot["id_orden_trabajo"], []) if ot else []
         self.control = controles[0] if controles else None
         self.b_iniciar.setEnabled(ot is not None and self.control is None)
+        self.b_aprobar.setEnabled(bool(self.control) and self.control["estado"] == "conforme")
         if ot is None:
             self.titulo_control.setText("Seleccione una orden en control de calidad.")
         elif self.control is None:
@@ -248,6 +257,26 @@ class PanelControlCalidad(PanelBase):
                                          protocolos[opciones.index(elegido)]["id_protocolo"])
         except ErrorAPI as error:
             return self.manejar_error(error)
+        self.refrescar()
+
+    def _aprobar(self):
+        ot, control = self._ot(), self.control
+        if QMessageBox.question(
+            self, "Aprobar control de calidad",
+            f"Todos los ensayos de {ot['numero']} estan conformes.\n\n"
+            "Al aprobar, el control queda cerrado (no admite nuevas mediciones) y la orden "
+            "pasa a «Liberada por calidad» para que produccion la cierre.\n\n¿Aprobar?",
+        ) != QMessageBox.Yes:
+            return
+        try:
+            self.cliente.aprobar_control(control["id_control"])
+        except ErrorAPI as error:
+            return self.manejar_error(error)
+        QMessageBox.information(
+            self, "Orden liberada",
+            f"{ot['numero']} quedo liberada por calidad. El jefe de produccion ya puede "
+            "cerrarla en el panel Ordenes de trabajo.",
+        )
         self.refrescar()
 
     def _medir(self):

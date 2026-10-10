@@ -320,7 +320,7 @@ class PanelOrdenesTrabajo(PanelBase):
         codigo = ot["estado_codigo"] if ot else ""
         self.b_iniciar.setEnabled(codigo == "planificada")
         self.b_calidad.setEnabled(codigo == "en_ejecucion")
-        self.b_cerrar.setEnabled(codigo == "en_calidad")
+        self.b_cerrar.setEnabled(codigo == "liberada")
 
         if ot is None:
             self.tareas.setRowCount(0)
@@ -342,7 +342,7 @@ class PanelOrdenesTrabajo(PanelBase):
         desviacion = _decimal(ot["desviacion_pct"])
         # Mientras la orden se fabrica el costo real es parcial: la desviacion
         # solo se marca como problema cuando ya no quedan registros por hacer
-        final = codigo in ("en_calidad", "cerrada")
+        final = codigo in ("en_calidad", "liberada", "cerrada")
         color = ("#b42318" if ot["desviacion_requiere_justificacion"] else "#1a7f37") \
             if final else "#6c757d"
         nota_parcial = "" if final else " (parcial, en fabricacion)"
@@ -358,7 +358,7 @@ class PanelOrdenesTrabajo(PanelBase):
             f"Desviacion: <span style='color:{color}'><b>{desviacion:+.2f} %</b></span>"
             f"{nota_parcial}",
         ]
-        if ot["impedimentos_cierre"] and codigo in ("en_ejecucion", "en_calidad"):
+        if ot["impedimentos_cierre"] and codigo in ("en_ejecucion", "en_calidad", "liberada"):
             lineas += ["", "<b>Pendiente para cerrar:</b>"]
             lineas += [f"• {texto}" for texto in ot["impedimentos_cierre"]]
         self.resumen.setText("<br>".join(lineas))

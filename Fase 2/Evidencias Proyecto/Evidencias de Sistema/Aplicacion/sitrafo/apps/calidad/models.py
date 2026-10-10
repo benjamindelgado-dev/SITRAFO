@@ -109,6 +109,7 @@ class ControlCalidad(models.Model):
         EN_PROCESO = "en_proceso", "En proceso"
         CONFORME = "conforme", "Conforme"
         CON_NO_CONFORMIDADES = "con_nc", "Con no conformidades"
+        APROBADO = "aprobado", "Aprobado"
 
     id_control = models.AutoField(primary_key=True)
     orden_trabajo = models.ForeignKey(
@@ -133,6 +134,12 @@ class ControlCalidad(models.Model):
     observacion = models.CharField(
         max_length=300, blank=True, verbose_name="observacion general"
     )
+    aprobado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="controles_aprobados", db_column="id_aprobado_por",
+        verbose_name="aprobado por",
+    )
+    aprobado_en = models.DateTimeField(null=True, blank=True, verbose_name="aprobado en")
 
     class Meta:
         db_table = "control_calidad"
@@ -145,6 +152,8 @@ class ControlCalidad(models.Model):
 
     def actualizar_estado(self, guardar: bool = True):
         """Conforme solo si todos los resultados registrados lo son."""
+        if self.estado == self.Estado.APROBADO:
+            return self.estado          # la aprobacion del inspector es definitiva
         resultados = self.resultados.all()
         if not resultados.exists():
             self.estado = self.Estado.EN_PROCESO

@@ -35,6 +35,7 @@ ESTADOS = {
         ("planificada", "Planificada", False),
         ("en_ejecucion", "En ejecucion", False),
         ("en_calidad", "En control de calidad", False),
+        ("liberada", "Liberada por calidad", False),
         ("cerrada", "Cerrada", True),
         ("anulada", "Anulada", True),
     ],

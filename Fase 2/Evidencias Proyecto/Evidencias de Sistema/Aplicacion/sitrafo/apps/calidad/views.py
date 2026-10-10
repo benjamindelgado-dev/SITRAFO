@@ -74,7 +74,8 @@ class ControlCalidadViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ControlCalidadSerializer
     permission_classes = [CuentaOperativa, PermisoPorRol]
     modulo_permiso = "ensayo"
-    permisos_accion = {"create": "ensayo.crear", "registrar_resultado": "ensayo.crear"}
+    permisos_accion = {"create": "ensayo.crear", "registrar_resultado": "ensayo.crear",
+                       "aprobar": "ensayo.actualizar"}
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["orden_trabajo", "estado"]
     pagination_class = None
@@ -110,6 +111,16 @@ class ControlCalidadViewSet(viewsets.ReadOnlyModelViewSet):
                 observacion=datos["observacion"], severidad=datos["severidad"],
                 descripcion=datos["descripcion"],
             )
+        except services.ErrorCalidad as error:
+            return _conflicto(error)
+        return Response(self.get_serializer(self.get_queryset().get(pk=control.pk)).data)
+
+    @action(detail=True, methods=["post"])
+    def aprobar(self, request, pk=None):
+        """Aprobacion explicita del inspector: libera la orden para su cierre."""
+        control = self.get_object()
+        try:
+            services.aprobar_control(control, request.user)
         except services.ErrorCalidad as error:
             return _conflicto(error)
         return Response(self.get_serializer(self.get_queryset().get(pk=control.pk)).data)

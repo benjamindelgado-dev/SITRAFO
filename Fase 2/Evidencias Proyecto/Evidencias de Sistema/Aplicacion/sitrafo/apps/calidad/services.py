@@ -13,10 +13,14 @@ Reglas:
 - RN-12: la no conformidad se cierra solo registrando la accion correctiva,
   y la orden no se cierra con puntos obligatorios sin ejecutar o con no
   conformidades abiertas.
+- Cuando todos los ensayos estan conformes, el inspector aprueba el control
+  de forma explicita; recien entonces la orden queda liberada por calidad y
+  produccion puede cerrarla.
 """
 from decimal import Decimal
 
 from django.db import transaction
+from django.utils import timezone
 
 from apps.seguridad.models import Auditoria
 
@@ -124,6 +128,8 @@ def recalcular_estado(control: ControlCalidad) -> str:
     conforme o una no conformidad cerrada; con NC mientras haya alguna
     abierta; en proceso mientras falten ensayos.
     """
+    if control.estado == ControlCalidad.Estado.APROBADO:
+        return control.estado          # la aprobacion del inspector es definitiva
     abiertas = NoConformidad.objects.filter(
         resultado__control=control, estado=NoConformidad.Estado.ABIERTA
     ).exists()
@@ -160,6 +166,8 @@ def registrar_resultado(control: ControlCalidad, punto: PuntoControl, valor: Dec
     """Registra la medicion; si esta fuera de rango abre la no conformidad."""
     if control.orden_trabajo.estado.codigo != "en_calidad":
         raise ErrorCalidad("La orden ya no esta en control de calidad.")
+    if control.estado == ControlCalidad.Estado.APROBADO:
+        raise ErrorCalidad("El control ya fue aprobado: no admite nuevas mediciones.")
     if punto.protocolo_id != control.protocolo_id:
         raise ErrorCalidad("El punto no pertenece al protocolo del control.")
     abierta = NoConformidad.objects.filter(
@@ -192,6 +200,46 @@ def registrar_resultado(control: ControlCalidad, punto: PuntoControl, valor: Dec
         )
     recalcular_estado(control)
     return resultado
+
+
+@transaction.atomic
+def aprobar_control(control: ControlCalidad, usuario) -> ControlCalidad:
+    """
+    El inspector aprueba el control cuando todos los ensayos obligatorios estan
+    conformes (o con su no conformidad cerrada). Si era el ultimo control
+    pendiente de la orden, esta queda liberada por calidad y produccion puede
+    cerrarla (RN-12).
+    """
+    ot = control.orden_trabajo
+    if ot.estado.codigo != "en_calidad":
+        raise ErrorCalidad(f"La orden {ot.numero} no esta en control de calidad.")
+    if control.estado == ControlCalidad.Estado.APROBADO:
+        raise ErrorCalidad("El control ya fue aprobado.")
+    if recalcular_estado(control) != ControlCalidad.Estado.CONFORME:
+        faltan = control.puntos_pendientes.count()
+        abiertas = NoConformidad.objects.filter(
+            resultado__control=control, estado=NoConformidad.Estado.ABIERTA).count()
+        motivos = []
+        if faltan:
+            motivos.append(f"{faltan} ensayo(s) obligatorio(s) sin medir")
+        if abiertas:
+            motivos.append(f"{abiertas} no conformidad(es) abierta(s)")
+        raise ErrorCalidad("No se puede aprobar: " + " y ".join(motivos) + ".")
+
+    control.estado = ControlCalidad.Estado.APROBADO
+    control.aprobado_por = usuario
+    control.aprobado_en = timezone.now()
+    control.save(update_fields=["estado", "aprobado_por", "aprobado_en"])
+    _auditar(usuario, "control_calidad", control.pk, Auditoria.Accion.MODIFICACION,
+             {"estado": "conforme"}, {"estado": "aprobado", "orden": ot.numero})
+
+    pendientes = ot.controles_calidad.exclude(estado=ControlCalidad.Estado.APROBADO)
+    if not pendientes.exists():
+        from apps.produccion.services import _cambiar_estado_ot
+
+        _cambiar_estado_ot(ot, "liberada", usuario,
+                           "Control de calidad aprobado: la orden queda lista para el cierre.")
+    return control
 
 
 @transaction.atomic

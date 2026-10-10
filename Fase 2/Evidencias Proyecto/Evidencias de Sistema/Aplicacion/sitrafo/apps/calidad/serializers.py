@@ -73,13 +73,15 @@ class ControlCalidadSerializer(serializers.ModelSerializer):
     protocolo_nombre = serializers.SerializerMethodField()
     inspector_nombre = serializers.CharField(source="inspector.username", read_only=True)
     estado_nombre = serializers.CharField(source="get_estado_display", read_only=True)
+    aprobado_por_nombre = serializers.CharField(source="aprobado_por.username", read_only=True,
+                                                default=None)
     puntos = serializers.SerializerMethodField()
 
     class Meta:
         model = ControlCalidad
         fields = ["id_control", "orden_trabajo", "orden_trabajo_numero", "protocolo",
                   "protocolo_nombre", "inspector_nombre", "fecha_hora", "estado",
-                  "estado_nombre", "puntos"]
+                  "estado_nombre", "aprobado_por_nombre", "aprobado_en", "puntos"]
 
     def get_protocolo_nombre(self, control) -> str:
         return str(control.protocolo)

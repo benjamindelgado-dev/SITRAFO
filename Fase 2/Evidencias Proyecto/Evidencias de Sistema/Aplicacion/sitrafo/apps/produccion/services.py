@@ -385,7 +385,13 @@ def enviar_a_calidad(ot: OrdenTrabajo, usuario) -> OrdenTrabajo:
 @transaction.atomic
 def cerrar(ot: OrdenTrabajo, usuario, justificacion: str = "") -> OrdenTrabajo:
     """Cierra la orden verificando calidad (RN-12) y desviacion de costo (RN-11)."""
-    _exigir_estado(ot, "en_calidad", accion="cerrar")
+    if ot.estado.codigo == "en_calidad":
+        motivos = " ".join(ot.puede_cerrarse()[1])
+        raise ErrorProduccion(
+            f"La orden {ot.numero} sigue en control de calidad: el inspector debe aprobar "
+            f"el control para liberarla. {motivos}".strip()
+        )
+    _exigir_estado(ot, "liberada", accion="cerrar")
     puede, impedimentos = ot.puede_cerrarse()
     if not puede:
         raise ErrorProduccion("No se puede cerrar: " + " ".join(impedimentos))

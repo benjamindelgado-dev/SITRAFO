@@ -285,6 +285,12 @@ def test_no_cierra_con_no_conformidad_abierta(taller):
 
     nc.cerrar(taller["usuario"], "Resecado del aislamiento y reensayo")
     puede, impedimentos = taller["ot"].puede_cerrarse()
+    assert puede is False
+    assert any("aprueba" in i for i in impedimentos)   # falta la aprobacion del inspector
+
+    control.estado = ControlCalidad.Estado.APROBADO
+    control.save(update_fields=["estado"])
+    puede, impedimentos = taller["ot"].puede_cerrarse()
 
     assert puede is True
     assert impedimentos == []

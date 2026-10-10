@@ -272,6 +272,10 @@ class OrdenTrabajo(TimeStampedModel):
         if abiertas:
             impedimentos.append(f"{abiertas} no conformidad(es) abierta(s).")
 
+        if (self.controles_calidad.exists()
+                and self.controles_calidad.exclude(estado="aprobado").exists()):
+            impedimentos.append("El inspector de calidad aun no aprueba el control.")
+
         return (not impedimentos), impedimentos
 
     @staticmethod
