@@ -1,0 +1,13 @@
+{% autoescape off %}AVISO INTERNO
+{{ titulo }}
+
+{{ mensaje }}
+{% for etiqueta, valor in detalle %}
+{{ etiqueta }}: {{ valor }}{% endfor %}
+
+Atiendalo en la aplicacion de escritorio SITRAFO, panel {{ donde }}.
+Tambien aparece en su bandeja de Pendientes en Inicio.
+
+--
+Mensaje automatico de SITRAFO. No responda a este correo.
+{% endautoescape %}

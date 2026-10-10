@@ -374,6 +374,8 @@ def _confirmar_orden(documento, usuario):
 
     from apps.comercial import services as comercial
 
+    if documento.tipo == DocumentoCobro.Tipo.SALDO:
+        transaction.on_commit(lambda: notificaciones.avisar_saldo_pagado(documento))
     if usuario is None:
         usuario = get_user_model().objects.filter(is_superuser=True).order_by("pk").first()
         if usuario is None:

@@ -247,6 +247,7 @@ class RecuperarClaveForm(BootstrapMixin, PasswordResetForm):
     """
     Recuperacion de clave (RF-SEG-05). El correo sale por el mismo canal que
     el resto de las notificaciones (Brevo), respetando CORREO_REDIRIGIR_A.
+    No se copia a CORREO_COPIA_A: el enlace da acceso a la cuenta.
     """
 
     email = forms.EmailField(label="Correo registrado", max_length=150)
@@ -261,7 +262,7 @@ class RecuperarClaveForm(BootstrapMixin, PasswordResetForm):
 
         enlace = url_sitio("web:clave_nueva", context["uid"], context["token"])
         enviar("recuperar_clave", "SITRAFO: recuperacion de contrasena", [to_email],
-               {"usuario": context["user"], "enlace": enlace, "url": enlace})
+               {"usuario": context["user"], "enlace": enlace, "url": enlace}, copia=False)
 
 
 class NuevaClaveForm(BootstrapMixin, SetPasswordForm):

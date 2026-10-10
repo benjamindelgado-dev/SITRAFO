@@ -269,6 +269,9 @@ def solicitar_presupuesto(request):
             transaction.on_commit(
                 lambda: notificaciones.notificar_solicitud_recibida(solicitud)
             )
+            transaction.on_commit(
+                lambda: notificaciones.avisar_solicitud_nueva(solicitud)
+            )
 
         messages.success(
             request,

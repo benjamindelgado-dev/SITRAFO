@@ -29,7 +29,7 @@ from apps.inventario.models import CategoriaMaterial, Material, PrecioMaterial
 from apps.pagos.models import DocumentoCobro, IndicadorEconomico
 from apps.produccion.models import Empleado, TarifaHoraHombre
 from apps.seguridad import matriz
-from apps.seguridad.models import Auditoria, Rol, UsuarioRol
+from apps.seguridad.models import Auditoria, Rol, Usuario, UsuarioRol
 
 HOY = datetime.date.today()
 
@@ -230,3 +230,74 @@ def test_confirmacion_manual_exige_anticipo_pagado(flujo):
     assert flujo["interno"].post(url).status_code == 200
     orden.refresh_from_db()
     assert orden.estado.codigo == "confirmada"
+
+
+# ---------------------------------------------------------------------------
+# Avisos internos por correo (relevo entre roles)
+# ---------------------------------------------------------------------------
+def test_aprobacion_avisa_al_aprobador_y_luego_al_ejecutivo(
+        flujo, django_capture_on_commit_callbacks):
+    cotizacion = _cotizar(flujo, descuento_pct="15")
+    base = f"/api/v1/cotizaciones/{cotizacion['id_cotizacion']}"
+
+    with django_capture_on_commit_callbacks(execute=True):
+        flujo["interno"].post(f"{base}/solicitar_aprobacion/")
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == ["a@sitrafo.cl"]    # no a quien la elaboro
+    assert "espera su aprobacion" in mail.outbox[0].subject
+
+    mail.outbox.clear()
+    with django_capture_on_commit_callbacks(execute=True):
+        flujo["aprobador"].post(f"{base}/emitir/")
+    destinatarios = sorted(d for correo in mail.outbox for d in correo.to)
+    assert destinatarios == ["compras@maipo.cl", "e@sitrafo.cl"]   # cliente y ejecutivo
+    aviso = next(c for c in mail.outbox if c.to == ["e@sitrafo.cl"])
+    assert "aprobada" in aviso.subject
+
+
+def test_devolver_avisa_al_ejecutivo_con_el_motivo(flujo, django_capture_on_commit_callbacks):
+    cotizacion = _cotizar(flujo, descuento_pct="15")
+    base = f"/api/v1/cotizaciones/{cotizacion['id_cotizacion']}"
+    flujo["interno"].post(f"{base}/solicitar_aprobacion/")
+
+    with django_capture_on_commit_callbacks(execute=True):
+        flujo["aprobador"].post(f"{base}/devolver/", {"motivo": "Descuento excesivo"},
+                                format="json")
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == ["e@sitrafo.cl"]
+    assert "Descuento excesivo" in mail.outbox[0].body
+
+
+def test_solicitud_del_cliente_avisa_a_comercial(flujo, django_capture_on_commit_callbacks):
+    with django_capture_on_commit_callbacks(execute=True):
+        respuesta = flujo["externo"].post("/api/v1/solicitudes/", {
+            "modelo": flujo["modelo"].pk, "cantidad": 1}, format="json")
+    assert respuesta.status_code == 201, respuesta.data
+    aviso = next(c for c in mail.outbox if "nueva solicitud" in c.subject)
+    assert sorted(aviso.to) == ["a@sitrafo.cl", "e@sitrafo.cl"]
+    assert "Electrica del Maipo SpA" in aviso.body
+
+
+def test_anticipo_pagado_avisa_a_produccion(flujo, django_capture_on_commit_callbacks):
+    from apps.comercial import services
+
+    jefe = Usuario.objects.create_user("jefe", "jefe@sitrafo.cl", "Clave123456",
+                                       es_interno=True)
+    UsuarioRol.objects.create(usuario=jefe, rol=Rol.objects.get(nombre=matriz.PRODUCCION))
+    cotizacion = _cotizar(flujo)
+    base = f"/api/v1/cotizaciones/{cotizacion['id_cotizacion']}"
+    flujo["interno"].post(f"{base}/emitir/")
+    flujo["externo"].post(f"{base}/aceptar/")
+    documento = DocumentoCobro.objects.get()
+    documento.estado = DocumentoCobro.Estado.PAGADO
+    documento.save(update_fields=["estado"])
+    mail.outbox.clear()
+
+    with django_capture_on_commit_callbacks(execute=True):
+        services.confirmar_si_anticipo(documento, flujo["ejecutivo"])
+
+    aviso = next(c for c in mail.outbox if "lista para produccion" in c.subject)
+    assert aviso.to == ["jefe@sitrafo.cl"]
+    # El modelo de la prueba no tiene tareas estandar: el aviso lo explica
+    assert "no se" in aviso.body and "tareas estandar" in aviso.body
+

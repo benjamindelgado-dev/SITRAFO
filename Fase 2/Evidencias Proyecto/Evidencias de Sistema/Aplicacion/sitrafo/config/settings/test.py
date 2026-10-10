@@ -28,6 +28,7 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 # variables del .env llegan al proceso, y un desvio de correo o una clave real
 # cambiaria el comportamiento que se esta verificando.
 CORREO_REDIRIGIR_A = ""
+CORREO_COPIA_A = ""
 BREVO_API_KEY = ""
 PAYPAL_CLIENT_ID = ""
 PAYPAL_SECRET = ""

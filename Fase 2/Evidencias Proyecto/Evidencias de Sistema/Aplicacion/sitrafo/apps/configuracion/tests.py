@@ -341,3 +341,106 @@ def test_redireccion_de_correos_en_desarrollo(settings):
     assert ok
     assert mail.outbox[0].to == ["benja@prueba.cl"]
     assert "cliente@maipo.cl" in mail.outbox[0].subject
+
+
+def _solicitud_ficticia():
+    return {"solicitud": type("S", (), {"numero": "SP-1", "cantidad": 1, "modelo": None,
+                                        "fecha_deseada": None})(),
+            "url": "http://x"}
+
+
+@pytest.mark.django_db
+def test_copia_oculta_de_control_sin_cambiar_el_destinatario(settings):
+    from django.core import mail
+
+    from apps.configuracion.services.notificaciones import enviar
+
+    settings.CORREO_COPIA_A = "benja@prueba.cl"
+    assert enviar("solicitud_recibida", "Asunto", ["cliente@maipo.cl"], _solicitud_ficticia())
+    correo = mail.outbox[0]
+    assert correo.to == ["cliente@maipo.cl"]
+    assert correo.bcc == ["benja@prueba.cl"]
+    assert correo.subject == "Asunto"
+
+
+@pytest.mark.django_db
+def test_copia_no_se_duplica_ni_aplica_a_correos_con_enlace_personal(settings):
+    from django.core import mail
+
+    from apps.configuracion.services.notificaciones import enviar
+
+    settings.CORREO_COPIA_A = "benja@prueba.cl"
+    # Un alias de la misma casilla ya le llega: no se agrega la copia
+    enviar("solicitud_recibida", "A", ["Benja+maipo@prueba.cl"], _solicitud_ficticia())
+    # Recuperacion de clave: el enlace da acceso a la cuenta
+    enviar("solicitud_recibida", "B", ["cliente@maipo.cl"], _solicitud_ficticia(),
+           copia=False)
+    assert [c.bcc for c in mail.outbox] == [[], []]
+
+
+@pytest.mark.django_db
+def test_la_redireccion_manda_sobre_la_copia(settings):
+    from django.core import mail
+
+    from apps.configuracion.services.notificaciones import enviar
+
+    settings.CORREO_REDIRIGIR_A = "dev@prueba.cl"
+    settings.CORREO_COPIA_A = "benja@prueba.cl"
+    enviar("solicitud_recibida", "Asunto", ["cliente@maipo.cl"], _solicitud_ficticia())
+    assert mail.outbox[0].to == ["dev@prueba.cl"] and mail.outbox[0].bcc == []
+
+
+@pytest.mark.django_db
+def test_avisos_van_a_usuarios_activos_con_el_permiso(django_user_model):
+    from django.core.management import call_command
+
+    from apps.configuracion.services.notificaciones import usuarios_con_permiso
+    from apps.seguridad import matriz
+    from apps.seguridad.models import Rol, UsuarioRol
+
+    call_command("cargar_roles", verbosity=0)
+
+    def interno(nombre, rol, **extra):
+        usuario = django_user_model.objects.create_user(
+            nombre, f"{nombre}@s.cl", "x" * 12, es_interno=True, **extra)
+        UsuarioRol.objects.create(usuario=usuario, rol=Rol.objects.get(nombre=rol))
+        return usuario
+
+    interno("cal1", matriz.CALIDAD)
+    interno("cal2", matriz.CALIDAD, estado="suspendido")
+    interno("prod", matriz.PRODUCCION)            # solo lee ensayos
+    django_user_model.objects.create_superuser("root", "root@s.cl", "x" * 12)
+
+    assert usuarios_con_permiso("ensayo.actualizar") == ["cal1@s.cl"]
+    Rol.objects.filter(nombre=matriz.CALIDAD).update(activo=False)
+    assert usuarios_con_permiso("ensayo.actualizar") == []
+
+
+@pytest.mark.django_db
+def test_alias_de_correo_para_la_demostracion(django_user_model, settings):
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    from apps.clientes.models import Cliente, ContactoCliente
+
+    settings.CORREO_COPIA_A = "Benja@Prueba.cl"
+    cliente = Cliente.objects.create(rut="76543210-3", razon_social="Electrica del Maipo SpA",
+                                     tipo_persona="juridica")
+    django_user_model.objects.create_user("maipo", "contacto@maipo.cl", "x" * 12,
+                                          cliente=cliente)
+    django_user_model.objects.create_user("cldcam", "cldcam@pruebas.sitrafo.cl", "x" * 12)
+    django_user_model.objects.create_user("milko", "milko@real.cl", "x" * 12)
+    contacto = ContactoCliente.objects.create(cliente=cliente, nombre="Ana",
+                                              email="ana@maipo.cl")
+
+    call_command("usar_alias_correo", stdout=StringIO())          # solo muestra
+    assert django_user_model.objects.get(username="maipo").email == "contacto@maipo.cl"
+
+    call_command("usar_alias_correo", "--aplicar", "--conservar", "milko", stdout=StringIO())
+    correos = dict(django_user_model.objects.values_list("username", "email"))
+    assert correos == {"maipo": "benja+maipo@prueba.cl",
+                       "cldcam": "benja+cldcam@prueba.cl",
+                       "milko": "milko@real.cl"}
+    contacto.refresh_from_db()
+    assert contacto.email == f"benja+electrica-del-maipo-c{contacto.pk}@prueba.cl"

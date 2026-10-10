@@ -391,3 +391,19 @@ def test_pagar_el_anticipo_confirma_la_orden(escenario, documento):
     orden.refresh_from_db()
     assert orden.estado.codigo == "confirmada"
     assert "anticipo" in orden.historial.get().observacion
+
+
+def test_pago_del_saldo_avisa_al_ejecutivo(escenario, documento,
+                                           django_capture_on_commit_callbacks):
+    """Aviso interno 8: pagado el saldo, el ejecutivo coordina la entrega."""
+    from django.core import mail
+
+    documento.tipo = DocumentoCobro.Tipo.SALDO
+    documento.save(update_fields=["tipo"])
+    with django_capture_on_commit_callbacks(execute=True):
+        _iniciar_y_volver(escenario, documento, PayPalFalso())
+
+    avisos = [c for c in mail.outbox if "saldo pagado" in c.subject]
+    assert len(avisos) == 1
+    assert avisos[0].to == ["e@e.cl"]           # ejecutivo de la cotizacion
+    assert escenario["orden"].numero in avisos[0].body

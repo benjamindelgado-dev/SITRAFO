@@ -22,6 +22,7 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
+from apps.configuracion.services import notificaciones
 from apps.seguridad.models import Auditoria
 
 from .models import ControlCalidad, NoConformidad, ProtocoloCalidad, PuntoControl, ResultadoControl
@@ -192,12 +193,13 @@ def registrar_resultado(control: ControlCalidad, punto: PuntoControl, valor: Dec
             rango.append(f"min {punto.tolerancia_inf.normalize()}")
         if punto.tolerancia_sup is not None:
             rango.append(f"max {punto.tolerancia_sup.normalize()}")
-        NoConformidad.objects.create(
+        nc = NoConformidad.objects.create(
             resultado=resultado, severidad=severidad, responsable=usuario,
             descripcion=(descripcion.strip() or
                          f"{punto.nombre}: {resultado.valor_medido.normalize()} "
                          f"{punto.unidad} fuera de rango ({', '.join(rango)}).")[:300],
         )
+        transaction.on_commit(lambda: notificaciones.avisar_no_conformidad(nc))
     recalcular_estado(control)
     return resultado
 
@@ -239,6 +241,7 @@ def aprobar_control(control: ControlCalidad, usuario) -> ControlCalidad:
 
         _cambiar_estado_ot(ot, "liberada", usuario,
                            "Control de calidad aprobado: la orden queda lista para el cierre.")
+        transaction.on_commit(lambda: notificaciones.avisar_ot_liberada(ot))
     return control
 
 

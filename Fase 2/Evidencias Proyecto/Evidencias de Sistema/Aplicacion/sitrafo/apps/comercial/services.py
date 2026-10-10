@@ -441,6 +441,7 @@ def confirmar_si_anticipo(documento, usuario):
     tareas estandar), el pago y la confirmacion se conservan y la orden queda
     confirmada para generar las OT a mano desde el escritorio.
     """
+    from apps.configuracion.services import notificaciones
     from apps.pagos.models import DocumentoCobro
     from apps.produccion import services as produccion
 
@@ -449,11 +450,15 @@ def confirmar_si_anticipo(documento, usuario):
         return None
     orden = confirmar_orden_compra(
         orden, usuario, "Confirmada automaticamente al pagarse el anticipo.")
+    ordenes, motivo = [], ""
     try:
         with transaction.atomic():
-            produccion.generar_ordenes_trabajo(orden, usuario)
+            ordenes = produccion.generar_ordenes_trabajo(orden, usuario)
     except (produccion.ErrorProduccion, EstadoDocumento.DoesNotExist) as error:
         logger.warning("OC %s confirmada sin OT automaticas: %s", orden.numero, error)
+        motivo = str(error)
+    transaction.on_commit(
+        lambda: notificaciones.avisar_orden_para_produccion(orden, ordenes, motivo))
     return orden
 
 

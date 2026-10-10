@@ -193,6 +193,8 @@ BREVO_API_KEY = env("BREVO_API_KEY", default="")
 DEFAULT_FROM_EMAIL = env("CORREO_REMITENTE", default="SITRAFO <no-responder@sitrafo.cl>")
 # Solo desarrollo/demostracion: desvia todos los correos a esta direccion
 CORREO_REDIRIGIR_A = env("CORREO_REDIRIGIR_A", default="")
+# Marcha blanca: copia oculta de cada correo a esta direccion (ver notificaciones.py)
+CORREO_COPIA_A = env("CORREO_COPIA_A", default="")
 # Recuperacion de clave: el enlace de un solo uso vence en una hora (RF-SEG-05)
 PASSWORD_RESET_TIMEOUT = 60 * 60
 # Direccion publica del sitio, para los enlaces dentro de los correos

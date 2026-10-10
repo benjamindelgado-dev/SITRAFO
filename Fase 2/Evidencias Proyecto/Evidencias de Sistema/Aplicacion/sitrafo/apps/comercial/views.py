@@ -327,6 +327,8 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
         )
         # RF-COM-09. Si el correo falla, la emision queda registrada igual.
         enviado = notificaciones.notificar_cotizacion_emitida(cotizacion)
+        if aprobando:
+            notificaciones.avisar_cotizacion_resuelta(cotizacion, request.user, True)
         datos = dict(self.get_serializer(cotizacion).data)
         datos["correo_enviado"] = enviado
         datos["aviso_correo"] = (
@@ -367,6 +369,8 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
             cotizacion, "en_aprobacion", request.user,
             f"Descuento de {cotizacion.descuento_pct}% enviado a aprobacion.",
         )
+        transaction.on_commit(
+            lambda: notificaciones.avisar_cotizacion_en_aprobacion(cotizacion))
         return Response(self.get_serializer(cotizacion).data)
 
     @action(detail=True, methods=["post"])
@@ -428,6 +432,8 @@ class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
             return Response({"motivo": "Indique por que se devuelve la cotizacion."},
                             status=status.HTTP_400_BAD_REQUEST)
         self._cambiar_estado(cotizacion, "borrador", request.user, f"Devuelta: {motivo}")
+        transaction.on_commit(lambda: notificaciones.avisar_cotizacion_resuelta(
+            cotizacion, request.user, False, motivo))
         return Response(self.get_serializer(cotizacion).data)
 
     @action(detail=True, methods=["post"])

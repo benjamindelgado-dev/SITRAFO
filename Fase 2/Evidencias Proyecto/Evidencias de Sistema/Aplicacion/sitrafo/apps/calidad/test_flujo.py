@@ -303,3 +303,46 @@ def test_el_cliente_descarga_el_informe_de_ensayos(planta):
     respuesta = navegador.get(f"/seguimiento/{planta['ot'].pk}/ensayos.pdf")
     assert respuesta.status_code == 200
     assert respuesta.content.startswith(b"%PDF")
+
+
+# ---------------------------------------------------------------------------
+# Avisos internos por correo (relevo entre roles)
+# ---------------------------------------------------------------------------
+def test_enviar_a_calidad_avisa_a_los_inspectores(planta, django_capture_on_commit_callbacks):
+    from django.core import mail
+
+    from apps.produccion import services
+
+    ot = planta["ot"]
+    ot.estado = _estado("orden_trabajo", "en_ejecucion")
+    ot.save(update_fields=["estado"])
+    with django_capture_on_commit_callbacks(execute=True):
+        services.enviar_a_calidad(ot, Usuario.objects.get(username="produccion"))
+
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == ["calidad@sitrafo.cl"]
+    assert ot.numero in mail.outbox[0].subject
+
+
+def test_no_conformidad_y_liberacion_avisan_a_produccion(
+        planta, django_capture_on_commit_callbacks):
+    from django.core import mail
+
+    control = _control(planta)
+    with django_capture_on_commit_callbacks(execute=True):
+        _medir(planta, control, 0, 500)              # fuera de rango: abre la NC
+    assert [c.to for c in mail.outbox] == [["produccion@sitrafo.cl"]]
+    assert "no conformidad" in mail.outbox[0].subject
+
+    nc = NoConformidad.objects.get()
+    planta["calidad"].post(f"/api/v1/no-conformidades/{nc.pk}/cerrar/",
+                           {"accion_correctiva": "Se reapreto el devanado y se seco."},
+                           format="json")
+    _medir(planta, control, 0, 2500)
+    _medir(planta, control, 1, 0.1)
+    mail.outbox.clear()
+    with django_capture_on_commit_callbacks(execute=True):
+        assert _aprobar(planta, control).status_code == 200
+    assert [c.to for c in mail.outbox] == [["produccion@sitrafo.cl"]]
+    assert "liberada" in mail.outbox[0].subject
+

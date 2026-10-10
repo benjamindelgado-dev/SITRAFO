@@ -477,6 +477,22 @@ Plantillas en `templates/correo/`, cada una en version HTML y texto plano.
 | El cliente envia una solicitud desde la web | Acuse de recibo |
 | Se emite una cotizacion (API o accion del admin) | Cotizacion con detalle y enlace para responder |
 | Se confirma un pago en linea | Comprobante con referencia de PayPal |
+| Termina la fabricacion del pedido | Aviso con el saldo por pagar |
+| Hitos del pedido (confirmado, en fabricacion, entregado) | Estado del pedido |
+
+Ademas, cuando el trabajo pasa de un rol a otro, se avisa por correo a los
+usuarios internos cuyo rol tiene el permiso de la accion siguiente:
+
+| Evento | Aviso a |
+|---|---|
+| Solicitud nueva desde la web | Ejecutivos comerciales (`solicitud.actualizar`) |
+| Cotizacion enviada a aprobacion | Aprobadores, salvo quien la elaboro (`cotizacion.aprobar`) |
+| Cotizacion aprobada o devuelta | Ejecutivo que la elaboro |
+| Anticipo pagado y OT generadas | Jefes de produccion (`orden_trabajo.actualizar`) |
+| OT enviada a calidad | Inspectores (`ensayo.actualizar`) |
+| No conformidad registrada | Jefes de produccion |
+| OT liberada por calidad | Jefes de produccion |
+| Saldo pagado | Ejecutivo de la cotizacion |
 
 Se implementa como backend de correo de Django: el resto del sistema usa las
 herramientas estandar de Django y no depende del proveedor. Sin
@@ -487,6 +503,13 @@ los correos se envian solo despues de confirmada la transaccion.
 `CORREO_REDIRIGIR_A` desvia todos los correos a una direccion de prueba
 (indicando en el asunto el destinatario original), para no escribir a los
 clientes ficticios de los datos de demostracion.
+
+`CORREO_COPIA_A` (marcha blanca) envia cada correo a su destinatario real y
+una copia oculta a la direccion indicada, para controlar los envios. No se
+copia la recuperacion de clave, porque su enlace da acceso a la cuenta. Antes
+de activarla, `python manage.py usar_alias_correo --aplicar` reemplaza los
+correos ficticios de la demostracion por alias de esa casilla
+(casilla+usuario@dominio), para no escribir a dominios de terceros.
 
 ## Integracion continua
 

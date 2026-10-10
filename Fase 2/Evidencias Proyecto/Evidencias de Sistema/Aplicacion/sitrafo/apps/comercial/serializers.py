@@ -108,6 +108,12 @@ class SolicitudPresupuestoSerializer(serializers.ModelSerializer):
             usuario=self.context["request"].user,
             observacion="Solicitud recibida desde la aplicacion web.",
         )
+        if not self.context["request"].user.es_interno:
+            from django.db import transaction
+
+            from apps.configuracion.services import notificaciones
+
+            transaction.on_commit(lambda: notificaciones.avisar_solicitud_nueva(solicitud))
         return solicitud
 
 

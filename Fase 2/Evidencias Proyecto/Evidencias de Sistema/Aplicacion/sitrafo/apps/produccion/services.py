@@ -379,6 +379,9 @@ def enviar_a_calidad(ot: OrdenTrabajo, usuario) -> OrdenTrabajo:
     if pendientes:
         raise ErrorProduccion(f"Quedan {pendientes} tarea(s) sin terminar.")
     _cambiar_estado_ot(ot, "en_calidad", usuario, "Fabricacion terminada; pasa a control de calidad.")
+    from apps.configuracion.services import notificaciones
+
+    transaction.on_commit(lambda: notificaciones.avisar_ot_en_calidad(ot))
     return ot
 
 
