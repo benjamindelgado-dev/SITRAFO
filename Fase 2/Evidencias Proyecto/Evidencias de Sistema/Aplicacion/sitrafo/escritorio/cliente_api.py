@@ -190,6 +190,10 @@ class ClienteAPI:
         raise ErrorAPI(mensaje or "Error desconocido.", respuesta.status_code)
 
     # -- Atajos por dominio -------------------------------------------------
+    def pendientes(self):
+        """Bandeja de pendientes del usuario segun su rol."""
+        return self.obtener("pendientes/")
+
     def modelos(self, params=None):
         return self.obtener("modelos/", params)
 

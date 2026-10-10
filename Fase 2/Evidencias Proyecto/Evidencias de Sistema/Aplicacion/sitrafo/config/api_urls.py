@@ -36,6 +36,7 @@ from apps.configuracion.views import (
     FeriadoViewSet,
     LogIntegracionViewSet,
     ParametroSistemaViewSet,
+    pendientes,
 )
 from apps.inventario.views import (
     BodegaViewSet,
@@ -105,6 +106,7 @@ urlpatterns = [
     # Cierre de sesion: revoca el token de renovacion (RNF-04)
     path("auth/salir/", TokenBlacklistView.as_view(), name="token_blacklist"),
     path("auth/yo/", yo, name="yo"),
+    path("pendientes/", pendientes, name="pendientes"),
     path("reportes/<str:tipo>/", ReporteView.as_view(), name="reporte"),
     path("", include(router.urls)),
 ]

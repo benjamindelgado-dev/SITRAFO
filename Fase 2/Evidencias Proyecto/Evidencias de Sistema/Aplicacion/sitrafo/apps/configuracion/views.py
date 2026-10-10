@@ -7,7 +7,7 @@ Son exclusivos de usuarios internos.
 """
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
@@ -146,3 +146,18 @@ class LogIntegracionViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["servicio", "exitoso"]
     search_fields = ["endpoint", "mensaje_error"]
+
+
+@api_view(["GET"])
+@permission_classes([CuentaOperativa])
+def pendientes(request):
+    """
+    Bandeja de pendientes del usuario interno: lo que su rol debe atender
+    ahora, calculado desde el estado de los documentos.
+    """
+    from .services.pendientes import pendientes_de
+
+    if not request.user.es_interno:
+        raise PermissionDenied("Solo para usuarios internos.")
+    items = pendientes_de(request.user)
+    return Response({"total": len(items), "resultados": items})

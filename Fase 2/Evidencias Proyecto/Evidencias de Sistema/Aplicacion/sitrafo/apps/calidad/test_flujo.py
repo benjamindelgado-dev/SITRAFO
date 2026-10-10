@@ -346,3 +346,47 @@ def test_no_conformidad_y_liberacion_avisan_a_produccion(
     assert [c.to for c in mail.outbox] == [["produccion@sitrafo.cl"]]
     assert "liberada" in mail.outbox[0].subject
 
+
+# ---------------------------------------------------------------------------
+# Bandeja de pendientes
+# ---------------------------------------------------------------------------
+def _pendientes(api):
+    respuesta = api.get("/api/v1/pendientes/")
+    assert respuesta.status_code == 200, respuesta.data
+    return [i["titulo"] for i in respuesta.data["resultados"]]
+
+
+def test_pendientes_siguen_a_la_orden_de_calidad_a_produccion(planta):
+    numero = planta["ot"].numero
+    assert _pendientes(planta["calidad"]) == [
+        f"Iniciar el control de calidad de la orden {numero}"]
+
+    control = _control(planta)
+    _medir(planta, control, 0, 2500)
+    _medir(planta, control, 1, 0.1)
+    assert _pendientes(planta["calidad"]) == [
+        f"Aprobar y liberar la orden {numero} (ensayos conformes)"]
+    assert _pendientes(planta["produccion"]) == []
+
+    _aprobar(planta, control)
+    assert _pendientes(planta["calidad"]) == []          # desaparece al atenderlo
+    assert _pendientes(planta["produccion"]) == [
+        f"Cerrar la orden {numero} (liberada por calidad)"]
+
+
+def test_no_conformidad_aparece_para_calidad_y_produccion(planta):
+    control = _control(planta)
+    _medir(planta, control, 0, 500)
+    numero = planta["ot"].numero
+    assert _pendientes(planta["calidad"]) == [
+        f"Cerrar la no conformidad y repetir el ensayo de {numero}"]
+    assert _pendientes(planta["produccion"]) == [
+        f"Corregir la no conformidad de la orden {numero}"]
+
+
+def test_pendientes_solo_para_usuarios_internos(planta, django_user_model):
+    cliente = django_user_model.objects.create_user(
+        "maipo", "m@maipo.cl", "Clave123456", cliente=planta["ot"].orden_compra.cliente)
+    api = APIClient()
+    api.force_authenticate(cliente)
+    assert api.get("/api/v1/pendientes/").status_code == 403

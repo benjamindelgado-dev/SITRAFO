@@ -6,6 +6,7 @@ consultas ni accede a la base de datos.
 """
 from cliente_api import ClienteAPI, ErrorAPI
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -88,47 +89,140 @@ class PanelBase(QWidget):
 
 
 class PanelInicio(PanelBase):
-    """Bienvenida con el rol del usuario y las secciones que puede usar."""
+    """
+    Bienvenida y bandeja de pendientes: lo que el rol del usuario debe atender
+    ahora. La API calcula la lista desde el estado de los documentos, de modo
+    que un pendiente desaparece en cuanto alguien lo atiende.
+    """
 
     titulo = "Inicio"
+    columnas = ["Pendiente", "Detalle", "Donde", "Desde"]
 
-    def __init__(self, cliente: ClienteAPI, secciones: list[str]):
+    def __init__(self, cliente: ClienteAPI, secciones: list[str], al_ir_a=None,
+                 al_contar=None):
         self.secciones = secciones
+        self.al_ir_a = al_ir_a or (lambda nombre, referencia: None)
+        self.al_contar = al_contar or (lambda total: None)
+        self.items = []
         super().__init__(cliente)
 
     def construir(self):
         identidad = self.cliente.identidad
-        saludo = QLabel(f"Sesion iniciada como <b>{identidad.get('username', '')}</b>")
+        saludo = QLabel(
+            f"Sesion iniciada como <b>{identidad.get('username', '')}</b> · "
+            f"{', '.join(self.cliente.roles) or 'Sin rol'}"
+        )
         self.contenedor.addWidget(saludo)
 
-        grupo = QGroupBox("Su rol")
-        layout = QVBoxLayout(grupo)
-        roles = QLabel(", ".join(self.cliente.roles) or "Sin rol")
-        roles.setObjectName("cifra")
-        layout.addWidget(roles)
+        grupo = QGroupBox("Mis pendientes")
+        capa = QVBoxLayout(grupo)
+        self.resumen = QLabel("Cargando...")
+        self.resumen.setObjectName("cifra")
+        capa.addWidget(self.resumen)
         nota = QLabel(
-            "Las secciones y acciones disponibles dependen de su rol, segun la "
-            "matriz de acceso del sistema. La API verifica cada operacion."
+            "Lo que su rol debe atender ahora. Los marcados en naranja son "
+            "prioritarios. Doble clic (o «Ir al panel») abre la seccion donde se "
+            "atiende. La lista se actualiza sola cada dos minutos."
         )
         nota.setObjectName("subtitulo")
         nota.setWordWrap(True)
-        layout.addWidget(nota)
-        self.contenedor.addWidget(grupo)
+        capa.addWidget(nota)
 
-        grupo_secciones = QGroupBox("Secciones disponibles")
-        layout_secciones = QVBoxLayout(grupo_secciones)
-        if self.secciones:
-            for seccion in self.secciones:
-                layout_secciones.addWidget(QLabel(f"  •  {seccion}"))
-        else:
-            aviso = QLabel(
-                "Las pantallas de su rol aun no estan disponibles en esta version "
-                "de la aplicacion de escritorio."
-            )
-            aviso.setWordWrap(True)
-            layout_secciones.addWidget(aviso)
-        self.contenedor.addWidget(grupo_secciones)
-        self.contenedor.addStretch()
+        self.tabla = self.crear_tabla()
+        cabecera = self.tabla.horizontalHeader()
+        cabecera.setSectionResizeMode(0, QHeaderView.Stretch)
+        cabecera.setSectionResizeMode(1, QHeaderView.Stretch)
+        for columna in (2, 3):
+            cabecera.setSectionResizeMode(columna, QHeaderView.ResizeToContents)
+        self.tabla.doubleClicked.connect(self.ir_al_panel)
+        capa.addWidget(self.tabla, 1)
+
+        self.vacio = QLabel("No tiene pendientes. Todo al dia.")
+        self.vacio.setAlignment(Qt.AlignCenter)
+        self.vacio.setStyleSheet("color:#2f6b4f; font-size:15px; padding:18px;")
+        self.vacio.hide()
+        capa.addWidget(self.vacio, 1)
+
+        acciones = QHBoxLayout()
+        self.boton_ir = QPushButton("Ir al panel")
+        self.boton_ir.clicked.connect(self.ir_al_panel)
+        acciones.addWidget(self.boton_ir)
+        actualizar = QPushButton("Actualizar")
+        actualizar.setObjectName("secundario")
+        actualizar.clicked.connect(self.refrescar)
+        acciones.addWidget(actualizar)
+        acciones.addStretch()
+        capa.addLayout(acciones)
+        self.contenedor.addWidget(grupo, 1)
+
+        secciones = QLabel(
+            "Secciones disponibles: " + (", ".join(self.secciones) or
+                                         "ninguna en esta version del escritorio")
+        )
+        secciones.setObjectName("subtitulo")
+        secciones.setWordWrap(True)
+        self.contenedor.addWidget(secciones)
+
+    @staticmethod
+    def _desde(fecha: str | None) -> str:
+        from datetime import datetime
+
+        if not fecha:
+            return "Ahora"
+        try:
+            momento = datetime.fromisoformat(fecha)
+        except ValueError:
+            return ""
+        minutos = int((datetime.now(momento.tzinfo) - momento).total_seconds() // 60)
+        if minutos < 60:
+            return f"hace {max(minutos, 1)} min"
+        if minutos < 60 * 24:
+            return f"hace {minutos // 60} h"
+        return f"hace {minutos // (60 * 24)} d"
+
+    def refrescar(self, silencioso: bool = False):
+        try:
+            respuesta = self.cliente.pendientes()
+        except ErrorAPI as error:
+            self.resumen.setText("No se pudo cargar")
+            if not silencioso:
+                self.manejar_error(error)
+            return
+        self.items = respuesta.get("resultados", [])
+        total = len(self.items)
+        urgentes = sum(1 for i in self.items if i.get("urgente"))
+        texto = f"{total} pendiente{'s' if total != 1 else ''}"
+        if urgentes:
+            texto += f" · {urgentes} prioritario{'s' if urgentes != 1 else ''}"
+        self.resumen.setText(texto if total else "Sin pendientes")
+        self.llenar(self.tabla, [
+            [i["titulo"], i.get("detalle", ""), i["panel"], self._desde(i.get("fecha"))]
+            for i in self.items
+        ])
+        for fila, item in enumerate(self.items):
+            if item.get("urgente"):
+                for columna in range(self.tabla.columnCount()):
+                    celda = self.tabla.item(fila, columna)
+                    celda.setBackground(QColor("#fdebd9"))
+                    if columna == 0:
+                        fuente = celda.font()
+                        fuente.setBold(True)
+                        celda.setFont(fuente)
+        for fila in range(self.tabla.rowCount()):
+            self.tabla.item(fila, 0).setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            self.tabla.item(fila, 1).setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.tabla.setVisible(bool(total))
+        self.boton_ir.setVisible(bool(total))
+        self.vacio.setVisible(not total)
+        self.al_contar(total)
+
+    def ir_al_panel(self, *_):
+        fila = self.tabla.currentRow()
+        if fila < 0 or fila >= len(self.items):
+            QMessageBox.information(self, "Pendientes", "Seleccione un pendiente de la lista.")
+            return
+        item = self.items[fila]
+        self.al_ir_a(item["panel"], item.get("referencia", ""))
 
 
 class PanelCatalogo(PanelBase):

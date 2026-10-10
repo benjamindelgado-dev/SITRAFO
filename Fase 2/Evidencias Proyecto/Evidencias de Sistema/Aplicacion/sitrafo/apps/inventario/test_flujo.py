@@ -164,3 +164,9 @@ def test_costo_promedio_y_kardex_por_fechas(bodega):
     manana = (timezone.localdate() + datetime.timedelta(days=1)).isoformat()
     vacio = bodega["bodeguero"].get(_url(bodega, "kardex") + f"?desde={manana}").data
     assert vacio["movimientos"] == [] and Decimal(vacio["saldo"]) == Decimal("200")
+
+
+def test_stock_bajo_el_minimo_es_pendiente_de_bodega(bodega):
+    titulos = [i["titulo"] for i in
+               bodega["bodeguero"].get("/api/v1/pendientes/").data["resultados"]]
+    assert len(titulos) == 1 and titulos[0].startswith("Reponer ")

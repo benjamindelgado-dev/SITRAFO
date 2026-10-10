@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QStackedWidget,
     QStatusBar,
+    QTableWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -131,7 +132,9 @@ class VentanaPrincipal(QMainWindow):
         ]
         permitidos = [(n, clase) for n, permiso, clase in disponibles
                       if self.cliente.puede(permiso)]
-        self.paneles = [("Inicio", PanelInicio(self.cliente, [n for n, _ in permitidos]))]
+        self.inicio = PanelInicio(self.cliente, [n for n, _ in permitidos],
+                                  al_ir_a=self.ir_a, al_contar=self._mostrar_contador)
+        self.paneles = [("Inicio", self.inicio)]
         self.paneles += [(nombre, clase(self.cliente)) for nombre, clase in permitidos]
         for nombre, panel in self.paneles:
             self.menu.addItem(nombre)
@@ -145,6 +148,41 @@ class VentanaPrincipal(QMainWindow):
         self.setStatusBar(barra)
 
         self.menu.setCurrentRow(0)
+
+        # Bandeja de pendientes: el contador del menu se actualiza solo
+        if not hasattr(self, "_reloj_pendientes"):
+            self._reloj_pendientes = QTimer(self)
+            self._reloj_pendientes.timeout.connect(self._actualizar_pendientes)
+            self._reloj_pendientes.start(120_000)
+
+    # -- Pendientes ---------------------------------------------------------
+    def _mostrar_contador(self, total: int):
+        item = self.menu.item(0) if hasattr(self, "menu") else None
+        if item is not None:
+            item.setText(f"Inicio  ({total})" if total else "Inicio")
+
+    def _actualizar_pendientes(self):
+        if not self.es_vista_taller and hasattr(self, "inicio"):
+            self.inicio.refrescar(silencioso=True)
+
+    def ir_a(self, nombre: str, referencia: str = ""):
+        """Abre el panel donde se atiende un pendiente y marca el documento."""
+        nombres = [n for n, _ in self.paneles]
+        if nombre not in nombres:
+            QMessageBox.information(self, "Pendientes",
+                                    f"Su rol no tiene acceso al panel «{nombre}».")
+            return
+        self.menu.setCurrentRow(nombres.index(nombre))
+        if not referencia:
+            return
+        panel = self.paneles[nombres.index(nombre)][1]
+        for tabla in panel.findChildren(QTableWidget):
+            encontrados = tabla.findItems(referencia, Qt.MatchExactly)
+            if encontrados:
+                tabla.setCurrentItem(encontrados[0])
+                tabla.scrollToItem(encontrados[0])
+                break
+        self.statusBar().showMessage(f"{nombre} — pendiente: {referencia}")
 
     def _construir_taller(self):
         self.setWindowTitle("SITRAFO — Taller")
@@ -211,6 +249,8 @@ class VentanaPrincipal(QMainWindow):
         self._salir()
 
     def _salir(self):
+        if hasattr(self, "_reloj_pendientes"):
+            self._reloj_pendientes.stop()
         if hasattr(self, "_reloj"):
             self._reloj.stop()
             QApplication.instance().removeEventFilter(self)

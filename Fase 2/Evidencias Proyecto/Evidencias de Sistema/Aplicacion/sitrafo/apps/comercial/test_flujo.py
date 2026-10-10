@@ -301,3 +301,24 @@ def test_anticipo_pagado_avisa_a_produccion(flujo, django_capture_on_commit_call
     # El modelo de la prueba no tiene tareas estandar: el aviso lo explica
     assert "no se" in aviso.body and "tareas estandar" in aviso.body
 
+
+def test_pendientes_de_la_aprobacion_de_cotizaciones(flujo):
+    def titulos(api):
+        return [i["titulo"] for i in api.get("/api/v1/pendientes/").data["resultados"]]
+
+    numero_solicitud = flujo["solicitud"].numero
+    assert f"Asignar y cotizar la solicitud {numero_solicitud}" in titulos(flujo["aprobador"])
+
+    cotizacion = _cotizar(flujo, descuento_pct="15")
+    base = f"/api/v1/cotizaciones/{cotizacion['id_cotizacion']}"
+    numero = cotizacion["numero"]
+    assert titulos(flujo["interno"]) == [f"Emitir la cotizacion {numero}"]
+
+    flujo["interno"].post(f"{base}/solicitar_aprobacion/")
+    assert titulos(flujo["interno"]) == []               # quien la elaboro no la aprueba
+    assert titulos(flujo["aprobador"]) == [f"Aprobar o devolver la cotizacion {numero}"]
+
+    flujo["aprobador"].post(f"{base}/devolver/", {"motivo": "Descuento excesivo"},
+                            format="json")
+    assert titulos(flujo["aprobador"]) == []
+    assert titulos(flujo["interno"]) == [f"Corregir la cotizacion {numero}"]

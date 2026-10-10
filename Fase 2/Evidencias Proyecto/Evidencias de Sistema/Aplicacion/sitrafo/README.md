@@ -153,6 +153,7 @@ Paneles disponibles:
 
 | Panel | Que permite |
 |---|---|
+| Inicio | Bandeja de pendientes del rol, con contador en el menu: lo que debe atender ahora (por ejemplo, ordenes en calidad para el inspector o liberadas para produccion). Doble clic abre el panel donde se atiende |
 | Catalogo | Crear y editar modelos, su receta (materiales y tareas) y precio base versionado; publicarlos o retirarlos de la web |
 | Clientes | Consultar clientes, contactos y direcciones |
 | Solicitudes | Tomar una solicitud y elaborar su cotizacion con el costeo calculado |
@@ -215,8 +216,20 @@ Reglas en `apps/calidad/services.py`, expuestas en `/api/v1/protocolos/`,
 - Mientras la no conformidad este abierta no se repite el ensayo; se cierra
   solo registrando la accion correctiva, y luego se repite. Todas las
   mediciones se conservan.
-- La orden de trabajo se cierra solo con todos los ensayos obligatorios
-  ejecutados y sin no conformidades abiertas (RN-12).
+- Con todos los ensayos obligatorios conformes y sin no conformidades
+  abiertas, el inspector aprueba el control; la orden queda "Liberada por
+  calidad" y solo entonces produccion puede cerrarla (RN-12).
+
+## Bandeja de pendientes
+
+`GET /api/v1/pendientes/` (solo usuarios internos) devuelve lo que el
+usuario debe atender ahora segun los permisos de su rol: solicitudes sin
+asignar, cotizaciones por aprobar o devueltas, ordenes por iniciar, enviar a
+calidad, ensayar, liberar o cerrar, no conformidades abiertas, entregas con
+saldo pagado y materiales bajo el minimo. No se almacena: se calcula desde el
+estado de los documentos, de modo que un pendiente desaparece en cuanto se
+atiende. Reglas en `apps/configuracion/services/pendientes.py`. El escritorio
+la muestra en Inicio y la actualiza cada dos minutos.
 
 `cargar_demo_produccion` carga un protocolo de ensayos de rutina (IEC 60076-1)
 para cada modelo de la demostracion.
