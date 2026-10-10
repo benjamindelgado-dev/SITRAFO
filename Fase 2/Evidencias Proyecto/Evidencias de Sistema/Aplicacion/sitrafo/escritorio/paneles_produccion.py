@@ -179,7 +179,8 @@ class PanelOrdenesTrabajo(PanelBase):
     titulo = "Ordenes de trabajo"
     subtitulo = ("Planifique las tareas, siga el avance en taller y compare el costo "
                  "real con el estimado. La orden se cierra solo con calidad aprobada.")
-    columnas = ["Numero", "Cliente", "Modelo", "Avance", "Real / estimado", "Estado"]
+    columnas = ["Numero", "Orden de compra", "Cliente", "Modelo", "Avance", "Real / estimado",
+                "Estado"]
 
     def construir(self):
         division = QSplitter(Qt.Vertical)
@@ -289,7 +290,8 @@ class PanelOrdenesTrabajo(PanelBase):
         except ErrorAPI as error:
             return self.manejar_error(error)
         self.llenar(self.tabla, [
-            [o["numero"], o["cliente_nombre"], f"{o['cantidad']} x {o['modelo_nombre']}",
+            [o["numero"], o.get("orden_compra_numero") or "—", o["cliente_nombre"],
+             f"{o['cantidad']} x {o['modelo_nombre']}",
              f"{_decimal(o['avance_pct']):.0f} %",
              f"{uf(o['costo_real_uf'])} / {uf(o['costo_estimado_uf'])}", o["estado_nombre"]]
             for o in self.datos
