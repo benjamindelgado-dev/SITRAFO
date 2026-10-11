@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict n7bhNDdvGFA27HLvp5L7tXA38nEcFstJbxY4NX5iCV39bDGdJxhCwAhsJekljSR
+\restrict aRdjPPeA9owrv4Pf2hFA57sPv4dMeRa3jzvqnA7vNZGkfeXq6spUuERcDFJ6fFi
 
--- Dumped from database version 16.15
--- Dumped by pg_dump version 16.15
+-- Dumped from database version 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)
+-- Dumped by pg_dump version 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -366,7 +366,9 @@ CREATE TABLE public.control_calidad (
     observacion character varying(300) NOT NULL,
     id_inspector integer NOT NULL,
     id_orden_trabajo integer NOT NULL,
-    id_protocolo integer NOT NULL
+    id_protocolo integer NOT NULL,
+    aprobado_en timestamp with time zone,
+    id_aprobado_por integer
 );
 
 
@@ -1161,7 +1163,10 @@ CREATE TABLE public.parametro_tecnico (
     nombre character varying(100) NOT NULL,
     unidad character varying(20) NOT NULL,
     tipo_dato character varying(20) NOT NULL,
-    obligatorio boolean NOT NULL
+    obligatorio boolean NOT NULL,
+    fija_el_modelo boolean NOT NULL,
+    valor_maximo numeric(12,3),
+    valor_minimo numeric(12,3)
 );
 
 
@@ -2847,6 +2852,13 @@ CREATE INDEX contacto_cliente_id_cliente_35d3cc68 ON public.contacto_cliente USI
 
 
 --
+-- Name: control_calidad_id_aprobado_por_5843fa68; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX control_calidad_id_aprobado_por_5843fa68 ON public.control_calidad USING btree (id_aprobado_por);
+
+
+--
 -- Name: control_calidad_id_inspector_0647fe2b; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3686,6 +3698,14 @@ ALTER TABLE ONLY public.contacto_cliente
 
 
 --
+-- Name: control_calidad control_calidad_id_aprobado_por_5843fa68_fk_usuario_id_usuario; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.control_calidad
+    ADD CONSTRAINT control_calidad_id_aprobado_por_5843fa68_fk_usuario_id_usuario FOREIGN KEY (id_aprobado_por) REFERENCES public.usuario(id_usuario) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: control_calidad control_calidad_id_inspector_0647fe2b_fk_usuario_id_usuario; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4361,5 +4381,5 @@ ALTER TABLE ONLY public.valor_parametro
 -- PostgreSQL database dump complete
 --
 
-\unrestrict n7bhNDdvGFA27HLvp5L7tXA38nEcFstJbxY4NX5iCV39bDGdJxhCwAhsJekljSR
+\unrestrict aRdjPPeA9owrv4Pf2hFA57sPv4dMeRa3jzvqnA7vNZGkfeXq6spUuERcDFJ6fFi
 

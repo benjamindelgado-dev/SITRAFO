@@ -1,6 +1,6 @@
 # Diccionario de datos — SITRAFO
 
-Base de datos relacional PostgreSQL 16. **54 tablas** del modelo de negocio, agrupadas por modulo. Generado desde los modelos del sistema, por lo que coincide exactamente con el esquema implementado.
+Base de datos relacional PostgreSQL 16. **54 tablas** del modelo de negocio, agrupadas por modulo. Generado desde los modelos del sistema y contrastado con el esquema de `esquema_sitrafo.sql`: las columnas coinciden una a una. Corresponde al MER-01 v2.1.
 
 Convenciones: **PK** clave primaria · **FK** clave foranea (tabla referenciada) · **UQ** valor unico · Nulo: *si* admite vacio.
 
@@ -55,8 +55,6 @@ Matriz de permisos por rol (RF-SEG-02).
 | `id_permiso` | integer | no | FK → permiso | Permiso |
 | `otorgado_en` | timestamp with time zone | no |  | Otorgado en |
 
-Restricciones: UNIQUE (rol, permiso).
-
 ### `usuario`
 
 Credencial de acceso al sistema.
@@ -90,8 +88,6 @@ Asignacion de roles a usuarios.
 | `id_rol` | integer | no | FK → rol | Rol |
 | `asignado_en` | timestamp with time zone | no |  | Asignado en |
 
-Restricciones: UNIQUE (usuario, rol).
-
 ## Clientes (5 tablas)
 
 ### `cliente`
@@ -119,8 +115,6 @@ Division administrativa menor.
 | `id_comuna` | integer | no | PK | Id comuna |
 | `id_region` | integer | no | FK → region | Region |
 | `nombre` | varchar(80) | no |  | Nombre |
-
-Restricciones: UNIQUE (region, nombre).
 
 ### `contacto_cliente`
 
@@ -176,8 +170,6 @@ Lista de materiales base del modelo (RF-CAT-04).
 | `cantidad` | numeric(12, 4) | no |  | Cantidad por unidad |
 | `observacion` | varchar(200) | no |  | Observacion |
 
-Restricciones: UNIQUE (modelo, material); CHECK `ck_bom_cantidad_positiva`.
-
 ### `familia_producto`
 
 Agrupacion de modelos por caracteristicas comunes (RF-CAT-01).
@@ -200,8 +192,6 @@ Parametro aplicable a un modelo, con su valor por defecto.
 | `id_parametro` | integer | no | FK → parametro_tecnico | Parametro |
 | `valor_defecto` | varchar(60) | no |  | Valor por defecto |
 | `obligatorio` | boolean | no |  | Obligatorio para este modelo |
-
-Restricciones: UNIQUE (modelo, parametro).
 
 ### `modelo_producto`
 
@@ -229,6 +219,9 @@ Caracteristica tecnica configurable de un transformador.
 | `unidad` | varchar(20) | no |  | Unidad de medida |
 | `tipo_dato` | varchar(20) | no |  | Tipo de dato. Valores: numerico, texto, lista. |
 | `obligatorio` | boolean | no |  | Obligatorio por defecto. Obligatoriedad en el formulario web. Configurable (RF-ADM-04). |
+| `valor_minimo` | numeric(12,3) | si |  | Valor minimo |
+| `valor_maximo` | numeric(12,3) | si |  | Valor maximo |
+| `fija_el_modelo` | boolean | no |  | Lo fija el modelo de referencia |
 
 ### `precio_base_modelo`
 
@@ -243,8 +236,6 @@ Precio base del modelo, versionado por vigencia (RN-17, RF-CAT-06).
 | `monto_uf` | numeric(12, 4) | no |  | Monto en uf |
 | `id_usuario` | integer | no | FK → usuario | Registrado por |
 
-Restricciones: UNIQUE (modelo, vigente_desde); CHECK `ck_precio_modelo_no_negativo`.
-
 ### `tarea_estandar_modelo`
 
 Tarea productiva estandar del modelo, con sus horas hombre (RF-CAT-05).
@@ -258,8 +249,6 @@ Tarea productiva estandar del modelo, con sus horas hombre (RF-CAT-05).
 | `horas_estimadas` | numeric(8, 2) | no |  | Horas hombre estimadas |
 | `id_empleado_sugerido` | integer | si | FK → empleado | Responsable habitual. Se asigna automaticamente a la tarea al generar la orden de trabajo. |
 
-Restricciones: UNIQUE (modelo, secuencia); CHECK `ck_tarea_horas_positivas`.
-
 ### `valor_parametro`
 
 Valor admisible de un parametro de tipo lista.
@@ -271,8 +260,6 @@ Valor admisible de un parametro de tipo lista.
 | `id_parametro` | integer | no | FK → parametro_tecnico | Parametro |
 | `valor` | varchar(60) | no |  | Valor |
 | `orden` | smallint | no |  | Orden de presentacion |
-
-Restricciones: UNIQUE (parametro, valor).
 
 ## Proceso comercial (10 tablas)
 
@@ -298,8 +285,6 @@ Oferta formal al cliente, con vigencia limitada y valores congelados.
 | `plazo_dias_habiles` | smallint | si |  | Plazo de fabricacion (dias habiles) |
 | `fecha_entrega` | date | si |  | Fecha comprometida de entrega |
 | `vence_el` | date | no |  | Vence el |
-
-Restricciones: UNIQUE (numero, version); CHECK `ck_cotizacion_descuento_rango`.
 
 ### `cotizacion_historial`
 
@@ -332,8 +317,6 @@ Detalle de la cotizacion, con el desglose de costos.
 | `margen_pct` | numeric(5, 2) | no |  | Margen aplicado (%) |
 | `precio_uf` | numeric(12, 4) | no |  | Precio unitario (uf) |
 
-Restricciones: CHECK `ck_linea_cantidad_positiva`.
-
 ### `estado_documento`
 
 Catalogo de estados aplicables a cada tipo de documento del flujo.
@@ -345,8 +328,6 @@ Catalogo de estados aplicables a cada tipo de documento del flujo.
 | `codigo` | varchar(30) | no |  | Codigo |
 | `nombre` | varchar(60) | no |  | Nombre visible |
 | `es_final` | boolean | no |  | Cierra el ciclo del documento |
-
-Restricciones: UNIQUE (tipo_documento, codigo).
 
 ### `orden_compra`
 
@@ -392,8 +373,6 @@ Detalle de la orden de compra.
 | `cantidad` | integer | no |  | Unidades adquiridas |
 | `precio_uf` | numeric(12, 4) | no |  | Precio unitario (uf) |
 
-Restricciones: CHECK `ck_linea_oc_cantidad_positiva`.
-
 ### `solicitud_especificacion`
 
 Valor de cada parametro tecnico declarado por el cliente (RN-02).
@@ -404,8 +383,6 @@ Valor de cada parametro tecnico declarado por el cliente (RN-02).
 | `id_solicitud` | integer | no | FK → solicitud_presupuesto | Solicitud |
 | `id_parametro` | integer | no | FK → parametro_tecnico | Parametro tecnico |
 | `valor` | varchar(60) | no |  | Valor declarado |
-
-Restricciones: UNIQUE (solicitud, parametro).
 
 ### `solicitud_historial`
 
@@ -441,8 +418,6 @@ Requerimiento de cotizacion originado por el cliente en la web.
 | `id_estado` | integer | no | FK → estado_documento | Estado actual |
 | `id_ejecutivo` | integer | si | FK → usuario | Ejecutivo asignado |
 
-Restricciones: CHECK `ck_solicitud_cantidad_positiva`.
-
 ## Produccion (7 tablas)
 
 ### `consumo_material`
@@ -460,8 +435,6 @@ Material efectivamente utilizado en una tarea (RN-09).
 | `planificado` | boolean | no |  | Estaba previsto en la lista de materiales |
 | `id_empleado` | integer | no | FK → empleado | Registrado por |
 | `fecha` | timestamp with time zone | no |  | Fecha del registro |
-
-Restricciones: CHECK `ck_consumo_cantidad_positiva`.
 
 ### `empleado`
 
@@ -496,8 +469,6 @@ Instruccion de fabricacion derivada de una orden de compra confirmada.
 | `fecha_inicio` | date | si |  | Inicio de fabricacion |
 | `fecha_cierre` | date | si |  | Cierre |
 
-Restricciones: CHECK `ck_ot_cantidad_positiva`.
-
 ### `orden_trabajo_historial`
 
 Historial de estados de la orden de trabajo (RN-14).
@@ -529,8 +500,6 @@ Horas trabajadas por un empleado sobre una tarea en una fecha (RN-10).
 | `anulado` | boolean | no |  | Anulado |
 | `id_usuario_registro` | integer | no | FK → usuario | Usuario que registro. Se distingue del empleado: el jefe puede registrar por un ausente. |
 
-Restricciones: CHECK `ck_horas_positivas`.
-
 ### `tarea_ot`
 
 Actividad productiva concreta dentro de una orden de trabajo.
@@ -546,8 +515,6 @@ Actividad productiva concreta dentro de una orden de trabajo.
 | `id_empleado` | integer | si | FK → empleado | Empleado asignado |
 | `fecha_estimada` | date | si |  | Fecha estimada |
 
-Restricciones: UNIQUE (orden_trabajo, secuencia).
-
 ### `tarifa_hora_hombre`
 
 Valor de la hora de trabajo, versionado por vigencia (RN-10, RN-17).
@@ -559,8 +526,6 @@ Valor de la hora de trabajo, versionado por vigencia (RN-10, RN-17).
 | `valor_hora_uf` | numeric(10, 4) | no |  | Valor hora (uf) |
 | `vigente_desde` | date | no |  | Vigente desde |
 | `vigente_hasta` | date | si |  | Vigente hasta |
-
-Restricciones: UNIQUE (empleado, vigente_desde); CHECK `ck_tarifa_positiva`.
 
 ## Control de calidad (5 tablas)
 
@@ -575,7 +540,9 @@ Ejecucion de un protocolo sobre una orden de trabajo (RF-CAL-03).
 | `id_protocolo` | integer | no | FK → protocolo_calidad | Protocolo aplicado |
 | `id_inspector` | integer | no | FK → usuario | Inspector responsable |
 | `fecha_hora` | timestamp with time zone | no |  | Fecha y hora |
-| `estado` | varchar(20) | no |  | Estado. Valores: en_proceso, conforme, con_nc. |
+| `estado` | varchar(20) | no |  | Estado. Valores: en_proceso, conforme, con_nc, aprobado. |
+| `id_aprobado_por` | integer | si | FK → usuario | Aprobado por |
+| `aprobado_en` | timestamp with time zone | si |  | Aprobado en |
 | `observacion` | varchar(300) | no |  | Observacion general |
 
 ### `no_conformidad`
@@ -608,8 +575,6 @@ Conjunto de ensayos aplicables a un modelo de producto (RF-CAL-01).
 | `version` | smallint | no |  | Version |
 | `norma_referencia` | varchar(80) | no |  | Norma de referencia |
 
-Restricciones: UNIQUE (modelo, nombre, version).
-
 ### `punto_control`
 
 Ensayo individual con su criterio de aceptacion (RF-CAL-02).
@@ -626,8 +591,6 @@ Ensayo individual con su criterio de aceptacion (RF-CAL-02).
 | `tolerancia_sup` | numeric(14, 4) | si |  | Limite superior admisible |
 | `obligatorio` | boolean | no |  | Obligatorio. Si es obligatorio, condiciona el cierre de la orden (RN-12). |
 | `secuencia` | smallint | no |  | Secuencia |
-
-Restricciones: UNIQUE (protocolo, secuencia).
 
 ### `resultado_control`
 
@@ -712,8 +675,6 @@ Costo de compra del material, versionado por vigencia (RN-17).
 | `id_proveedor` | integer | si | FK → proveedor | Proveedor |
 | `costo_uf` | numeric(12, 4) | no |  | Costo en uf |
 
-Restricciones: UNIQUE (material, vigente_desde); CHECK `ck_precio_material_no_negativo`.
-
 ### `proveedor`
 
 Empresa que abastece materiales (RF-INV-02).
@@ -746,8 +707,6 @@ Obligacion de pago derivada de una orden de compra (RN-15).
 | `vence_el` | date | no |  | Vence el |
 | `creado_en` | timestamp with time zone | no |  | Emitido en |
 
-Restricciones: CHECK `ck_cobro_monto_positivo`.
-
 ### `indicador_economico`
 
 Serie historica de indicadores obtenidos del servicio externo.
@@ -759,8 +718,6 @@ Serie historica de indicadores obtenidos del servicio externo.
 | `fecha` | date | no |  | Fecha del valor |
 | `valor` | numeric(14, 4) | no |  | Valor |
 | `obtenido_en` | timestamp with time zone | no |  | Obtenido del servicio en |
-
-Restricciones: UNIQUE (codigo, fecha); CHECK `ck_indicador_positivo`.
 
 ### `transaccion_pago`
 
