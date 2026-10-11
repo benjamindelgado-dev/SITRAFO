@@ -26,6 +26,8 @@ PARAMETROS = [
      "Porcentaje de anticipo por defecto (RN-15)."),
     ("comercial.margen_defecto_pct", "25", "numerico", "comercial",
      "Margen aplicado por defecto al costo estimado."),
+    ("comercial.max_unidades_solicitud", "500", "numerico", "comercial",
+     "Maximo de unidades por solicitud de presupuesto y por linea de cotizacion."),
     ("produccion.max_horas_diarias", "12", "numerico", "produccion",
      "Maximo de horas hombre registrables por empleado y dia."),
     ("produccion.umbral_desviacion_costo_pct", "15", "numerico", "produccion",

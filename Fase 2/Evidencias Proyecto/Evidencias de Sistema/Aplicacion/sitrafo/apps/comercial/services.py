@@ -23,6 +23,7 @@ from django.db import transaction
 from django.db.models import Avg, Q
 from django.utils import timezone
 
+from apps.configuracion import parametros
 from apps.configuracion.models import ParametroSistema
 from apps.configuracion.services.feriados import plazo_en_dias_habiles
 from apps.configuracion.services.indicadores import valor_uf
@@ -118,6 +119,63 @@ def costear_modelo(modelo, margen_pct: Decimal | None = None) -> Costeo:
         precio_sugerido_uf=sugerido,
         origen_precio=origen,
     )
+
+
+# ----------------------------------------------------------------------
+# Validacion de la solicitud (hallazgos H-01 y H-02 del EVI-01)
+# ----------------------------------------------------------------------
+def _numero(valor: Decimal) -> str:
+    texto = format(valor.normalize(), "f")
+    return texto.rstrip("0").rstrip(".") if "." in texto else texto
+
+
+def validar_cantidad(cantidad) -> str | None:
+    """Tope de unidades por solicitud o linea, editable como parametro."""
+    maximo = parametros.max_unidades_solicitud()
+    if cantidad is not None and cantidad > maximo:
+        return (f"El maximo es de {maximo} unidades por solicitud. Para un pedido mayor, "
+                "contacte directamente al area comercial.")
+    return None
+
+
+def validar_especificacion(modelo, parametro, valor) -> str | None:
+    """
+    Valida un valor tecnico declarado por el cliente:
+    - numerico: dentro del rango minimo y maximo del parametro;
+    - lista: uno de los valores admisibles vigentes;
+    - si el parametro lo fija el modelo (por ejemplo, la potencia) y se eligio
+      un modelo, debe coincidir con el valor de ese modelo.
+    """
+    from apps.catalogo.models import ModeloParametro, ParametroTecnico
+
+    texto = str(valor).strip()
+    if texto == "":
+        return None
+    unidad = f" {parametro.unidad}" if parametro.unidad else ""
+    if parametro.tipo_dato == ParametroTecnico.TipoDato.NUMERICO:
+        try:
+            numero = Decimal(texto.replace(",", "."))
+        except ArithmeticError:
+            return "Ingrese un numero."
+        if not numero.is_finite():
+            return "Ingrese un numero."
+        minimo, maximo = parametro.valor_minimo, parametro.valor_maximo
+        if (minimo is not None and numero < minimo) or (maximo is not None and numero > maximo):
+            if minimo is not None and maximo is not None:
+                return (f"Debe estar entre {_numero(minimo)} y {_numero(maximo)}{unidad}.")
+            if minimo is not None:
+                return f"Debe ser al menos {_numero(minimo)}{unidad}."
+            return f"Debe ser como maximo {_numero(maximo)}{unidad}."
+    elif parametro.tipo_dato == ParametroTecnico.TipoDato.LISTA:
+        admisibles = set(parametro.valores.filter(activo=True).values_list("valor", flat=True))
+        if admisibles and texto not in admisibles:
+            return "Elija uno de los valores de la lista."
+    if modelo is not None and parametro.fija_el_modelo:
+        propio = ModeloParametro.objects.filter(modelo=modelo, parametro=parametro).first()
+        if propio and propio.valor_defecto and propio.valor_defecto.strip() != texto:
+            return (f"El modelo {modelo.codigo} es de {propio.valor_defecto}{unidad}. Para otro "
+                    "valor elija el modelo que corresponde o «Sin modelo de referencia».")
+    return None
 
 
 def _estado(tipo: str, codigo: str) -> EstadoDocumento:
@@ -358,6 +416,8 @@ def generar_orden_compra(cotizacion, usuario, observacion: str = "") -> OrdenCom
         cliente=cotizacion.cliente,
         estado=estado_oc,
         total_uf=cotizacion.total_uf,
+        # RN-15: el porcentaje vigente queda fijado en la orden
+        anticipo_pct=parametros.anticipo_pct(),
     )
     for linea in cotizacion.lineas.all():
         OrdenCompraLinea.objects.create(
@@ -487,6 +547,9 @@ def guardar_lineas(cotizacion, usuario, lineas: list[dict]):
         cantidad = int(dato.get("cantidad") or 0)
         if cantidad < 1:
             raise ErrorComercial(f"Linea {i}: la cantidad debe ser al menos 1.")
+        exceso = validar_cantidad(cantidad)
+        if exceso:
+            raise ErrorComercial(f"Linea {i}: {exceso}")
         costeo = costear_modelo(modelo, dato.get("margen_pct"))
         precio = (Decimal(str(dato["precio_uf"])) if dato.get("precio_uf") not in (None, "")
                   else costeo.precio_sugerido_uf)

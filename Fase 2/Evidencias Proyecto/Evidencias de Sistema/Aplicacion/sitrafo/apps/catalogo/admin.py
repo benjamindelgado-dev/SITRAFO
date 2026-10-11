@@ -26,7 +26,9 @@ class ValorParametroInline(admin.TabularInline):
 
 @admin.register(ParametroTecnico)
 class ParametroTecnicoAdmin(admin.ModelAdmin):
-    list_display = ["codigo", "nombre", "unidad", "tipo_dato", "obligatorio"]
+    list_display = ["codigo", "nombre", "unidad", "tipo_dato", "obligatorio",
+                    "valor_minimo", "valor_maximo", "fija_el_modelo"]
+    list_editable = ["valor_minimo", "valor_maximo", "fija_el_modelo"]
     list_filter = ["tipo_dato", "obligatorio"]
     search_fields = ["codigo", "nombre"]
     inlines = [ValorParametroInline]

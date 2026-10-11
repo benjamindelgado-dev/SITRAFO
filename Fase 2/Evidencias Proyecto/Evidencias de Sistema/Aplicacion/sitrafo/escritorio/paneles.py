@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -563,12 +564,29 @@ class PanelCanalWeb(PanelBase):
         self.tabla = QTableWidget()
         self.tabla.setColumnCount(3)
         self.tabla.setHorizontalHeaderLabels(["Parametro", "Valor", "Descripcion"])
-        self.tabla.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        cabecera = self.tabla.horizontalHeader()
+        cabecera.setSectionResizeMode(QHeaderView.ResizeToContents)
+        cabecera.setSectionResizeMode(2, QHeaderView.Stretch)
         self.tabla.verticalHeader().setVisible(False)
         self.tabla.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tabla.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.puede_parametrizar = self.cliente.puede("parametro.actualizar")
+        if self.puede_parametrizar:
+            self.tabla.doubleClicked.connect(self.editar_parametro)
         layout_comercial = QVBoxLayout(grupo_comercial)
         layout_comercial.addWidget(self.tabla)
-        self.contenedor.addWidget(grupo_comercial)
+        editar = QPushButton("Cambiar valor")
+        editar.clicked.connect(self.editar_parametro)
+        editar.setVisible(self.puede_parametrizar)
+        nota = QLabel("Los cambios rigen desde la siguiente operacion: por ejemplo, un nuevo "
+                      "porcentaje de anticipo se aplica a las ordenes de compra que se generen "
+                      "despues, no a las existentes.")
+        nota.setObjectName("subtitulo")
+        nota.setWordWrap(True)
+        layout_comercial.addWidget(nota)
+        layout_comercial.addWidget(editar, alignment=Qt.AlignLeft)
+        self.contenedor.addWidget(grupo_comercial, 1)
+        self.otros = []
 
         self.estado = QLabel("")
         self.estado.setObjectName("subtitulo")
@@ -596,6 +614,7 @@ class PanelCanalWeb(PanelBase):
             p for p in parametros
             if p["ambito"] in ("comercial", "produccion", "sistema")
         ]
+        self.otros = otros
         self.tabla.setRowCount(len(otros))
         for i, p in enumerate(otros):
             self.tabla.setItem(i, 0, QTableWidgetItem(p["clave"]))
@@ -623,6 +642,29 @@ class PanelCanalWeb(PanelBase):
                 "Los clientes veran el aviso configurado y no podran operar "
                 "hasta que se desactive.",
             )
+        self.refrescar()
+
+    def editar_parametro(self, *_):
+        fila = self.tabla.currentRow()
+        if fila < 0 or fila >= len(self.otros):
+            QMessageBox.information(self, "Parametros", "Seleccione un parametro de la tabla.")
+            return
+        parametro = self.otros[fila]
+        valor, aceptado = QInputDialog.getText(
+            self, "Cambiar parametro",
+            f"{parametro['clave']}\n{parametro.get('descripcion', '')}\n\nNuevo valor:",
+            text=parametro["valor"],
+        )
+        if not aceptado or valor.strip() == parametro["valor"]:
+            return
+        try:
+            self.cliente.actualizar_parametro(parametro["clave"], valor.strip())
+        except ErrorAPI as error:
+            return self.manejar_error(error)
+        QMessageBox.information(
+            self, "Parametro actualizado",
+            f"{parametro['clave']}: {parametro['valor']} → {valor.strip()}.\n\n"
+            "El cambio quedo registrado en la bitacora de auditoria.")
         self.refrescar()
 
     def guardar_mensaje(self):

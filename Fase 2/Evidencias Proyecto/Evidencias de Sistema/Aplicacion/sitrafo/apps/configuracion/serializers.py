@@ -1,4 +1,6 @@
 """Serializadores del dominio de configuracion."""
+from decimal import Decimal, InvalidOperation
+
 from rest_framework import serializers
 
 from .models import AvisoSitio, Feriado, LogIntegracion, ParametroSistema
@@ -17,6 +19,29 @@ class ParametroSistemaSerializer(serializers.ModelSerializer):
 
     def get_valor_tipado(self, obj):
         return obj.valor_tipado
+
+    def validate_valor(self, valor):
+        """Valida el valor segun el tipo y el rango del parametro."""
+        from .parametros import validar_valor
+
+        parametro = self.instance
+        if parametro is None:
+            return valor
+        valor = valor.strip()
+        if parametro.tipo_dato == ParametroSistema.TipoDato.NUMERICO:
+            valor = valor.replace(",", ".")
+            error = validar_valor(parametro.clave, valor)
+            if error is None:
+                try:
+                    Decimal(valor)
+                except InvalidOperation:
+                    error = "Ingrese un numero."
+            if error:
+                raise serializers.ValidationError(error)
+        elif parametro.tipo_dato == ParametroSistema.TipoDato.BOOLEANO:
+            if valor.lower() not in ("true", "false"):
+                raise serializers.ValidationError("Use true o false.")
+        return valor
 
 
 class AvisoSitioSerializer(serializers.ModelSerializer):

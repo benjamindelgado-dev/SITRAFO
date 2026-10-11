@@ -56,6 +56,21 @@ class ParametroTecnico(models.Model):
         verbose_name="obligatorio por defecto",
         help_text="Obligatoriedad en el formulario web. Configurable (RF-ADM-04).",
     )
+    valor_minimo = models.DecimalField(
+        max_digits=12, decimal_places=3, null=True, blank=True,
+        verbose_name="valor minimo",
+        help_text="Solo parametros numericos. Vacio: sin limite inferior.",
+    )
+    valor_maximo = models.DecimalField(
+        max_digits=12, decimal_places=3, null=True, blank=True,
+        verbose_name="valor maximo",
+        help_text="Solo parametros numericos. Vacio: sin limite superior.",
+    )
+    fija_el_modelo = models.BooleanField(
+        default=False, verbose_name="lo fija el modelo de referencia",
+        help_text="Si la solicitud indica un modelo, este parametro debe coincidir "
+                  "con el valor del modelo (por ejemplo, la potencia).",
+    )
 
     class Meta:
         db_table = "parametro_tecnico"
@@ -64,7 +79,12 @@ class ParametroTecnico(models.Model):
         ordering = ["codigo"]
 
     def __str__(self) -> str:
-        return f"{self.nombre} ({self.unidad})"
+        return self.etiqueta
+
+    @property
+    def etiqueta(self) -> str:
+        """Nombre con la unidad, sin parentesis vacios si no tiene unidad."""
+        return f"{self.nombre} ({self.unidad})" if self.unidad else self.nombre
 
 
 class ValorParametro(ActivableModel):

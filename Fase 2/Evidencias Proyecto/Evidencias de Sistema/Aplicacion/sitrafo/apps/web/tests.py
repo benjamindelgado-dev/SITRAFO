@@ -319,3 +319,73 @@ def test_modo_mantencion_no_afecta_al_usuario_interno(escenario):
     escenario["client"].force_login(escenario["interno"])
 
     assert escenario["client"].get(reverse("web:catalogo")).status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Validacion de la solicitud (hallazgos H-01, H-02 y H-03 del EVI-01)
+# ---------------------------------------------------------------------------
+def _datos_solicitud(escenario, **extra):
+    datos = {"modelo": escenario["publicado"].pk, "cantidad": 2,
+             "fecha_deseada": "2026-12-01",
+             f"param_{escenario['parametro'].id_parametro}": "100"}
+    datos.update(extra)
+    return datos
+
+
+def test_tension_fuera_de_rango_se_rechaza(escenario):
+    tension = ParametroTecnico.objects.create(
+        codigo="tension_prim", nombre="Tension primaria", unidad="kV", tipo_dato="numerico",
+        obligatorio=False, valor_minimo=1, valor_maximo=66)
+    campo = f"param_{tension.id_parametro}"
+
+    respuesta = escenario["client"].post(reverse("web:solicitar"),
+                                         _datos_solicitud(escenario, **{campo: "1000000"}))
+    assert respuesta.status_code == 200
+    assert "Debe estar entre 1 y 66 kV" in respuesta.content.decode()
+    assert not SolicitudPresupuesto.objects.exists()
+
+    escenario["client"].post(reverse("web:solicitar"), _datos_solicitud(escenario, **{campo: "15"}))
+    assert SolicitudPresupuesto.objects.count() == 1
+
+
+def test_potencia_distinta_de_la_del_modelo_se_rechaza(escenario):
+    from apps.catalogo.models import ModeloParametro
+
+    parametro = escenario["parametro"]
+    parametro.fija_el_modelo = True
+    parametro.save()
+    ValorParametro.objects.create(parametro=parametro, valor="250", orden=2)
+    ModeloParametro.objects.create(modelo=escenario["publicado"], parametro=parametro,
+                                   valor_defecto="100")
+    campo = f"param_{parametro.id_parametro}"
+
+    respuesta = escenario["client"].post(reverse("web:solicitar"),
+                                         _datos_solicitud(escenario, **{campo: "250"}))
+    assert "El modelo TD-100 es de 100 kVA" in respuesta.content.decode()
+    # Sin modelo de referencia, cualquier potencia de la lista es valida
+    escenario["client"].post(reverse("web:solicitar"),
+                             _datos_solicitud(escenario, modelo="", **{campo: "250"}))
+    assert SolicitudPresupuesto.objects.count() == 1
+
+
+def test_unidades_sobre_el_tope_se_rechazan(escenario):
+    from apps.configuracion.models import ParametroSistema
+
+    respuesta = escenario["client"].post(reverse("web:solicitar"),
+                                         _datos_solicitud(escenario, cantidad=2147483647))
+    assert "El maximo es de 500 unidades" in respuesta.content.decode()
+
+    ParametroSistema.objects.create(clave="comercial.max_unidades_solicitud", valor="1",
+                                    tipo_dato="numerico", ambito="comercial",
+                                    usuario=escenario["interno"])
+    respuesta = escenario["client"].post(reverse("web:solicitar"), _datos_solicitud(escenario))
+    assert "El maximo es de 1 unidades" in respuesta.content.decode()
+    assert not SolicitudPresupuesto.objects.exists()
+
+
+def test_etiqueta_sin_unidad_no_muestra_parentesis(escenario):
+    grupo = ParametroTecnico.objects.create(codigo="grupo_conexion", nombre="Grupo de conexion",
+                                            unidad="", tipo_dato="texto", obligatorio=False)
+    assert str(grupo) == "Grupo de conexion"
+    pagina = escenario["client"].get(reverse("web:solicitar")).content.decode()
+    assert "Grupo de conexion ()" not in pagina and "Grupo de conexion" in pagina

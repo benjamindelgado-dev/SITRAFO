@@ -213,7 +213,9 @@ class OrdenTrabajo(TimeStampedModel):
 
     @property
     def desviacion_requiere_justificacion(self) -> bool:
-        umbral = Decimal(settings.SITRAFO["UMBRAL_DESVIACION_COSTO_PCT"])
+        from apps.configuracion.parametros import umbral_desviacion_pct
+
+        umbral = umbral_desviacion_pct()
         return abs(self.desviacion_pct) > umbral
 
     # -- Avance -------------------------------------------------------------
@@ -500,7 +502,9 @@ class RegistroHoraHombre(models.Model):
     def clean(self):
         if self.fecha and self.fecha > timezone.localdate():
             raise ValidationError({"fecha": "No se pueden registrar horas futuras."})
-        maximo = settings.SITRAFO["MAX_HORAS_DIARIAS"]
+        from apps.configuracion.parametros import max_horas_diarias
+
+        maximo = max_horas_diarias()
         if self.horas and self.horas > maximo:
             raise ValidationError(
                 {"horas": f"El maximo configurado es de {maximo} horas diarias."}

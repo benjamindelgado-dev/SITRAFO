@@ -84,6 +84,22 @@ class SolicitudPresupuestoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"cliente": "Un usuario interno debe indicar el cliente."}
             )
+
+        # Hallazgos H-01 y H-02: los mismos limites que el formulario web
+        from .services import validar_cantidad, validar_especificacion
+
+        errores = {}
+        error = validar_cantidad(attrs.get("cantidad"))
+        if error:
+            errores["cantidad"] = error
+        modelo = attrs.get("modelo")
+        for item in attrs.get("especificaciones", []):
+            error = validar_especificacion(modelo, item["parametro"], item["valor"])
+            if error:
+                errores.setdefault("especificaciones", []).append(
+                    f"{item['parametro'].etiqueta}: {error}")
+        if errores:
+            raise serializers.ValidationError(errores)
         return attrs
 
     def create(self, validated_data):

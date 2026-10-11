@@ -161,7 +161,7 @@ Paneles disponibles:
 | Ordenes de compra | Ver el estado del anticipo, confirmar la orden y generar sus ordenes de trabajo |
 | Ordenes de trabajo | Asignar responsables, iniciar, registrar por un ausente, costo real contra estimado, enviar a calidad y cerrar |
 | Taller (operario) | Vista propia sin menu, con campos grandes: sus tareas, horas, material y termino de tarea |
-| Canal web | Modo mantencion, pago en linea, autorregistro y parametros |
+| Canal web | Modo mantencion, pago en linea, autorregistro y parametros de negocio editables (anticipo, umbral de descuento, umbral de desviacion, tope de unidades, entre otros), validados por rango y auditados; rigen desde la siguiente operacion |
 | Avisos del sitio | Mensajes para la web con fecha de inicio y termino |
 | Matriz de permisos | Operaciones que otorga cada rol, editable por el Administrador |
 | Integraciones | Registro de llamadas a servicios externos |

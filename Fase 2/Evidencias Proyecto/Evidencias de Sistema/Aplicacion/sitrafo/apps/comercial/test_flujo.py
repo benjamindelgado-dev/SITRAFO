@@ -322,3 +322,73 @@ def test_pendientes_de_la_aprobacion_de_cotizaciones(flujo):
                             format="json")
     assert titulos(flujo["aprobador"]) == []
     assert titulos(flujo["interno"]) == [f"Corregir la cotizacion {numero}"]
+
+
+# ---------------------------------------------------------------------------
+# Parametros editables que rigen el flujo (umbral, anticipo, tope de unidades)
+# ---------------------------------------------------------------------------
+def _parametro(clave, valor, usuario):
+    from apps.configuracion.models import ParametroSistema
+
+    return ParametroSistema.objects.update_or_create(
+        clave=clave, defaults={"valor": valor, "tipo_dato": "numerico",
+                               "ambito": "comercial", "usuario": usuario})[0]
+
+
+def test_umbral_de_descuento_se_lee_del_parametro(flujo):
+    cotizacion = _cotizar(flujo, descuento_pct="15")
+    base = f"/api/v1/cotizaciones/{cotizacion['id_cotizacion']}"
+    _parametro("comercial.umbral_descuento_pct", "20", flujo["ejecutivo"])
+    # Con umbral 20 %, un 15 % ya no requiere aprobacion: se emite directo
+    assert flujo["interno"].post(f"{base}/solicitar_aprobacion/").status_code == 409
+    assert flujo["interno"].post(f"{base}/emitir/").status_code == 200
+
+
+def test_anticipo_se_fija_en_la_orden_al_crearla(flujo):
+    _parametro("comercial.anticipo_pct", "30", flujo["ejecutivo"])
+    cotizacion = _cotizar(flujo)
+    base = f"/api/v1/cotizaciones/{cotizacion['id_cotizacion']}"
+    flujo["interno"].post(f"{base}/emitir/")
+    flujo["externo"].post(f"{base}/aceptar/")
+
+    orden = OrdenCompra.objects.get()
+    assert orden.anticipo_pct == Decimal("30")
+    assert DocumentoCobro.objects.get().monto_uf == Decimal("108.0000")   # 30 % de 360
+    # Un cambio posterior no altera la orden ya creada
+    _parametro("comercial.anticipo_pct", "60", flujo["ejecutivo"])
+    orden.refresh_from_db()
+    assert orden.monto_anticipo_uf == Decimal("108.0000")
+
+
+def test_api_valida_unidades_y_lineas_contra_el_tope(flujo):
+    respuesta = flujo["externo"].post("/api/v1/solicitudes/", {
+        "modelo": flujo["modelo"].pk, "cantidad": 2147483647}, format="json")
+    assert respuesta.status_code == 400 and "cantidad" in respuesta.data
+
+    cotizacion = _cotizar(flujo)
+    lineas = flujo["interno"].post(
+        f"/api/v1/cotizaciones/{cotizacion['id_cotizacion']}/lineas/",
+        {"lineas": [{"modelo": flujo["modelo"].pk, "cantidad": 100000, "precio_uf": "180"}]},
+        format="json")
+    assert lineas.status_code == 409 and "maximo" in lineas.data["detalle"]
+
+
+def test_editar_parametro_valida_el_rango_y_queda_auditado(flujo, django_user_model):
+    from apps.configuracion.models import ParametroSistema
+
+    _parametro("comercial.anticipo_pct", "50", flujo["ejecutivo"])
+    admin = django_user_model.objects.create_user("adm", "adm@s.cl", "Clave123456",
+                                                  es_interno=True)
+    UsuarioRol.objects.create(usuario=admin, rol=Rol.objects.get(nombre=matriz.ADMIN))
+    api = APIClient()
+    api.force_authenticate(admin)
+    url = "/api/v1/parametros/comercial.anticipo_pct/"
+
+    assert api.patch(url, {"valor": "150"}, format="json").status_code == 400
+    assert api.patch(url, {"valor": "abc"}, format="json").status_code == 400
+    assert api.patch(url, {"valor": "40"}, format="json").status_code == 200
+    assert ParametroSistema.objects.get(clave="comercial.anticipo_pct").valor == "40"
+    assert Auditoria.objects.filter(entidad="parametro_sistema",
+                                    id_registro="comercial.anticipo_pct").exists()
+    # El ejecutivo comercial solo lee los parametros
+    assert flujo["interno"].patch(url, {"valor": "45"}, format="json").status_code == 403

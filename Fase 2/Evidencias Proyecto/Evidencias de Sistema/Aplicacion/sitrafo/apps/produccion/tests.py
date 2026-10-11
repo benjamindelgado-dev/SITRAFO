@@ -295,3 +295,16 @@ def test_no_cierra_con_no_conformidad_abierta(taller):
     assert puede is True
     assert impedimentos == []
     assert nc.cerrada_en is not None
+
+
+def test_umbral_de_desviacion_se_lee_del_parametro(taller):
+    from apps.configuracion.models import ParametroSistema
+
+    ot = taller["ot"]
+    ot.costo_estimado_uf = Decimal("100")
+    ot.costo_real_uf = Decimal("120")          # 20 % sobre el estimado
+    assert ot.desviacion_requiere_justificacion is True    # umbral por defecto 15 %
+    ParametroSistema.objects.create(
+        clave="produccion.umbral_desviacion_costo_pct", valor="25", tipo_dato="numerico",
+        ambito="produccion", usuario=taller["usuario"])
+    assert ot.desviacion_requiere_justificacion is False

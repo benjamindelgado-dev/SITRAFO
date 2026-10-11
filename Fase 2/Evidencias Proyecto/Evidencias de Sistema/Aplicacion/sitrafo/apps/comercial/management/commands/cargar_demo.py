@@ -54,6 +54,12 @@ PARAMETROS = [
     ("refrigeracion", "Refrigeracion", "", "lista", ["ONAN", "ONAF"]),
 ]
 
+# Rangos aceptables de los parametros numericos (hallazgo H-01)
+RANGOS_DEMO = {
+    "tension_prim": (Decimal("1"), Decimal("66")),
+    "tension_sec": (Decimal("100"), Decimal("1000")),
+}
+
 MODELOS = [
     ("TD-050", "Transformador de distribucion 50 kVA", "trifasicos",
      ("50", "15", "400", "Dyn11", "ONAN"), "118.5000"),
@@ -181,9 +187,12 @@ class Command(BaseCommand):
 
         parametros = {}
         for codigo, nombre, unidad, tipo, valores in PARAMETROS:
+            minimo, maximo = RANGOS_DEMO.get(codigo, (None, None))
             parametro, _ = ParametroTecnico.objects.get_or_create(
                 codigo=codigo,
-                defaults={"nombre": nombre, "unidad": unidad, "tipo_dato": tipo},
+                defaults={"nombre": nombre, "unidad": unidad, "tipo_dato": tipo,
+                          "valor_minimo": minimo, "valor_maximo": maximo,
+                          "fija_el_modelo": codigo == "potencia_kva"},
             )
             parametros[codigo] = parametro
             for orden, valor in enumerate(valores):

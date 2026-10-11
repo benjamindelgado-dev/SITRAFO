@@ -195,6 +195,10 @@ class SolicitudPresupuestoForm(BootstrapMixin, forms.ModelForm):
         self.fields["modelo"].required = False
         self.fields["modelo"].empty_label = "Sin modelo de referencia"
 
+        from apps.configuracion.parametros import max_unidades_solicitud
+
+        self.fields["cantidad"].widget.attrs.update({"min": 1, "max": max_unidades_solicitud()})
+
         if cliente is not None:
             self.fields["direccion"].queryset = DireccionCliente.objects.filter(
                 cliente=cliente
@@ -205,7 +209,7 @@ class SolicitudPresupuestoForm(BootstrapMixin, forms.ModelForm):
         self.parametros = list(ParametroTecnico.objects.prefetch_related("valores"))
         for parametro in self.parametros:
             nombre = f"param_{parametro.id_parametro}"
-            etiqueta = f"{parametro.nombre} ({parametro.unidad})"
+            etiqueta = parametro.etiqueta
 
             if parametro.tipo_dato == ParametroTecnico.TipoDato.LISTA:
                 opciones = [("", "Seleccione")] + [
@@ -218,10 +222,20 @@ class SolicitudPresupuestoForm(BootstrapMixin, forms.ModelForm):
                     widget=forms.Select(attrs={"class": "form-select"}),
                 )
             elif parametro.tipo_dato == ParametroTecnico.TipoDato.NUMERICO:
+                atributos = {"class": "form-control", "step": "any"}
+                ayuda = ""
+                if parametro.valor_minimo is not None:
+                    atributos["min"] = parametro.valor_minimo.normalize()
+                if parametro.valor_maximo is not None:
+                    atributos["max"] = parametro.valor_maximo.normalize()
+                if parametro.valor_minimo is not None and parametro.valor_maximo is not None:
+                    ayuda = (f"Entre {parametro.valor_minimo.normalize():f} y "
+                             f"{parametro.valor_maximo.normalize():f} {parametro.unidad}").strip()
                 campo = forms.DecimalField(
                     label=etiqueta,
                     required=parametro.obligatorio,
-                    widget=forms.NumberInput(attrs={"class": "form-control"}),
+                    help_text=ayuda,
+                    widget=forms.NumberInput(attrs=atributos),
                 )
             else:
                 campo = forms.CharField(
@@ -230,6 +244,31 @@ class SolicitudPresupuestoForm(BootstrapMixin, forms.ModelForm):
                     widget=forms.TextInput(attrs={"class": "form-control"}),
                 )
             self.fields[nombre] = campo
+
+    def clean_cantidad(self):
+        from apps.comercial.services import validar_cantidad
+
+        cantidad = self.cleaned_data.get("cantidad")
+        error = validar_cantidad(cantidad)
+        if error:
+            raise forms.ValidationError(error)
+        return cantidad
+
+    def clean(self):
+        """Rangos tecnicos y valores que fija el modelo elegido (hallazgo H-01)."""
+        from apps.comercial.services import validar_especificacion
+
+        datos = super().clean()
+        modelo = datos.get("modelo")
+        for parametro in self.parametros:
+            campo = f"param_{parametro.id_parametro}"
+            valor = datos.get(campo)
+            if valor in (None, "") or campo in self.errors:
+                continue
+            error = validar_especificacion(modelo, parametro, valor)
+            if error:
+                self.add_error(campo, error)
+        return datos
 
     def campos_especificacion(self):
         """Devuelve solo los campos tecnicos, para renderizarlos aparte."""

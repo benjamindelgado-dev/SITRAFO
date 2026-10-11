@@ -91,7 +91,7 @@ class PuntoControl(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.nombre} ({self.unidad})"
+        return f"{self.nombre} ({self.unidad})" if self.unidad else self.nombre
 
     def evaluar(self, valor_medido: Decimal) -> bool:
         """Compara el valor medido contra el rango de tolerancia."""

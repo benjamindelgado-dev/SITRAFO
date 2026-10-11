@@ -41,6 +41,7 @@
                   {{ campo.label }}{% if parametro.obligatorio %} <span class="obligatorio">*</span>{% endif %}
                 </label>
                 {{ campo }}
+                {% if campo.help_text %}<div class="text-muted mt-1" style="font-size:.78rem">{{ campo.help_text }}</div>{% endif %}
                 {% if campo.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ campo.errors|striptags }}</div>{% endif %}
               </div>
             {% empty %}

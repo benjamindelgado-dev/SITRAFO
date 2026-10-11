@@ -26,7 +26,8 @@ class ParametroTecnicoSerializer(serializers.ModelSerializer):
     class Meta:
         model = ParametroTecnico
         fields = ["id_parametro", "codigo", "nombre", "unidad",
-                  "tipo_dato", "obligatorio", "valores"]
+                  "tipo_dato", "obligatorio", "valor_minimo", "valor_maximo",
+                  "fija_el_modelo", "valores"]
 
 
 class FamiliaProductoSerializer(serializers.ModelSerializer):

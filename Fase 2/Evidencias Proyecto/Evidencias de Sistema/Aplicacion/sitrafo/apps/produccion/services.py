@@ -18,13 +18,11 @@ escritorio y cualquier otra interfaz apliquen exactamente lo mismo:
 import datetime
 from decimal import Decimal
 
-from django.conf import settings
 from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
 from apps.comercial.models import EstadoDocumento, OrdenCompraHistorial
-from apps.configuracion.models import ParametroSistema
 from apps.inventario.models import MovimientoInventario
 from apps.seguridad.models import Auditoria
 
@@ -248,9 +246,9 @@ def _exigir_registrable(tarea: TareaOT, usuario):
 
 
 def _max_horas_diarias() -> Decimal:
-    return Decimal(str(ParametroSistema.obtener(
-        "produccion.max_horas_diarias", settings.SITRAFO["MAX_HORAS_DIARIAS"]
-    )))
+    from apps.configuracion.parametros import max_horas_diarias
+
+    return max_horas_diarias()
 
 
 def _consolidar(ot: OrdenTrabajo):

@@ -251,7 +251,10 @@ class Cotizacion(TimeStampedModel):
     @staticmethod
     def calcular_vencimiento(fecha_emision=None, dias=None):
         fecha_emision = fecha_emision or timezone.localdate()
-        dias = dias or settings.SITRAFO["VIGENCIA_COTIZACION_DIAS"]
+        if not dias:
+            from apps.configuracion.parametros import vigencia_cotizacion_dias
+
+            dias = vigencia_cotizacion_dias()
         return fecha_emision + timedelta(days=dias)
 
     # -- Totales ------------------------------------------------------------
@@ -275,7 +278,9 @@ class Cotizacion(TimeStampedModel):
     @property
     def requiere_aprobacion(self) -> bool:
         """El descuento sobre el umbral exige aprobacion interna (RN-05)."""
-        return self.descuento_pct > settings.SITRAFO["UMBRAL_DESCUENTO_PCT"]
+        from apps.configuracion.parametros import umbral_descuento_pct
+
+        return self.descuento_pct > umbral_descuento_pct()
 
     def clean(self):
         if self.vence_el and self.fecha_valor_uf and self.vence_el < self.fecha_valor_uf:
@@ -416,7 +421,14 @@ class OrdenCompra(TimeStampedModel):
 
     @property
     def monto_anticipo_uf(self) -> Decimal:
-        pct = self.anticipo_pct or Decimal(settings.SITRAFO["ANTICIPO_PORCENTAJE"])
+        # El porcentaje se fija en la orden al crearla; el parametro solo
+        # rige para ordenes antiguas que no lo tienen guardado
+        if self.anticipo_pct is None:
+            from apps.configuracion.parametros import anticipo_pct
+
+            pct = anticipo_pct()
+        else:
+            pct = self.anticipo_pct
         return (self.total_uf * pct / Decimal("100")).quantize(Decimal("0.0001"))
 
     @property
