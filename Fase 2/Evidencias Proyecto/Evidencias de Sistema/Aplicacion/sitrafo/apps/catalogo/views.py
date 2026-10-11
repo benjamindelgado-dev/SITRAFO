@@ -23,22 +23,145 @@ from .serializers import (
 )
 
 
+def _auditar(usuario, entidad, pk, accion, anterior, nuevo):
+    Auditoria.objects.create(usuario=usuario, entidad=entidad, id_registro=str(pk),
+                             accion=accion, valor_anterior=anterior, valor_nuevo=nuevo,
+                             origen=Auditoria.Origen.ESCRITORIO)
+
+
 class FamiliaProductoViewSet(viewsets.ModelViewSet):
-    queryset = FamiliaProducto.objects.filter(activo=True)
+    """
+    Familias de producto (RF-CAT-01). No se eliminan: se desactivan (RN-13), y
+    solo si no tienen modelos vigentes. ?todas=1 incluye las inactivas.
+    """
+
     serializer_class = FamiliaProductoSerializer
     permission_classes = [CuentaOperativa, PermisoPorRol]
     modulo_permiso = "catalogo"
     acciones_cliente = ("list", "retrieve")
+    permisos_accion = {"reactivar": "catalogo.actualizar"}
     search_fields = ["nombre"]
+
+    def get_queryset(self):
+        consulta = FamiliaProducto.objects.all()
+        todas = self.request.query_params.get("todas") == "1" and self.request.user.es_interno
+        if self.action == "list" and not todas:
+            consulta = consulta.filter(activo=True)
+        return consulta
+
+    def perform_update(self, serializer):
+        anterior = {"nombre": serializer.instance.nombre,
+                    "descripcion": serializer.instance.descripcion}
+        familia = serializer.save()
+        _auditar(self.request.user, "familia_producto", familia.pk,
+                 Auditoria.Accion.MODIFICACION, anterior,
+                 {"nombre": familia.nombre, "descripcion": familia.descripcion})
+
+    def destroy(self, request, *args, **kwargs):
+        familia = self.get_object()
+        vigentes = familia.modelos.filter(activo=True).count()
+        if vigentes:
+            return Response(
+                {"detalle": f"La familia tiene {vigentes} modelo(s) vigente(s). Cambielos "
+                            "de familia antes de desactivarla."},
+                status=status.HTTP_409_CONFLICT)
+        familia.activo = False
+        familia.save(update_fields=["activo"])
+        _auditar(request.user, "familia_producto", familia.pk, Auditoria.Accion.ANULACION,
+                 {"activo": True}, {"activo": False, "nombre": familia.nombre})
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"])
+    def reactivar(self, request, pk=None):
+        familia = self.get_object()
+        familia.activo = True
+        familia.save(update_fields=["activo"])
+        _auditar(request.user, "familia_producto", familia.pk, Auditoria.Accion.MODIFICACION,
+                 {"activo": False}, {"activo": True, "nombre": familia.nombre})
+        return Response(self.get_serializer(familia).data)
 
 
 class ParametroTecnicoViewSet(viewsets.ModelViewSet):
+    """
+    Parametros tecnicos y sus valores admisibles (RF-CAT-03). Con ellos se arma
+    el formulario de solicitud de la web (RF-ADM-04): nombre, unidad, tipo,
+    obligatoriedad, rango aceptable y lista de valores.
+    """
+
     queryset = ParametroTecnico.objects.prefetch_related("valores")
     serializer_class = ParametroTecnicoSerializer
     permission_classes = [CuentaOperativa, PermisoPorRol]
     modulo_permiso = "catalogo"
     acciones_cliente = ("list", "retrieve")
+    permisos_accion = {"agregar_valor": "catalogo.actualizar",
+                       "estado_valor": "catalogo.actualizar"}
     search_fields = ["codigo", "nombre"]
+
+    def perform_create(self, serializer):
+        parametro = serializer.save()
+        _auditar(self.request.user, "parametro_tecnico", parametro.codigo,
+                 Auditoria.Accion.CREACION, None, serializer.data)
+
+    def perform_update(self, serializer):
+        anterior = ParametroTecnicoSerializer(serializer.instance).data
+        anterior.pop("valores", None)
+        parametro = serializer.save()
+        nuevo = dict(serializer.data)
+        nuevo.pop("valores", None)
+        _auditar(self.request.user, "parametro_tecnico", parametro.codigo,
+                 Auditoria.Accion.MODIFICACION, anterior, nuevo)
+
+    def destroy(self, request, *args, **kwargs):
+        parametro = self.get_object()
+        if ParametroTecnicoSerializer().get_en_uso(parametro):
+            return Response(
+                {"detalle": "El parametro ya se usa en modelos o solicitudes y no puede "
+                            "eliminarse. Puede dejarlo como no obligatorio."},
+                status=status.HTTP_409_CONFLICT)
+        codigo = parametro.codigo
+        parametro.delete()
+        _auditar(request.user, "parametro_tecnico", codigo, Auditoria.Accion.ANULACION,
+                 {"codigo": codigo}, None)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["post"])
+    def agregar_valor(self, request, pk=None):
+        """Agrega un valor admisible a un parametro de tipo lista."""
+        from .models import ValorParametro
+
+        parametro = self.get_object()
+        if parametro.tipo_dato != ParametroTecnico.TipoDato.LISTA:
+            return Response({"detalle": "Solo los parametros de tipo lista tienen valores."},
+                            status=status.HTTP_409_CONFLICT)
+        valor = str(request.data.get("valor", "")).strip()
+        if not valor:
+            return Response({"valor": "Indique el valor."}, status=status.HTTP_400_BAD_REQUEST)
+        existente = parametro.valores.filter(valor=valor).first()
+        if existente:
+            existente.activo = True
+            existente.save(update_fields=["activo"])
+        else:
+            orden = (parametro.valores.order_by("-orden").values_list("orden", flat=True)
+                     .first() or 0) + 1
+            ValorParametro.objects.create(parametro=parametro, valor=valor, orden=orden)
+        _auditar(request.user, "parametro_tecnico", parametro.codigo,
+                 Auditoria.Accion.MODIFICACION, None, {"valor_agregado": valor})
+        return Response(self.get_serializer(self.get_queryset().get(pk=parametro.pk)).data)
+
+    @action(detail=True, methods=["post"])
+    def estado_valor(self, request, pk=None):
+        """Retira o restituye un valor de la lista (no se borra: hay solicitudes con el)."""
+        parametro = self.get_object()
+        valor = parametro.valores.filter(pk=request.data.get("id_valor")).first()
+        if valor is None:
+            return Response({"detalle": "Valor no encontrado."},
+                            status=status.HTTP_404_NOT_FOUND)
+        valor.activo = bool(request.data.get("activo"))
+        valor.save(update_fields=["activo"])
+        _auditar(request.user, "parametro_tecnico", parametro.codigo,
+                 Auditoria.Accion.MODIFICACION, None,
+                 {"valor": valor.valor, "activo": valor.activo})
+        return Response(self.get_serializer(self.get_queryset().get(pk=parametro.pk)).data)
 
 
 class ModeloProductoViewSet(viewsets.ModelViewSet):

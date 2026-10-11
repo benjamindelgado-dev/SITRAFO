@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from apps.common.permissions import CuentaOperativa, PermisoPorRol
 
 from . import services
-from .models import Bodega, CategoriaMaterial, Material, Proveedor
+from .models import Bodega, CategoriaMaterial, Material, MovimientoInventario, Proveedor
 from .serializers import (
     AjusteSerializer,
     BodegaSerializer,
@@ -166,13 +166,68 @@ class MaterialViewSet(viewsets.ModelViewSet):
 
 
 class BodegaViewSet(viewsets.ModelViewSet):
-    queryset = Bodega.objects.filter(activo=True)
+    """
+    Bodegas (RF-INV-03). No se eliminan: se desactivan, y solo sin stock, para
+    que ningun saldo quede en una bodega que ya no aparece en las pantallas.
+    ?todas=1 incluye las inactivas.
+    """
+
     serializer_class = BodegaSerializer
     permission_classes = [CuentaOperativa, PermisoPorRol]
     modulo_permiso = "bodega"
     permisos_alternativos = {"list": LECTURA, "retrieve": LECTURA}
-    permisos_accion = {"destroy": None}
+    permisos_accion = {"destroy": None, "desactivar": "bodega.actualizar",
+                       "reactivar": "bodega.actualizar"}
     pagination_class = None
+
+    def get_queryset(self):
+        consulta = Bodega.objects.order_by("codigo")
+        if not (self.action != "list" or self.request.query_params.get("todas") == "1"):
+            consulta = consulta.filter(activo=True)
+        return consulta
+
+    def perform_update(self, serializer):
+        anterior = {"nombre": serializer.instance.nombre,
+                    "ubicacion": serializer.instance.ubicacion}
+        bodega = serializer.save(codigo=serializer.instance.codigo)   # el codigo no cambia
+        _auditar_bodega(self.request.user, bodega, anterior,
+                        {"nombre": bodega.nombre, "ubicacion": bodega.ubicacion})
+
+    @action(detail=True, methods=["post"])
+    def desactivar(self, request, pk=None):
+        from django.db.models import Sum
+
+        bodega = self.get_object()
+        con_stock = (MovimientoInventario.objects.filter(bodega=bodega)
+                     .values("material__nombre").annotate(saldo=Sum("cantidad"))
+                     .exclude(saldo=0))
+        if con_stock:
+            nombres = ", ".join(m["material__nombre"] for m in con_stock[:5])
+            return Response(
+                {"detalle": f"La bodega aun tiene stock ({nombres}). Traslade o ajuste el "
+                            "saldo a cero antes de desactivarla."},
+                status=status.HTTP_409_CONFLICT)
+        bodega.activo = False
+        bodega.save(update_fields=["activo"])
+        _auditar_bodega(request.user, bodega, {"activo": True}, {"activo": False})
+        return Response(self.get_serializer(bodega).data)
+
+    @action(detail=True, methods=["post"])
+    def reactivar(self, request, pk=None):
+        bodega = self.get_object()
+        bodega.activo = True
+        bodega.save(update_fields=["activo"])
+        _auditar_bodega(request.user, bodega, {"activo": False}, {"activo": True})
+        return Response(self.get_serializer(bodega).data)
+
+
+def _auditar_bodega(usuario, bodega, anterior, nuevo):
+    from apps.seguridad.models import Auditoria
+
+    Auditoria.objects.create(usuario=usuario, entidad="bodega", id_registro=str(bodega.pk),
+                             accion=Auditoria.Accion.MODIFICACION, valor_anterior=anterior,
+                             valor_nuevo={**nuevo, "codigo": bodega.codigo},
+                             origen=Auditoria.Origen.ESCRITORIO)
 
 
 class CategoriaViewSet(viewsets.ModelViewSet):

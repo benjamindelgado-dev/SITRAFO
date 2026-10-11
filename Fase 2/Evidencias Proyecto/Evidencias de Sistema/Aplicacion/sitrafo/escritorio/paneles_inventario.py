@@ -198,19 +198,27 @@ class DialogoDevolucion(_DialogoMovimiento):
 
 
 class DialogoBodegas(QDialog):
-    """Bodegas registradas y alta de una nueva (RF-INV-03)."""
+    """Bodegas: alta, edicion, desactivacion y reactivacion (RF-INV-03)."""
 
     def __init__(self, cliente: ClienteAPI, parent=None):
         super().__init__(parent)
         self.cliente = cliente
         self.setWindowTitle("Bodegas")
-        self.resize(560, 380)
+        self.resize(640, 420)
         capa = QVBoxLayout(self)
-        self.tabla = QTableWidget(0, 3)
-        self.tabla.setHorizontalHeaderLabels(["Codigo", "Nombre", "Ubicacion"])
+        self.tabla = QTableWidget(0, 4)
+        self.tabla.setHorizontalHeaderLabels(["Codigo", "Nombre", "Ubicacion", "Estado"])
         self.tabla.verticalHeader().setVisible(False)
+        self.tabla.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.tabla.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tabla.itemSelectionChanged.connect(self._seleccionar)
         capa.addWidget(self.tabla, 1)
+        nota = QLabel("Seleccione una bodega para editarla. Una bodega solo se desactiva "
+                      "cuando ya no tiene stock.")
+        nota.setObjectName("subtitulo")
+        nota.setWordWrap(True)
+        capa.addWidget(nota)
         formulario = QFormLayout()
         self.codigo, self.nombre, self.ubicacion = QLineEdit(), QLineEdit(), QLineEdit()
         formulario.addRow("Codigo:", self.codigo)
@@ -218,37 +226,94 @@ class DialogoBodegas(QDialog):
         formulario.addRow("Ubicacion:", self.ubicacion)
         capa.addLayout(formulario)
         fila = QHBoxLayout()
-        agregar = QPushButton("Agregar bodega")
-        agregar.setObjectName("exito")
-        agregar.clicked.connect(self._agregar)
-        agregar.setVisible(cliente.puede("bodega.crear"))
+        puede = cliente.puede("bodega.actualizar")
+        for texto, accion, estilo, visible in (
+            ("Agregar bodega", self._agregar, "exito", cliente.puede("bodega.crear")),
+            ("Guardar cambios", self._guardar, "", puede),
+            ("Desactivar", lambda: self._estado(False), "peligro", puede),
+            ("Reactivar", lambda: self._estado(True), "secundario", puede),
+            ("Limpiar", self._limpiar, "secundario", True),
+        ):
+            boton = QPushButton(texto)
+            if estilo:
+                boton.setObjectName(estilo)
+            boton.clicked.connect(accion)
+            boton.setVisible(visible)
+            fila.addWidget(boton)
+        fila.addStretch()
         cerrar = QPushButton("Cerrar")
         cerrar.setObjectName("secundario")
         cerrar.clicked.connect(self.accept)
-        fila.addWidget(agregar)
-        fila.addStretch()
         fila.addWidget(cerrar)
         capa.addLayout(fila)
+        self.bodegas = []
         self._cargar()
 
     def _cargar(self):
-        bodegas = self.cliente.bodegas()
-        self.tabla.setRowCount(len(bodegas))
-        for i, b in enumerate(bodegas):
-            for j, v in enumerate([b["codigo"], b["nombre"], b["ubicacion"]]):
+        try:
+            self.bodegas = self.cliente.todas_las_bodegas()
+        except ErrorAPI as error:
+            QMessageBox.warning(self, "Bodegas", error.mensaje)
+            return
+        self.tabla.setRowCount(len(self.bodegas))
+        for i, b in enumerate(self.bodegas):
+            for j, v in enumerate([b["codigo"], b["nombre"], b["ubicacion"],
+                                   "Activa" if b["activo"] else "Inactiva"]):
                 self.tabla.setItem(i, j, QTableWidgetItem(v))
 
-    def _agregar(self):
-        try:
-            self.cliente.crear_bodega({"codigo": self.codigo.text().strip(),
-                                       "nombre": self.nombre.text().strip(),
-                                       "ubicacion": self.ubicacion.text().strip()})
-        except ErrorAPI as error:
-            QMessageBox.warning(self, "No se pudo crear", error.mensaje)
-            return
+    def _actual(self):
+        fila = self.tabla.currentRow()
+        return self.bodegas[fila] if 0 <= fila < len(self.bodegas) else None
+
+    def _seleccionar(self):
+        bodega = self._actual()
+        if bodega:
+            self.codigo.setText(bodega["codigo"])
+            self.codigo.setReadOnly(True)
+            self.nombre.setText(bodega["nombre"])
+            self.ubicacion.setText(bodega["ubicacion"])
+
+    def _limpiar(self):
+        self.tabla.clearSelection()
+        self.codigo.setReadOnly(False)
         for campo in (self.codigo, self.nombre, self.ubicacion):
             campo.clear()
+
+    def _ejecutar(self, operacion, titulo):
+        try:
+            operacion()
+        except ErrorAPI as error:
+            QMessageBox.warning(self, titulo, error.mensaje)
+            return False
         self._cargar()
+        return True
+
+    def _agregar(self):
+        datos = {"codigo": self.codigo.text().strip(), "nombre": self.nombre.text().strip(),
+                 "ubicacion": self.ubicacion.text().strip()}
+        if self.codigo.isReadOnly():
+            QMessageBox.information(self, "Bodegas", "Presione «Limpiar» para ingresar una "
+                                    "bodega nueva.")
+            return
+        if self._ejecutar(lambda: self.cliente.crear_bodega(datos), "No se pudo crear"):
+            self._limpiar()
+
+    def _guardar(self):
+        bodega = self._actual()
+        if not bodega:
+            QMessageBox.information(self, "Bodegas", "Seleccione la bodega a editar.")
+            return
+        self._ejecutar(lambda: self.cliente.actualizar_bodega(bodega["id_bodega"], {
+            "nombre": self.nombre.text().strip(),
+            "ubicacion": self.ubicacion.text().strip()}), "No se pudo guardar")
+
+    def _estado(self, activar: bool):
+        bodega = self._actual()
+        if not bodega:
+            QMessageBox.information(self, "Bodegas", "Seleccione una bodega.")
+            return
+        self._ejecutar(lambda: self.cliente.estado_bodega(bodega["id_bodega"], activar),
+                       "No se pudo cambiar el estado")
 
 
 class DialogoKardex(QDialog):

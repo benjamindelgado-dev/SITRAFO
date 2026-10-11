@@ -1,6 +1,11 @@
 """Formularios de la aplicacion web del cliente."""
 from django import forms
-from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm, SetPasswordForm
+from django.contrib.auth.forms import (
+    AuthenticationForm,
+    PasswordChangeForm,
+    PasswordResetForm,
+    SetPasswordForm,
+)
 from django.db import transaction
 
 from apps.catalogo.models import ModeloProducto, ParametroTecnico
@@ -322,3 +327,48 @@ class DireccionForm(BootstrapMixin, forms.ModelForm):
             "region").order_by("region__nombre", "nombre")
         self.fields["comuna"].label_from_instance = (
             lambda c: f"{c.nombre} ({c.region.nombre})")
+
+
+class EmpresaForm(BootstrapMixin, forms.ModelForm):
+    """
+    Datos de la empresa editables por el cliente (RF-CLI-04, CU-CLI-07). El RUT
+    y el tipo de persona no se cambian: identifican al cliente y sus documentos.
+    """
+
+    email = forms.EmailField(label="Correo de la cuenta", max_length=150)
+
+    class Meta:
+        model = Cliente
+        fields = ["razon_social", "nombre_fantasia", "giro"]
+        labels = {"razon_social": "Razon social o nombre",
+                  "nombre_fantasia": "Nombre de fantasia", "giro": "Giro"}
+
+    def __init__(self, *args, usuario=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.usuario = usuario
+        self.fields["email"].initial = usuario.email if usuario else ""
+        self.order_fields(["razon_social", "nombre_fantasia", "giro", "email"])
+
+    def clean_email(self):
+        correo = self.cleaned_data["email"].strip().lower()
+        if Usuario.objects.filter(email__iexact=correo).exclude(pk=self.usuario.pk).exists():
+            raise forms.ValidationError("Ese correo ya esta en uso por otra cuenta.")
+        return correo
+
+
+class CambiarClaveForm(BootstrapMixin, PasswordChangeForm):
+    """Cambio de contrasena del cliente desde Mi cuenta (CU-CLI-07)."""
+
+    error_messages = {
+        **PasswordChangeForm.error_messages,
+        "password_incorrect": "La contrasena actual no es correcta.",
+        "password_mismatch": "Las contrasenas nuevas no coinciden.",
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo, etiqueta in (("old_password", "Contrasena actual"),
+                                ("new_password1", "Contrasena nueva"),
+                                ("new_password2", "Repita la contrasena nueva")):
+            self.fields[campo].label = etiqueta
+            self.fields[campo].help_text = ""

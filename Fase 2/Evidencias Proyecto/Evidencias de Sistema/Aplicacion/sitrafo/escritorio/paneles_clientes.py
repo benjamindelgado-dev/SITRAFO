@@ -106,22 +106,32 @@ class DialogoCliente(QDialog):
 
 
 class DialogoContacto(QDialog):
-    def __init__(self, api: ClienteAPI, id_cliente: int, parent=None):
+    def __init__(self, api: ClienteAPI, id_cliente: int, parent=None, contacto=None):
         super().__init__(parent)
-        self.api, self.id_cliente = api, id_cliente
+        self.api, self.id_cliente, self.contacto = api, id_cliente, contacto
         self.nombre, self.cargo = QLineEdit(), QLineEdit()
         self.email, self.telefono = QLineEdit(), QLineEdit()
         self.principal = QCheckBox("Contacto principal (recibe los correos del sistema)")
-        _formulario(self, "Nuevo contacto", [
+        if contacto:
+            self.nombre.setText(contacto["nombre"])
+            self.cargo.setText(contacto.get("cargo", ""))
+            self.email.setText(contacto.get("email", ""))
+            self.telefono.setText(contacto.get("telefono", ""))
+            self.principal.setChecked(bool(contacto.get("principal")))
+        _formulario(self, "Editar contacto" if contacto else "Nuevo contacto", [
             ("Nombre:", self.nombre), ("Cargo:", self.cargo), ("Correo:", self.email),
             ("Telefono:", self.telefono), ("", self.principal)]).accepted.connect(self._guardar)
 
     def _guardar(self):
+        datos = {"cliente": self.id_cliente, "nombre": self.nombre.text().strip(),
+                 "cargo": self.cargo.text().strip(), "email": self.email.text().strip(),
+                 "telefono": self.telefono.text().strip(),
+                 "principal": self.principal.isChecked()}
         try:
-            self.api.crear_contacto({"cliente": self.id_cliente, "nombre": self.nombre.text(),
-                                     "cargo": self.cargo.text(), "email": self.email.text(),
-                                     "telefono": self.telefono.text(),
-                                     "principal": self.principal.isChecked()})
+            if self.contacto:
+                self.api.actualizar_contacto(self.contacto["id_contacto"], datos)
+            else:
+                self.api.crear_contacto(datos)
         except ErrorAPI as error:
             QMessageBox.warning(self, "No se pudo guardar", error.mensaje)
             return
@@ -129,9 +139,9 @@ class DialogoContacto(QDialog):
 
 
 class DialogoDireccion(QDialog):
-    def __init__(self, api: ClienteAPI, id_cliente: int, parent=None):
+    def __init__(self, api: ClienteAPI, id_cliente: int, parent=None, direccion=None):
         super().__init__(parent)
-        self.api, self.id_cliente = api, id_cliente
+        self.api, self.id_cliente, self.direccion = api, id_cliente, direccion
         self.tipo = QComboBox()
         for codigo, nombre in (("despacho", "Despacho"), ("instalacion", "Instalacion"),
                                ("facturacion", "Facturacion")):
@@ -141,15 +151,24 @@ class DialogoDireccion(QDialog):
         for c in _lista(api.comunas()):
             self.comuna.addItem(f"{c['nombre']} ({c['region_nombre']})", c["id_comuna"])
         self.calle, self.numero = QLineEdit(), QLineEdit()
-        _formulario(self, "Nueva direccion", [
+        if direccion:
+            self.tipo.setCurrentIndex(max(0, self.tipo.findData(direccion["tipo"])))
+            self.comuna.setCurrentIndex(max(0, self.comuna.findData(direccion["comuna"])))
+            self.calle.setText(direccion.get("calle", ""))
+            self.numero.setText(direccion.get("numero", ""))
+        _formulario(self, "Editar direccion" if direccion else "Nueva direccion", [
             ("Tipo:", self.tipo), ("Comuna:", self.comuna), ("Calle:", self.calle),
             ("Numero:", self.numero)]).accepted.connect(self._guardar)
 
     def _guardar(self):
+        datos = {"cliente": self.id_cliente, "tipo": self.tipo.currentData(),
+                 "comuna": self.comuna.currentData(),
+                 "calle": self.calle.text().strip(), "numero": self.numero.text().strip()}
         try:
-            self.api.crear_direccion({"cliente": self.id_cliente, "tipo": self.tipo.currentData(),
-                                      "comuna": self.comuna.currentData(),
-                                      "calle": self.calle.text(), "numero": self.numero.text()})
+            if self.direccion:
+                self.api.actualizar_direccion(self.direccion["id_direccion"], datos)
+            else:
+                self.api.crear_direccion(datos)
         except ErrorAPI as error:
             QMessageBox.warning(self, "No se pudo guardar", error.mensaje)
             return
@@ -182,24 +201,44 @@ class DialogoFichaCliente(QDialog):
         docs = self.api.documentos_cliente(self.cliente["id_cliente"])
         puede_editar = self.api.puede("cliente.actualizar")
 
-        # Contactos y direcciones
-        for titulo, filas, columnas, dialogo in (
-            ("Contactos", [[c["nombre"], c["cargo"], c["email"], c["telefono"],
-                            "Si" if c["principal"] else ""] for c in cliente["contactos"]],
+        # Contactos y direcciones (RF-CLI-03, RF-CLI-04)
+        puede_eliminar = self.api.puede("cliente.anular")
+        self.registros = {}
+        for titulo, registros, filas, columnas, dialogo in (
+            ("Contactos", cliente["contactos"],
+             [[c["nombre"], c["cargo"], c["email"], c["telefono"],
+               "Si" if c["principal"] else ""] for c in cliente["contactos"]],
              ["Nombre", "Cargo", "Correo", "Telefono", "Principal"], DialogoContacto),
-            ("Direcciones", [[d["tipo"].capitalize(), d["direccion_completa"]]
-                             for d in cliente["direcciones"]],
-             ["Tipo", "Direccion"], DialogoDireccion),
+            ("Direcciones", cliente["direcciones"],
+             [[d["tipo"].capitalize(), d["direccion_completa"],
+               "Si" if d.get("validada") else "No"] for d in cliente["direcciones"]],
+             ["Tipo", "Direccion", "Geocodificada"], DialogoDireccion),
         ):
             contenedor = QVBoxLayout()
             widget = _tabla(columnas, filas)
-            boton = QPushButton(f"Agregar {titulo[:-1].lower()}")
-            boton.setVisible(puede_editar)
-            boton.clicked.connect(lambda _=False, d=dialogo: self._agregar(d))
+            self.registros[titulo] = (widget, registros, dialogo)
+            if puede_editar:
+                widget.doubleClicked.connect(lambda _=None, t=titulo: self._editar(t))
+            fila = QHBoxLayout()
+            singular = {"Contactos": "contacto", "Direcciones": "direccion"}[titulo]
+            for texto, accion, visible, estilo in (
+                (f"Agregar {singular}", lambda _=False, d=dialogo: self._agregar(d),
+                 puede_editar, ""),
+                ("Editar", lambda _=False, t=titulo: self._editar(t), puede_editar, "secundario"),
+                ("Eliminar", lambda _=False, t=titulo: self._eliminar(t), puede_eliminar,
+                 "peligro"),
+            ):
+                boton = QPushButton(texto)
+                if estilo:
+                    boton.setObjectName(estilo)
+                boton.setVisible(visible)
+                boton.clicked.connect(accion)
+                fila.addWidget(boton)
+            fila.addStretch()
             envoltura = QWidget()
             envoltura.setLayout(contenedor)
             contenedor.addWidget(widget)
-            contenedor.addWidget(boton)
+            contenedor.addLayout(fila)
             self.pestanas.addTab(envoltura, f"{titulo} ({len(filas)})")
 
         # Historial (RF-CLI-07)
@@ -247,7 +286,46 @@ class DialogoFichaCliente(QDialog):
 
     def _agregar(self, clase):
         if clase(self.api, self.cliente["id_cliente"], self).exec():
-            self._cargar()
+            self._recargar(0 if clase is DialogoContacto else 1)
+
+    def _seleccion(self, titulo):
+        tabla, registros, dialogo = self.registros[titulo]
+        fila = tabla.currentRow()
+        if not 0 <= fila < len(registros):
+            QMessageBox.information(self, titulo, f"Seleccione un registro de {titulo.lower()}.")
+            return None, dialogo
+        return registros[fila], dialogo
+
+    def _recargar(self, pestana):
+        self._cargar()
+        self.pestanas.setCurrentIndex(pestana)
+
+    def _editar(self, titulo):
+        registro, dialogo = self._seleccion(titulo)
+        if registro is None:
+            return
+        clave = "contacto" if dialogo is DialogoContacto else "direccion"
+        if dialogo(self.api, self.cliente["id_cliente"], self, **{clave: registro}).exec():
+            self._recargar(0 if titulo == "Contactos" else 1)
+
+    def _eliminar(self, titulo):
+        registro, dialogo = self._seleccion(titulo)
+        if registro is None:
+            return
+        es_contacto = dialogo is DialogoContacto
+        descripcion = registro["nombre"] if es_contacto else registro["direccion_completa"]
+        if QMessageBox.question(self, f"Eliminar {'contacto' if es_contacto else 'direccion'}",
+                                f"¿Eliminar «{descripcion}»?") != QMessageBox.Yes:
+            return
+        try:
+            if es_contacto:
+                self.api.eliminar_contacto(registro["id_contacto"])
+            else:
+                self.api.eliminar_direccion(registro["id_direccion"])
+        except ErrorAPI as error:
+            QMessageBox.warning(self, "No se pudo eliminar", error.mensaje)
+            return
+        self._recargar(0 if es_contacto else 1)
 
     def _estado_cuenta(self, suspender: bool):
         fila = self.tabla_cuentas.currentRow()

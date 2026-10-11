@@ -392,3 +392,22 @@ def test_editar_parametro_valida_el_rango_y_queda_auditado(flujo, django_user_mo
                                     id_registro="comercial.anticipo_pct").exists()
     # El ejecutivo comercial solo lee los parametros
     assert flujo["interno"].patch(url, {"valor": "45"}, format="json").status_code == 403
+
+
+def test_sin_feriados_cargados_se_advierte_el_plazo(flujo):
+    """E8 de CU-COM-03: el plazo se calcula sin feriados y se pide verificarlo."""
+    from apps.configuracion.models import Feriado
+
+    respuesta = flujo["interno"].post(_url_solicitud(flujo, "cotizar"), {}, format="json")
+    assert "sin considerarlos" in respuesta.data["aviso_plazo"]
+
+    hoy = datetime.date.today()
+    for anio in (hoy.year, hoy.year + 1):
+        Feriado.objects.create(fecha=datetime.date(anio, 9, 18), nombre="Fiestas Patrias")
+    otra = SolicitudPresupuesto.objects.create(
+        numero=SolicitudPresupuesto.generar_numero(), cliente=flujo["solicitud"].cliente,
+        modelo=flujo["modelo"], cantidad=1,
+        estado=EstadoDocumento.objects.get(tipo_documento="solicitud", codigo="recibida"))
+    respuesta = flujo["interno"].post(f"/api/v1/solicitudes/{otra.pk}/cotizar/", {},
+                                      format="json")
+    assert respuesta.data["aviso_plazo"] == ""

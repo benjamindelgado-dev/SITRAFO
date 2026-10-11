@@ -308,3 +308,24 @@ def test_umbral_de_desviacion_se_lee_del_parametro(taller):
         clave="produccion.umbral_desviacion_costo_pct", valor="25", tipo_dato="numerico",
         ambito="produccion", usuario=taller["usuario"])
     assert ot.desviacion_requiere_justificacion is False
+
+
+def test_horas_de_dias_anteriores_pero_no_antes_del_inicio(taller, django_user_model):
+    from django.utils import timezone
+
+    from apps.produccion import services
+
+    jefe = django_user_model.objects.create_superuser("super", "s@s.cl", "Clave123456")
+    ot = taller["ot"]
+    hoy = timezone.localdate()
+    ot.fecha_inicio = hoy - datetime.timedelta(days=3)
+    ot.save(update_fields=["fecha_inicio"])
+    tarea = TareaOT.objects.create(orden_trabajo=ot, nombre="Bobinado", secuencia=1,
+                                   horas_estimadas=Decimal("8"), empleado=taller["empleado"])
+
+    ayer = services.registrar_horas(tarea, taller["empleado"], hoy - datetime.timedelta(days=1),
+                                    Decimal("4"), jefe)
+    assert ayer.fecha == hoy - datetime.timedelta(days=1)
+    with pytest.raises(services.ErrorProduccion, match="inicio su fabricacion"):
+        services.registrar_horas(tarea, taller["empleado"], hoy - datetime.timedelta(days=5),
+                                 Decimal("2"), jefe)

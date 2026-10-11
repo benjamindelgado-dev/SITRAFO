@@ -274,6 +274,13 @@ class PanelCatalogo(PanelBase):
         receta.clicked.connect(self.receta)
         receta.setVisible(self.cliente.puede("bom.leer"))
         acciones.addWidget(receta)
+        for texto, metodo in (("Familias", self.familias),
+                              ("Parametros tecnicos", self.parametros_tecnicos)):
+            boton = QPushButton(texto)
+            boton.setObjectName("secundario")
+            boton.clicked.connect(metodo)
+            boton.setVisible(self.cliente.puede("catalogo.actualizar"))
+            acciones.addWidget(boton)
         self.boton = QPushButton("Publicar o retirar")
         self.boton.clicked.connect(self.alternar)
         self.boton.setVisible(self.cliente.puede("catalogo.actualizar"))
@@ -308,6 +315,17 @@ class PanelCatalogo(PanelBase):
             ]
             for m in self.datos
         ])
+
+    def familias(self):
+        from paneles_catalogo import DialogoFamilias
+
+        DialogoFamilias(self.cliente, self).exec()
+        self.refrescar()
+
+    def parametros_tecnicos(self):
+        from paneles_catalogo import DialogoParametrosTecnicos
+
+        DialogoParametrosTecnicos(self.cliente, self).exec()
 
     def receta(self):
         """Lista de materiales y tareas estandar del modelo (RF-CAT-04, 05)."""
@@ -506,11 +524,13 @@ class PanelSolicitudes(PanelBase):
         except ErrorAPI as error:
             return self.manejar_error(error)
         if dialogo.exec() and dialogo.resultado:
-            QMessageBox.information(
-                self, "Cotizacion creada",
-                f"Se creo el borrador {dialogo.resultado['numero']}. Reviselo y "
-                "emitalo desde el panel Cotizaciones.",
-            )
+            texto = (f"Se creo el borrador {dialogo.resultado['numero']}. Reviselo y "
+                     "emitalo desde el panel Cotizaciones.")
+            if dialogo.resultado.get("aviso_plazo"):
+                QMessageBox.warning(self, "Cotizacion creada: revise el plazo",
+                                    f"{texto}\n\n{dialogo.resultado['aviso_plazo']}")
+            else:
+                QMessageBox.information(self, "Cotizacion creada", texto)
             self.refrescar()
 
 

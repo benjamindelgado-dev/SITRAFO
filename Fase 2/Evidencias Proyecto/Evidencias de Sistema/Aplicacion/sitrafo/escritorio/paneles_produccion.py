@@ -14,9 +14,10 @@ el backend; esta capa muestra el motivo cuando rechaza una operacion.
 from cliente_api import ClienteAPI, ErrorAPI
 from paneles import PanelBase
 from paneles_comercial import _decimal, fecha, uf
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QComboBox,
+    QDateEdit,
     QDialog,
     QDialogButtonBox,
     QDoubleSpinBox,
@@ -80,7 +81,15 @@ class DialogoRegistro(QDialog):
             self.cantidad.setSingleStep(0.5)
             self.cantidad.setValue(1)
             self.cantidad.setSuffix(" h")
-            formulario.addRow("Horas trabajadas hoy:", self.cantidad)
+            formulario.addRow("Horas trabajadas:", self.cantidad)
+            # El jefe puede registrar dias anteriores (por ejemplo, un operario que
+            # no alcanzo a registrar); nunca una fecha futura
+            self.fecha = QDateEdit(QDate.currentDate())
+            self.fecha.setCalendarPopup(True)
+            self.fecha.setDisplayFormat("dd-MM-yyyy")
+            self.fecha.setMaximumDate(QDate.currentDate())
+            self.fecha.setMinimumDate(QDate.currentDate().addDays(-30))
+            formulario.addRow("Fecha trabajada:", self.fecha)
         else:
             self.materiales = cliente.materiales()
             self.bodegas = cliente.bodegas()
@@ -122,8 +131,10 @@ class DialogoRegistro(QDialog):
     def _registrar(self):
         try:
             if self.tipo == "horas":
-                self.cliente.registrar_horas(self.tarea["id_tarea"], self.cantidad.value(),
-                                             empleado=self.empleado.currentData())
+                self.cliente.registrar_horas(
+                    self.tarea["id_tarea"], self.cantidad.value(),
+                    empleado=self.empleado.currentData(),
+                    fecha=self.fecha.date().toString("yyyy-MM-dd"))
             else:
                 self.cliente.registrar_consumo(
                     self.tarea["id_tarea"], self.material.currentData(),
@@ -132,6 +143,59 @@ class DialogoRegistro(QDialog):
                 )
         except ErrorAPI as error:
             QMessageBox.warning(self, "No se pudo registrar", error.mensaje)
+            return
+        self.accept()
+
+
+class DialogoAnularHoras(QDialog):
+    """Anula un registro de horas mal ingresado, con motivo (RN-13: no se borra)."""
+
+    def __init__(self, cliente: ClienteAPI, tarea: dict, parent=None):
+        super().__init__(parent)
+        self.cliente, self.tarea = cliente, tarea
+        self.setWindowTitle(f"Anular horas — {tarea['nombre']}")
+        self.resize(560, 360)
+        capa = QVBoxLayout(self)
+        self.registros = [r for r in tarea.get("registros", []) if not r["anulado"]]
+        self.tabla = QTableWidget(len(self.registros), 4)
+        self.tabla.setHorizontalHeaderLabels(["Fecha", "Empleado", "Horas", "Costo UF"])
+        self.tabla.verticalHeader().setVisible(False)
+        self.tabla.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.tabla.setSelectionBehavior(QTableWidget.SelectRows)
+        self.tabla.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        for i, r in enumerate(self.registros):
+            for j, v in enumerate([r["fecha"][8:10] + "-" + r["fecha"][5:7] + "-" + r["fecha"][:4],
+                                   r["empleado_nombre"], f"{_decimal(r['horas']):g} h",
+                                   f"{_decimal(r['costo_total_uf']):.4f}"]):
+                self.tabla.setItem(i, j, QTableWidgetItem(v))
+        capa.addWidget(self.tabla, 1)
+        self.motivo = QLineEdit()
+        self.motivo.setPlaceholderText("Motivo (obligatorio): por ejemplo, horas cargadas a la "
+                                       "tarea equivocada")
+        capa.addWidget(self.motivo)
+        nota = QLabel("El registro no se borra: queda anulado, deja de sumar al costo real y la "
+                      "anulacion queda en la bitacora de auditoria.")
+        nota.setObjectName("nota")
+        nota.setWordWrap(True)
+        capa.addWidget(nota)
+        botones = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        botones.button(QDialogButtonBox.Ok).setText("Anular registro")
+        botones.button(QDialogButtonBox.Ok).setObjectName("peligro")
+        botones.button(QDialogButtonBox.Cancel).setObjectName("secundario")
+        botones.accepted.connect(self._anular)
+        botones.rejected.connect(self.reject)
+        capa.addWidget(botones)
+
+    def _anular(self):
+        fila = self.tabla.currentRow()
+        if not 0 <= fila < len(self.registros):
+            QMessageBox.information(self, "Anular horas", "Seleccione el registro a anular.")
+            return
+        try:
+            self.cliente.anular_horas(self.tarea["id_tarea"], self.registros[fila]["id_registro"],
+                                      self.motivo.text().strip())
+        except ErrorAPI as error:
+            QMessageBox.warning(self, "No se pudo anular", error.mensaje)
             return
         self.accept()
 
@@ -223,6 +287,9 @@ class PanelOrdenesTrabajo(PanelBase):
         self.b_terminar = QPushButton("Terminar tarea")
         self.b_terminar.setObjectName("secundario")
         self.b_terminar.clicked.connect(self._terminar_tarea)
+        self.b_anular = QPushButton("Anular horas")
+        self.b_anular.setObjectName("secundario")
+        self.b_anular.clicked.connect(self._anular_horas)
         self.b_agregar = QPushButton("Agregar tarea")
         self.b_agregar.setObjectName("secundario")
         self.b_agregar.clicked.connect(self._agregar_tarea)
@@ -233,7 +300,7 @@ class PanelOrdenesTrabajo(PanelBase):
         self.b_estandar.setObjectName("secundario")
         self.b_estandar.clicked.connect(self._cargar_estandar)
         for boton in (self.b_agregar, self.b_quitar, self.b_estandar, self.b_asignar,
-                      self.b_horas, self.b_consumo, self.b_terminar):
+                      self.b_horas, self.b_anular, self.b_consumo, self.b_terminar):
             acciones_tarea.addWidget(boton)
         acciones_tarea.addStretch()
         gt.addLayout(acciones_tarea)
@@ -278,6 +345,7 @@ class PanelOrdenesTrabajo(PanelBase):
             boton.setVisible(self.planifica)
         for boton in (self.b_horas, self.b_consumo, self.b_terminar):
             boton.setVisible(self.planifica and self.registra)
+        self.b_anular.setVisible(self.planifica and self.cliente.puede("taller.anular"))
 
         self.datos = []
         self._seleccion()
@@ -375,6 +443,9 @@ class PanelOrdenesTrabajo(PanelBase):
         self.b_horas.setEnabled(activa and codigo == "en_ejecucion")
         self.b_consumo.setEnabled(activa and codigo == "en_ejecucion")
         self.b_terminar.setEnabled(activa and codigo == "en_ejecucion")
+        self.b_anular.setEnabled(
+            codigo == "en_ejecucion" and bool(tarea)
+            and any(not r["anulado"] for r in tarea.get("registros", [])))
 
     # -- Acciones ------------------------------------------------------------
     def _ejecutar(self, operacion, *args, exito: str):
@@ -442,6 +513,13 @@ class PanelOrdenesTrabajo(PanelBase):
         except ErrorAPI as error:
             return self.manejar_error(error)
         if dialogo.exec():
+            self.refrescar()
+
+    def _anular_horas(self):
+        tarea = self._tarea()
+        if tarea and DialogoAnularHoras(self.cliente, tarea, self).exec():
+            QMessageBox.information(self, "Horas anuladas",
+                                    "El registro quedo anulado y el costo real se recalculo.")
             self.refrescar()
 
     def _terminar_tarea(self):

@@ -357,6 +357,7 @@ def conciliar_pendiente(transaccion: TransaccionPago,
     transaccion.save()
 
     if transaccion.conciliar():
+        transaction.on_commit(lambda: notificaciones.notificar_pago_confirmado(transaccion))
         _confirmar_orden(transaccion.documento_cobro, None)
         return "conciliada: documento pagado"
     transaccion.estado = TransaccionPago.Estado.PENDIENTE_CONCILIACION

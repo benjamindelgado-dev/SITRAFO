@@ -123,8 +123,26 @@ class AvisoSitioViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["tipo", "activo"]
 
+    @staticmethod
+    def _resumen(aviso) -> dict:
+        return {"titulo": aviso.titulo, "tipo": aviso.tipo, "activo": aviso.activo,
+                "vigente_desde": str(aviso.vigente_desde),
+                "vigente_hasta": str(aviso.vigente_hasta) if aviso.vigente_hasta else None}
+
     def perform_create(self, serializer):
-        serializer.save(usuario=self.request.user)
+        aviso = serializer.save(usuario=self.request.user)
+        registrar_cambio(self.request.user, "aviso_sitio", aviso.pk, None, self._resumen(aviso))
+
+    def perform_update(self, serializer):
+        anterior = self._resumen(serializer.instance)
+        aviso = serializer.save()
+        registrar_cambio(self.request.user, "aviso_sitio", aviso.pk, anterior,
+                         self._resumen(aviso))
+
+    def perform_destroy(self, instance):
+        registrar_cambio(self.request.user, "aviso_sitio", instance.pk,
+                         self._resumen(instance), None)
+        instance.delete()
 
 
 class FeriadoViewSet(viewsets.ReadOnlyModelViewSet):

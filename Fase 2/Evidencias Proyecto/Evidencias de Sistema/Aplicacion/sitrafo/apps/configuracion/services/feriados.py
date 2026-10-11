@@ -133,7 +133,8 @@ def plazo_en_dias_habiles(fecha_inicio: date, dias: int) -> tuple[date, bool]:
     y domingos, y la interfaz debe advertir que la fecha requiere
     verificacion (excepcion E8 de CU-COM-03).
     """
-    hay_feriados = Feriado.objects.filter(
-        fecha__gte=fecha_inicio, fecha__year=fecha_inicio.year
-    ).exists()
-    return Feriado.sumar_dias_habiles(fecha_inicio, dias), hay_feriados
+    fin = Feriado.sumar_dias_habiles(fecha_inicio, dias)
+    anios = set(range(fecha_inicio.year, fin.year + 1))
+    con_feriados = set(Feriado.objects.filter(fecha__year__in=anios)
+                       .values_list("fecha__year", flat=True).distinct())
+    return fin, anios <= con_feriados

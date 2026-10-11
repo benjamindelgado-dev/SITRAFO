@@ -17,17 +17,45 @@ from .models import (
 class ValorParametroSerializer(serializers.ModelSerializer):
     class Meta:
         model = ValorParametro
-        fields = ["id_valor", "valor", "orden"]
+        fields = ["id_valor", "valor", "orden", "activo"]
 
 
 class ParametroTecnicoSerializer(serializers.ModelSerializer):
     valores = ValorParametroSerializer(many=True, read_only=True)
+    en_uso = serializers.SerializerMethodField()
 
     class Meta:
         model = ParametroTecnico
         fields = ["id_parametro", "codigo", "nombre", "unidad",
                   "tipo_dato", "obligatorio", "valor_minimo", "valor_maximo",
-                  "fija_el_modelo", "valores"]
+                  "fija_el_modelo", "valores", "en_uso"]
+
+    def get_en_uso(self, obj) -> bool:
+        return obj.modelos_asignados.exists() or obj.especificaciones.exists()
+
+    def validate_codigo(self, codigo):
+        codigo = codigo.strip().lower()
+        if self.instance is not None and codigo != self.instance.codigo:
+            raise serializers.ValidationError(
+                "El codigo identifica al parametro en los modelos y solicitudes: no cambia.")
+        return codigo
+
+    def validate(self, attrs):
+        tipo = attrs.get("tipo_dato", getattr(self.instance, "tipo_dato", None))
+        minimo = attrs.get("valor_minimo", getattr(self.instance, "valor_minimo", None))
+        maximo = attrs.get("valor_maximo", getattr(self.instance, "valor_maximo", None))
+        if tipo != ParametroTecnico.TipoDato.NUMERICO:
+            attrs["valor_minimo"] = attrs["valor_maximo"] = None
+        elif minimo is not None and maximo is not None and minimo > maximo:
+            raise serializers.ValidationError(
+                {"valor_maximo": "El maximo no puede ser menor que el minimo."})
+        if (self.instance is not None and "tipo_dato" in attrs
+                and attrs["tipo_dato"] != self.instance.tipo_dato
+                and self.get_en_uso(self.instance)):
+            raise serializers.ValidationError(
+                {"tipo_dato": "El parametro ya se usa en modelos o solicitudes: su tipo "
+                              "de dato no cambia."})
+        return attrs
 
 
 class FamiliaProductoSerializer(serializers.ModelSerializer):

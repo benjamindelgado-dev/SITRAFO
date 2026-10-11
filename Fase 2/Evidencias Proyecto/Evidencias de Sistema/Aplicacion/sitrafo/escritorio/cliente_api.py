@@ -138,6 +138,9 @@ class ClienteAPI:
     def actualizar(self, ruta: str, datos: dict):
         return self._peticion("PATCH", ruta, json=datos)
 
+    def eliminar(self, ruta: str):
+        return self._peticion("DELETE", ruta)
+
     def accion(self, ruta: str, datos: dict | None = None):
         return self._peticion("POST", ruta, json=datos or {})
 
@@ -215,7 +218,37 @@ class ClienteAPI:
 
     def parametros_tecnicos(self):
         respuesta = self.obtener("parametros-tecnicos/", {"page_size": 200})
-        return respuesta.get("results", respuesta)
+        return respuesta.get("results", respuesta) if isinstance(respuesta, dict) else respuesta
+
+    def crear_parametro_tecnico(self, datos: dict):
+        return self.crear("parametros-tecnicos/", datos)
+
+    def actualizar_parametro_tecnico(self, id_parametro: int, datos: dict):
+        return self.actualizar(f"parametros-tecnicos/{id_parametro}/", datos)
+
+    def eliminar_parametro_tecnico(self, id_parametro: int):
+        return self.eliminar(f"parametros-tecnicos/{id_parametro}/")
+
+    def agregar_valor_parametro(self, id_parametro: int, valor: str):
+        return self.accion(f"parametros-tecnicos/{id_parametro}/agregar_valor/",
+                           {"valor": valor})
+
+    def estado_valor_parametro(self, id_parametro: int, id_valor: int, activo: bool):
+        return self.accion(f"parametros-tecnicos/{id_parametro}/estado_valor/",
+                           {"id_valor": id_valor, "activo": activo})
+
+    def todas_las_familias(self):
+        respuesta = self.obtener("familias/", {"page_size": 200, "todas": 1})
+        return respuesta.get("results", respuesta) if isinstance(respuesta, dict) else respuesta
+
+    def actualizar_familia(self, id_familia: int, datos: dict):
+        return self.actualizar(f"familias/{id_familia}/", datos)
+
+    def desactivar_familia(self, id_familia: int):
+        return self.eliminar(f"familias/{id_familia}/")
+
+    def reactivar_familia(self, id_familia: int):
+        return self.accion(f"familias/{id_familia}/reactivar/")
 
     def receta(self, id_modelo: int):
         return self.obtener(f"modelos/{id_modelo}/receta/")
@@ -285,6 +318,18 @@ class ClienteAPI:
 
     def crear_direccion(self, datos: dict):
         return self.crear("direcciones/", datos)
+
+    def actualizar_contacto(self, id_contacto: int, datos: dict):
+        return self.actualizar(f"contactos/{id_contacto}/", datos)
+
+    def eliminar_contacto(self, id_contacto: int):
+        return self.eliminar(f"contactos/{id_contacto}/")
+
+    def actualizar_direccion(self, id_direccion: int, datos: dict):
+        return self.actualizar(f"direcciones/{id_direccion}/", datos)
+
+    def eliminar_direccion(self, id_direccion: int):
+        return self.eliminar(f"direcciones/{id_direccion}/")
 
     def comunas(self):
         return self.obtener("comunas/")
@@ -448,6 +493,15 @@ class ClienteAPI:
 
     def crear_bodega(self, datos: dict):
         return self.crear("bodegas/", datos)
+
+    def todas_las_bodegas(self):
+        return self.obtener("bodegas/", {"todas": 1})
+
+    def actualizar_bodega(self, id_bodega: int, datos: dict):
+        return self.actualizar(f"bodegas/{id_bodega}/", datos)
+
+    def estado_bodega(self, id_bodega: int, activar: bool):
+        return self.accion(f"bodegas/{id_bodega}/{'reactivar' if activar else 'desactivar'}/")
 
     # -- Usuarios y roles --------------------------------------------------
     def usuarios(self):

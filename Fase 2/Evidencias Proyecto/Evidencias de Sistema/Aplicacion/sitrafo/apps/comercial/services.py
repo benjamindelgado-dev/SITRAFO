@@ -220,7 +220,7 @@ def cotizar_solicitud(
 
     hoy = timezone.localdate()
     plazo = plazo_dias_habiles or PLAZO_DEFECTO_DIAS_HABILES
-    entrega, _ = plazo_en_dias_habiles(hoy, plazo)
+    entrega, con_feriados = plazo_en_dias_habiles(hoy, plazo)
     vigencia = int(ParametroSistema.obtener("comercial.vigencia_cotizacion_dias", 30))
 
     borrador = _estado("cotizacion", "borrador")
@@ -261,6 +261,10 @@ def cotizar_solicitud(
         solicitud=solicitud, estado_anterior=anterior, estado_nuevo=solicitud.estado,
         usuario=usuario, observacion=f"Cotizada en {cotizacion.numero}.",
     )
+    # E8 de CU-COM-03: sin feriados cargados el plazo solo excluye fines de semana
+    cotizacion.aviso_plazo = "" if con_feriados else (
+        f"No hay feriados cargados para todo el periodo: la entrega del "
+        f"{entrega:%d-%m-%Y} se calculo sin considerarlos. Verifiquela antes de emitir.")
     return cotizacion
 
 

@@ -154,12 +154,12 @@ Paneles disponibles:
 | Panel | Que permite |
 |---|---|
 | Inicio | Bandeja de pendientes del rol, con contador en el menu: lo que debe atender ahora (por ejemplo, ordenes en calidad para el inspector o liberadas para produccion). Doble clic abre el panel donde se atiende |
-| Catalogo | Crear y editar modelos, su receta (materiales y tareas) y precio base versionado; publicarlos o retirarlos de la web |
-| Clientes | Consultar clientes, contactos y direcciones |
+| Catalogo | Crear y editar modelos, su receta (materiales y tareas) y precio base versionado; publicarlos o retirarlos de la web; administrar familias y parametros tecnicos (tipo, obligatoriedad, rango y valores), que arman el formulario de solicitud web |
+| Clientes | Crear y editar clientes; agregar, editar y eliminar contactos y direcciones; historial de documentos y cuentas web |
 | Solicitudes | Tomar una solicitud y elaborar su cotizacion con el costeo calculado |
 | Cotizaciones | Enviar a aprobacion, emitir (con envio por correo), reenviar y generar la orden de compra |
 | Ordenes de compra | Ver el estado del anticipo, confirmar la orden y generar sus ordenes de trabajo |
-| Ordenes de trabajo | Asignar responsables, iniciar, registrar por un ausente, costo real contra estimado, enviar a calidad y cerrar |
+| Ordenes de trabajo | Asignar responsables, iniciar, registrar por un ausente (tambien dias anteriores), anular registros de horas con motivo, costo real contra estimado, enviar a calidad y cerrar |
 | Taller (operario) | Vista propia sin menu, con campos grandes: sus tareas, horas, material y termino de tarea |
 | Canal web | Modo mantencion, pago en linea, autorregistro y parametros de negocio editables (anticipo, umbral de descuento, umbral de desviacion, tope de unidades, entre otros), validados por rango y auditados; rigen desde la siguiente operacion |
 | Avisos del sitio | Mensajes para la web con fecha de inicio y termino |
@@ -168,7 +168,7 @@ Paneles disponibles:
 | Control de calidad | El inspector ejecuta los ensayos de las ordenes en calidad; el sistema evalua la conformidad y abre las no conformidades |
 | No conformidades | Seguimiento y cierre con accion correctiva |
 | Protocolos de calidad | Ensayos por modelo con su rango de aceptacion, versionados |
-| Inventario | Stock por material con alerta bajo el minimo, recepcion de compras, ajuste por conteo fisico, kardex y alta de materiales |
+| Inventario | Stock por material con alerta bajo el minimo, recepcion de compras, ajuste por conteo fisico, kardex, alta de materiales y bodegas (editar y desactivar sin stock) |
 | Proveedores | Registro de proveedores de materiales |
 | Auditoria | Bitacora de solo lectura con filtros por usuario, accion, entidad y fechas |
 | Empleados | Personal del taller con cargo y tarifa versionada (Administrador) |

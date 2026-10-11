@@ -259,7 +259,10 @@ def test_pago_rechazado_deja_documento_pendiente(escenario, documento):
     assert transaccion.respuesta["captura"]["motivo"] == "INSTRUMENT_DECLINED"
 
 
-def test_sin_respuesta_al_capturar_queda_pendiente_de_conciliacion(escenario, documento):
+def test_sin_respuesta_al_capturar_queda_pendiente_de_conciliacion(
+        escenario, documento, django_capture_on_commit_callbacks):
+    from django.core import mail
+
     paypal = PayPalFalso(captura_error=ConnectTimeout("sin conexion"))
     _iniciar_y_volver(escenario, documento, paypal)
 
@@ -267,11 +270,15 @@ def test_sin_respuesta_al_capturar_queda_pendiente_de_conciliacion(escenario, do
     assert transaccion.estado == TransaccionPago.Estado.PENDIENTE_CONCILIACION
 
     # La conciliacion posterior consulta PayPal y cierra el pago
-    with patch("requests.get", side_effect=paypal.get):
+    mail.outbox.clear()
+    with patch("requests.get", side_effect=paypal.get), \
+         django_capture_on_commit_callbacks(execute=True):
         resultado = cobros.conciliar_pendiente(transaccion)
     documento.refresh_from_db()
     assert "conciliada" in resultado
     assert documento.estado == DocumentoCobro.Estado.PAGADO
+    # El cliente recibe el comprobante tambien cuando el pago se concilia despues
+    assert any(documento.numero in c.subject and c.to == ["c@c.cl"] for c in mail.outbox)
 
 
 def test_retorno_repetido_no_cobra_dos_veces(escenario, documento):

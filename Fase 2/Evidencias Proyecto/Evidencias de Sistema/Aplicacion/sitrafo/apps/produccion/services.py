@@ -266,6 +266,11 @@ def registrar_horas(tarea: TareaOT, empleado, fecha, horas: Decimal, usuario
         raise ErrorProduccion("Las horas deben ser mayores que cero.")
     if fecha > timezone.localdate():
         raise ErrorProduccion("No se pueden registrar horas futuras.")
+    inicio = tarea.orden_trabajo.fecha_inicio
+    if inicio and fecha < inicio:
+        raise ErrorProduccion(
+            f"La orden de trabajo inicio su fabricacion el {inicio:%d-%m-%Y}: no se pueden "
+            "registrar horas de una fecha anterior.")
 
     maximo = _max_horas_diarias()
     del_dia = RegistroHoraHombre.objects.filter(

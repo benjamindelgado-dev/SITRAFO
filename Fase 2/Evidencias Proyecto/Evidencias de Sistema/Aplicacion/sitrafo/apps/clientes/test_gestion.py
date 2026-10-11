@@ -121,3 +121,87 @@ def test_catalogo_de_regiones_y_comunas_completo():
     rm = Region.objects.get(nombre="Metropolitana de Santiago")
     assert rm.comunas.filter(nombre="Puente Alto").exists()
     assert rm.comunas.count() == 52
+
+
+# ---------------------------------------------------------------------------
+# Contactos y direcciones: edicion y eliminacion (RF-CLI-03, RF-CLI-04)
+# ---------------------------------------------------------------------------
+def _cliente_con_direccion(base):
+    cliente = Cliente.objects.create(rut="76543210-3", razon_social="Maipo SpA",
+                                     tipo_persona="juridica")
+    region = Region.objects.create(nombre="Metropolitana", codigo="RM")
+    comuna = Comuna.objects.create(region=region, nombre="Puente Alto")
+    return cliente, comuna
+
+
+def test_un_solo_contacto_principal_por_cliente(base):
+    cliente, _ = _cliente_con_direccion(base)
+    api = base["api"]
+    uno = api.post("/api/v1/contactos/", {"cliente": cliente.pk, "nombre": "Ana",
+                                          "email": "ana@x.cl", "principal": True}).data
+    dos = api.post("/api/v1/contactos/", {"cliente": cliente.pk, "nombre": "Luis",
+                                          "email": "luis@x.cl"}).data
+    api.patch(f"/api/v1/contactos/{dos['id_contacto']}/", {"principal": True}, format="json")
+    principales = list(cliente.contactos.filter(principal=True).values_list("nombre", flat=True))
+    assert principales == ["Luis"]
+    assert api.delete(f"/api/v1/contactos/{uno['id_contacto']}/").status_code == 204
+
+
+def test_direccion_usada_en_una_solicitud_no_se_elimina(base, monkeypatch):
+    from apps.clientes import geocodificacion
+    from apps.comercial.models import EstadoDocumento, SolicitudPresupuesto
+
+    monkeypatch.setattr(geocodificacion, "geocodificar", lambda d: False)
+    cliente, comuna = _cliente_con_direccion(base)
+    api = base["api"]
+    datos = {"cliente": cliente.pk, "comuna": comuna.pk, "tipo": "instalacion",
+             "calle": "Concha y Toro", "numero": "100"}
+    usada = api.post("/api/v1/direcciones/", datos).data
+    libre = api.post("/api/v1/direcciones/", {**datos, "numero": "200"}).data
+    SolicitudPresupuesto.objects.create(
+        numero="SP-2026-0001", cliente=cliente, cantidad=1, direccion_id=usada["id_direccion"],
+        estado=EstadoDocumento.objects.create(tipo_documento="solicitud", codigo="recibida",
+                                              nombre="Recibida"))
+
+    editada = api.patch(f"/api/v1/direcciones/{usada['id_direccion']}/", {"numero": "150"},
+                        format="json")
+    assert editada.status_code == 200 and editada.data["numero"] == "150"
+    respuesta = api.delete(f"/api/v1/direcciones/{usada['id_direccion']}/")
+    assert respuesta.status_code == 409 and "solicitud" in respuesta.data["detalle"]
+    assert api.delete(f"/api/v1/direcciones/{libre['id_direccion']}/").status_code == 204
+
+
+# ---------------------------------------------------------------------------
+# Mi cuenta en la web (CU-CLI-07)
+# ---------------------------------------------------------------------------
+def test_cliente_edita_su_empresa_y_cambia_su_clave(db, django_user_model):
+    cliente = Cliente.objects.create(rut="76543210-3", razon_social="Maipo SpA",
+                                     tipo_persona="juridica")
+    usuario = django_user_model.objects.create_user("maipo", "m@maipo.cl", "ClaveSegura2026",
+                                                    cliente=cliente)
+    django_user_model.objects.create_user("otro", "otro@x.cl", "ClaveSegura2026")
+    web = Client()
+    web.force_login(usuario)
+
+    usado = web.post("/perfil/empresa/", {"razon_social": "Maipo SpA", "giro": "Energia",
+                                         "email": "otro@x.cl"})
+    assert "ya esta en uso" in usado.content.decode()
+    web.post("/perfil/empresa/", {"razon_social": "Electrica del Maipo SpA",
+                                  "nombre_fantasia": "Maipo", "giro": "Energia",
+                                  "email": "compras@maipo.cl"})
+    cliente.refresh_from_db()
+    usuario.refresh_from_db()
+    assert cliente.razon_social == "Electrica del Maipo SpA" and cliente.giro == "Energia"
+    assert cliente.rut == "76543210-3" and usuario.email == "compras@maipo.cl"
+    assert Auditoria.objects.filter(entidad="cliente", origen="web").exists()
+
+    mala = web.post("/perfil/clave/", {"old_password": "incorrecta",
+                                       "new_password1": "NuevaClave2026",
+                                       "new_password2": "NuevaClave2026"})
+    assert mala.status_code == 200
+    web.post("/perfil/clave/", {"old_password": "ClaveSegura2026",
+                                "new_password1": "NuevaClave2026",
+                                "new_password2": "NuevaClave2026"})
+    usuario.refresh_from_db()
+    assert usuario.check_password("NuevaClave2026")
+    assert web.get("/perfil/").status_code == 200        # la sesion sigue abierta

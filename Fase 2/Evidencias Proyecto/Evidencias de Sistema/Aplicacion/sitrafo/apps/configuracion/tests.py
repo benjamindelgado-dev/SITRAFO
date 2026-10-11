@@ -444,3 +444,42 @@ def test_alias_de_correo_para_la_demostracion(django_user_model, settings):
                        "milko": "milko@real.cl"}
     contacto.refresh_from_db()
     assert contacto.email == f"benja+electrica-del-maipo-c{contacto.pk}@prueba.cl"
+
+
+@pytest.mark.django_db
+def test_avisos_del_sitio_quedan_en_la_bitacora(django_user_model):
+    from django.core.management import call_command
+    from rest_framework.test import APIClient
+
+    from apps.seguridad import matriz
+    from apps.seguridad.models import Auditoria, Rol, UsuarioRol
+
+    call_command("cargar_roles", verbosity=0)
+    admin = django_user_model.objects.create_user("adm", "a@s.cl", "x" * 12, es_interno=True)
+    UsuarioRol.objects.create(usuario=admin, rol=Rol.objects.get(nombre=matriz.ADMIN))
+    api = APIClient()
+    api.force_authenticate(admin)
+    aviso = api.post("/api/v1/avisos/", {"titulo": "Feriado", "cuerpo": "Cerrado el lunes",
+                                         "tipo": "informativo",
+                                         "vigente_desde": "2026-10-01"}).data
+    api.patch(f"/api/v1/avisos/{aviso['id_aviso']}/", {"activo": False}, format="json")
+    api.delete(f"/api/v1/avisos/{aviso['id_aviso']}/")
+    assert Auditoria.objects.filter(entidad="aviso_sitio").count() == 3
+
+
+@pytest.mark.django_db
+def test_tarea_diaria_concilia_los_pagos_pendientes(monkeypatch):
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    from apps.configuracion.management.commands import tareas_diarias
+
+    monkeypatch.setattr(tareas_diarias.ClienteIndicadores, "sincronizar_dia",
+                        lambda self: "simulado")
+    monkeypatch.setattr(tareas_diarias.ClienteFeriados, "sincronizar_anio",
+                        lambda self, anio: {"exitoso": True, "total": 0})
+    call_command("cargar_estados", verbosity=0)
+    salida = StringIO()
+    call_command("tareas_diarias", stdout=salida)
+    assert "Pagos pendientes de conciliacion: 0" in salida.getvalue()

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }} — SITRAFO{% endblock %}
+{% block contenido %}
+<p class="mb-3"><a href="{% url 'web:perfil' %}">Volver a mi cuenta</a></p>
+<div class="row justify-content-center"><div class="col-md-8 col-lg-6">
+  <div class="seccion">
+    <h1>{{ titulo }}</h1>
+    <p>{{ descripcion }}</p>
+  </div>
+  <div class="placa"><div class="placa__cuerpo">
+    {% if form.non_field_errors %}
+      <div class="aviso aviso--mal mb-3">{{ form.non_field_errors|striptags }}</div>
+    {% endif %}
+    <form method="post">{% csrf_token %}
+      {% for campo in form %}
+        <div class="mb-3">
+          <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+          {{ campo }}
+          {% if campo.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ campo.errors|striptags }}</div>{% endif %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="btn btn-principal">Guardar</button>
+      <a href="{% url 'web:perfil' %}" class="btn btn-plano ms-2">Cancelar</a>
+    </form>
+  </div></div>
+</div></div>
+{% endblock %}

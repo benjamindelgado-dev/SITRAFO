@@ -154,6 +154,29 @@ class ContactoClienteViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["cliente", "principal"]
 
+    def perform_create(self, serializer):
+        _unico_principal(serializer.save())
+
+    def perform_update(self, serializer):
+        _unico_principal(serializer.save())
+
+
+def _unico_principal(contacto):
+    """Un solo contacto principal por cliente: es quien recibe los correos."""
+    if contacto.principal:
+        ContactoCliente.objects.filter(cliente_id=contacto.cliente_id, principal=True).exclude(
+            pk=contacto.pk).update(principal=False)
+
+
+def _eliminar_protegido(instancia, mensaje):
+    from django.db.models import ProtectedError
+
+    try:
+        instancia.delete()
+    except ProtectedError:
+        return Response({"detalle": mensaje}, status=status.HTTP_409_CONFLICT)
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class DireccionClienteViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
     queryset = DireccionCliente.objects.select_related("cliente", "comuna")
@@ -172,6 +195,25 @@ class DireccionClienteViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):
 
         direccion = serializer.save()
         geocodificar(direccion)
+
+    def perform_update(self, serializer):
+        """Al cambiar la direccion se vuelve a geocodificar."""
+        from .geocodificacion import geocodificar
+
+        anterior = (serializer.instance.calle, serializer.instance.numero,
+                    serializer.instance.comuna_id)
+        direccion = serializer.save()
+        if (direccion.calle, direccion.numero, direccion.comuna_id) != anterior:
+            direccion.validada = False
+            direccion.latitud = direccion.longitud = None
+            direccion.save(update_fields=["validada", "latitud", "longitud"])
+            geocodificar(direccion)
+
+    def destroy(self, request, *args, **kwargs):
+        return _eliminar_protegido(
+            self.get_object(),
+            "Esta direccion esta asociada a una solicitud de presupuesto y no puede "
+            "eliminarse. Puede editarla o agregar una nueva.")
 
     @action(detail=True, methods=["post"])
     def geocodificar(self, request, pk=None):

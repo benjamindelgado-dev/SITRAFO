@@ -160,8 +160,9 @@ class SolicitudPresupuestoViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet
             )
         except services.ErrorComercial as error:
             return Response({"detalle": str(error)}, status=status.HTTP_409_CONFLICT)
-        return Response(CotizacionSerializer(cotizacion).data,
-                        status=status.HTTP_201_CREATED)
+        datos = dict(CotizacionSerializer(cotizacion).data)
+        datos["aviso_plazo"] = getattr(cotizacion, "aviso_plazo", "")
+        return Response(datos, status=status.HTTP_201_CREATED)
 
 
 class CotizacionViewSet(FiltradoPorClienteMixin, viewsets.ModelViewSet):

@@ -4,6 +4,8 @@ Tareas automaticas diarias (RF-PAG-05, RF-COM-12).
 1. Sincroniza UF, UTM y dolar del dia (mindicador).
 2. Sincroniza los feriados del anio en curso y del siguiente.
 3. Vence las cotizaciones emitidas cuya vigencia ya paso.
+4. Concilia en PayPal los pagos que quedaron pendientes (CU-PAG-03) y envia el
+   comprobante cuando se confirman.
 
 Cada tarea es independiente: si un servicio externo no responde, las demas
 se ejecutan igual (RF-INT-03). En Render se programa como Cron Job; en
@@ -38,6 +40,27 @@ class Command(BaseCommand):
 
         vencidas = vencer_cotizaciones(hoy)
         self.stdout.write(self.style.SUCCESS(f"Cotizaciones vencidas: {vencidas}."))
+
+        for linea in conciliar_pendientes():
+            self.stdout.write(linea)
+
+
+def conciliar_pendientes() -> list[str]:
+    """Revisa cada pago pendiente de conciliacion; un fallo no detiene a los demas."""
+    from apps.pagos.models import TransaccionPago
+    from apps.pagos.services.cobros import conciliar_pendiente
+
+    pendientes = TransaccionPago.objects.filter(
+        estado=TransaccionPago.Estado.PENDIENTE_CONCILIACION).select_related("documento_cobro")
+    lineas = [f"Pagos pendientes de conciliacion: {pendientes.count()}"]
+    for transaccion in pendientes:
+        try:
+            with transaction.atomic():
+                resultado = conciliar_pendiente(transaccion)
+        except Exception as error:  # noqa: BLE001
+            resultado = f"error: {error}"
+        lineas.append(f"  {transaccion.documento_cobro.numero}: {resultado}")
+    return lineas
 
 
 @transaction.atomic

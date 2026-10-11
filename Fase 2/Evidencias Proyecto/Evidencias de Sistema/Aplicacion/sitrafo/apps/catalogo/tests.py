@@ -124,3 +124,53 @@ def test_no_se_publica_un_modelo_sin_tareas(catalogo):
     TareaEstandarModelo.objects.create(modelo=modelo, nombre="Bobinado", secuencia=1,
                                        horas_estimadas=Decimal("2"))
     assert catalogo["admin"].post(url).status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Familias y parametros tecnicos (RF-CAT-01, RF-CAT-03, RF-ADM-04)
+# ---------------------------------------------------------------------------
+def test_familia_con_modelos_no_se_desactiva(catalogo):
+    admin = catalogo["admin"]
+    assert _nuevo(catalogo).status_code == 201
+    url = f"/api/v1/familias/{catalogo['familia'].pk}/"
+    assert admin.delete(url).status_code == 409
+
+    vacia = admin.post("/api/v1/familias/", {"nombre": "Potencia"}).data
+    assert admin.delete(f"/api/v1/familias/{vacia['id_familia']}/").status_code == 204
+    nombres = [f["nombre"] for f in admin.get("/api/v1/familias/").data["results"]]
+    assert "Potencia" not in nombres
+    todas = admin.get("/api/v1/familias/?todas=1").data["results"]
+    assert any(f["nombre"] == "Potencia" and not f["activo"] for f in todas)
+    assert admin.post(f"/api/v1/familias/{vacia['id_familia']}/reactivar/").data["activo"]
+    assert catalogo["comercial"].delete(url).status_code == 403
+
+
+def test_parametro_tecnico_se_administra_desde_el_escritorio(catalogo):
+    admin = catalogo["admin"]
+    base = "/api/v1/parametros-tecnicos/"
+    mal = admin.post(base, {"codigo": "frecuencia", "nombre": "Frecuencia", "unidad": "Hz",
+                            "tipo_dato": "numerico", "valor_minimo": "60",
+                            "valor_maximo": "50"}, format="json")
+    assert mal.status_code == 400
+    creado = admin.post(base, {"codigo": "Frecuencia", "nombre": "Frecuencia", "unidad": "Hz",
+                               "tipo_dato": "numerico", "valor_minimo": "50",
+                               "valor_maximo": "60", "obligatorio": False},
+                        format="json").data
+    assert creado["codigo"] == "frecuencia"
+    url = f"{base}{creado['id_parametro']}/"
+    assert admin.patch(url, {"codigo": "otro"}, format="json").status_code == 400
+    assert admin.patch(url, {"valor_maximo": "65"}, format="json").data["valor_maximo"] == \
+        "65.000"
+    assert admin.delete(url).status_code == 204          # sin uso: se elimina
+
+    potencia = f"{base}{catalogo['potencia'].pk}/"
+    datos = admin.post(f"{potencia}agregar_valor/", {"valor": "500"}, format="json").data
+    quinientos = next(v for v in datos["valores"] if v["valor"] == "500")
+    datos = admin.post(f"{potencia}estado_valor/", {"id_valor": quinientos["id_valor"],
+                                                    "activo": False}, format="json").data
+    assert not next(v for v in datos["valores"] if v["valor"] == "500")["activo"]
+
+    _nuevo(catalogo)                                     # el modelo usa la potencia
+    assert admin.delete(potencia).status_code == 409
+    assert admin.patch(potencia, {"tipo_dato": "texto"}, format="json").status_code == 400
+    assert Auditoria.objects.filter(entidad="parametro_tecnico").count() >= 4

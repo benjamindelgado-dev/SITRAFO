@@ -10,7 +10,10 @@
 <div class="row g-3">
   <div class="col-lg-6">
     <div class="placa h-100">
-      <div class="placa__cabecera"><span class="placa__codigo">ACCESO</span></div>
+      <div class="placa__cabecera d-flex justify-content-between align-items-center">
+        <span class="placa__codigo">ACCESO</span>
+        <a href="{% url 'web:perfil_clave' %}" class="btn btn-principal btn-sm">Cambiar contrasena</a>
+      </div>
       <div class="placa__cuerpo">
         <div class="datos">
           <div class="datos__fila"><span class="datos__etiqueta">Usuario</span><span class="datos__valor">{{ user.username }}</span></div>
@@ -30,11 +33,15 @@
   {% if cliente %}
   <div class="col-lg-6">
     <div class="placa h-100">
-      <div class="placa__cabecera"><span class="placa__codigo">CLIENTE</span></div>
+      <div class="placa__cabecera d-flex justify-content-between align-items-center">
+        <span class="placa__codigo">CLIENTE</span>
+        <a href="{% url 'web:perfil_empresa' %}" class="btn btn-principal btn-sm">Editar datos</a>
+      </div>
       <div class="placa__cuerpo">
         <div class="datos">
           <div class="datos__fila"><span class="datos__etiqueta">RUT</span><span class="datos__valor">{{ cliente.rut }}</span></div>
           <div class="datos__fila"><span class="datos__etiqueta">Razon social</span><span class="datos__valor">{{ cliente.razon_social }}</span></div>
+          {% if cliente.nombre_fantasia %}<div class="datos__fila"><span class="datos__etiqueta">Nombre de fantasia</span><span class="datos__valor">{{ cliente.nombre_fantasia }}</span></div>{% endif %}
           <div class="datos__fila"><span class="datos__etiqueta">Tipo</span><span class="datos__valor">{{ cliente.get_tipo_persona_display }}</span></div>
           <div class="datos__fila">
             <span class="datos__etiqueta">Giro</span>

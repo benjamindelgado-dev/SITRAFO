@@ -41,7 +41,9 @@ from apps.pagos.services import cobros
 from apps.produccion.models import OrdenTrabajo
 
 from .forms import (
+    CambiarClaveForm,
     DireccionForm,
+    EmpresaForm,
     LoginForm,
     NuevaClaveForm,
     RecuperarClaveForm,
@@ -447,6 +449,62 @@ def perfil(request):
     contexto["cliente"] = cliente
     contexto["seccion"] = "perfil"
     return render(request, "web/perfil.html", contexto)
+
+
+def _auditar_web(usuario, entidad, pk, anterior, nuevo):
+    from apps.seguridad.models import Auditoria
+
+    Auditoria.objects.create(
+        usuario=usuario, entidad=entidad, id_registro=str(pk),
+        accion=Auditoria.Accion.MODIFICACION, valor_anterior=anterior,
+        valor_nuevo=nuevo, origen=Auditoria.Origen.WEB,
+    )
+
+
+@login_required
+def perfil_empresa(request):
+    """El cliente actualiza los datos de su empresa y el correo de su cuenta."""
+    cliente = _cliente_de(request)
+    if cliente is None:
+        return redirect("web:perfil")
+    campos = ["razon_social", "nombre_fantasia", "giro"]
+    anterior = {c: getattr(cliente, c) for c in campos} | {"email": request.user.email}
+    formulario = EmpresaForm(request.POST or None, instance=cliente, usuario=request.user)
+    if request.method == "POST" and formulario.is_valid():
+        with transaction.atomic():
+            formulario.save()
+            request.user.email = formulario.cleaned_data["email"]
+            request.user.save(update_fields=["email"])
+            nuevo = {c: getattr(cliente, c) for c in campos} | {"email": request.user.email}
+            if nuevo != anterior:
+                _auditar_web(request.user, "cliente", cliente.pk, anterior, nuevo)
+        messages.success(request, "Datos actualizados.")
+        return redirect("web:perfil")
+    contexto = _contexto_base(request)
+    contexto.update({"form": formulario, "seccion": "perfil",
+                     "titulo": "Datos de la empresa",
+                     "descripcion": f"RUT {cliente.rut}. El RUT y el tipo de persona no se "
+                                    "modifican; si estan errados, contacte al area comercial."})
+    return render(request, "web/perfil_formulario.html", contexto)
+
+
+@login_required
+def perfil_clave(request):
+    """Cambio de contrasena: exige la actual y mantiene la sesion abierta."""
+    from django.contrib.auth import update_session_auth_hash
+
+    formulario = CambiarClaveForm(request.user, request.POST or None)
+    if request.method == "POST" and formulario.is_valid():
+        usuario = formulario.save()
+        update_session_auth_hash(request, usuario)
+        _auditar_web(usuario, "usuario", usuario.pk, {}, {"evento": "cambio de contrasena"})
+        messages.success(request, "Contrasena actualizada.")
+        return redirect("web:perfil")
+    contexto = _contexto_base(request)
+    contexto.update({"form": formulario, "seccion": "perfil", "titulo": "Cambiar contrasena",
+                     "descripcion": "Ingrese su contrasena actual y la nueva dos veces. "
+                                    "Debe tener al menos 10 caracteres."})
+    return render(request, "web/perfil_formulario.html", contexto)
 
 
 # ---------------------------------------------------------------------------

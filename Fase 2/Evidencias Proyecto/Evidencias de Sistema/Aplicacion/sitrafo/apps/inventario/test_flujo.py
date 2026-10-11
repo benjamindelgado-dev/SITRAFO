@@ -170,3 +170,18 @@ def test_stock_bajo_el_minimo_es_pendiente_de_bodega(bodega):
     titulos = [i["titulo"] for i in
                bodega["bodeguero"].get("/api/v1/pendientes/").data["resultados"]]
     assert len(titulos) == 1 and titulos[0].startswith("Reponer ")
+
+
+def test_bodega_con_stock_no_se_desactiva(bodega):
+    api = bodega["bodeguero"]
+    url = f"/api/v1/bodegas/{bodega['central'].pk}/"
+    assert api.patch(url, {"nombre": "Bodega central", "codigo": "XX"},
+                     format="json").data["codigo"] == "B1"          # el codigo no cambia
+    _recibir(bodega, 10)
+    respuesta = api.post(f"{url}desactivar/")
+    assert respuesta.status_code == 409 and "stock" in respuesta.data["detalle"]
+
+    vacia = api.post("/api/v1/bodegas/", {"codigo": "B2", "nombre": "Patio"}).data
+    assert api.post(f"/api/v1/bodegas/{vacia['id_bodega']}/desactivar/").status_code == 200
+    assert "B2" not in [b["codigo"] for b in api.get("/api/v1/bodegas/").data]
+    assert "B2" in [b["codigo"] for b in api.get("/api/v1/bodegas/?todas=1").data]
