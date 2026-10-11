@@ -24,7 +24,8 @@ package "Servidor Django 5.1 (gunicorn)" as SRV {
   package "Negocio" {
     [Servicios de dominio\nseguridad · comercial · produccion\ninventario · calidad · pagos (cobros)] as SVC
     [reportes\n(Excel con openpyxl,\nPDF con reportlab)] as REP
-    [notificaciones\n(plantillas de correo)] as NOT
+    [notificaciones\n(correos al cliente y\navisos entre roles)] as NOT
+    [pendientes\n(bandeja por rol,\ncalculada del estado)] as PEN
   }
   package "Integración" {
     [ClienteServicioExterno\n(reintentos, espera incremental,\nlog_integracion)] as BASE
@@ -48,6 +49,8 @@ API ..> PERM
 WEB ..> AUTH
 API --> SVC
 API --> REP
+API --> PEN
+PEN --> ORM
 WEB --> SVC
 SVC --> NOT
 SVC --> CLI

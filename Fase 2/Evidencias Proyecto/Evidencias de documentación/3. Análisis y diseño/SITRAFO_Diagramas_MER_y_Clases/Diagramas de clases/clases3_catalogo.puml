@@ -30,6 +30,10 @@ class ParametroTecnico {
   - unidad : str
   - tipo_dato : TipoDato
   - obligatorio : bool
+  - valor_minimo : Decimal [0..1]
+  - valor_maximo : Decimal [0..1]
+  - fija_el_modelo : bool
+  + etiqueta «property»
 }
 enum "ParametroTecnico.TipoDato" as ParametroTecnico_TipoDato {
   numerico

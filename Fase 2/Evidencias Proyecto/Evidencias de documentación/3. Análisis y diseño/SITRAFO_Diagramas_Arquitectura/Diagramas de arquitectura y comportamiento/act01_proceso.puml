@@ -57,6 +57,9 @@ repeat
   endif
 repeat while (¿Faltan ensayos o hay que repetir?) is (sí)
 ->no;
+:Aprobar el control\ny liberar la OT;
+|#FBF3EC|Sistema|
+:Avisar a producción\n(correo y bandeja de pendientes);
 |#FFFFFF|Jefe de producción (escritorio)|
 :Cerrar la OT\n(justificar desviación de costo si corresponde);
 |#FBF3EC|Sistema|

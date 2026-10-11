@@ -30,8 +30,10 @@ entity "control_calidad" as t2 {
   * id_orden_trabajo : integer <<FK>>
   * id_protocolo : integer <<FK>>
   * id_inspector : integer <<FK>>
+  id_aprobado_por : integer <<FK>>
   * fecha_hora : timestamptz
   * estado : varchar(20)
+  aprobado_en : timestamptz
   observacion : varchar(300)
 }
 entity "resultado_control" as t3 {

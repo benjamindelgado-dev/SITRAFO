@@ -11,10 +11,12 @@ rectangle "Control de calidad" {
   usecase "CU-CAL-04\nRegistrar no conformidad" as CU_CAL_04
   usecase "CU-CAL-05\nCerrar no conformidad" as CU_CAL_05
   usecase "CU-CAL-06\nDescargar informe de ensayos" as CU_CAL_06
+  usecase "CU-CAL-07\nAprobar control y liberar la orden" as CU_CAL_07 <<nuevo>>
 }
 INS --> CU_CAL_01
 INS --> CU_CAL_03
 INS --> CU_CAL_05
+INS --> CU_CAL_07
 CLI --> CU_CAL_06
 CU_CAL_04 --> SIS
 CU_CAL_01 ..> CU_CAL_02 : <<include>>

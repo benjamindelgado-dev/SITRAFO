@@ -15,13 +15,15 @@ state "En control de calidad" as en_calidad {
   ensayos : resultados por punto de control
   ensayos : no conformidades y acciones correctivas
 }
+state "Liberada por calidad" as liberada
 state "Cerrada" as cerrada
 state "Anulada" as anulada
 
 [*] --> planificada : generada desde la OC confirmada\n/ copia tareas estándar
 planificada --> en_ejecucion : iniciar\n[tiene tareas]\n/ aviso al cliente (primera OT)
-en_ejecucion --> en_calidad : enviar_calidad\n[todas las tareas terminadas]
-en_calidad --> cerrada : cerrar\n[control ejecutado, puntos obligatorios\ncon resultado, sin NC abiertas (RN-12)\ny desviación justificada (RN-11)]\n/ emite saldo si es la última OT
+en_ejecucion --> en_calidad : enviar_calidad\n[todas las tareas terminadas]\n/ aviso a calidad
+en_calidad --> liberada : aprobar (inspector)\n[puntos obligatorios conformes,\nsin NC abiertas (RN-12)]\n/ aviso a producción
+liberada --> cerrada : cerrar\n[desviación justificada (RN-11)]\n/ emite saldo si es la última OT
 planificada --> anulada : la orden de compra se anula\n[OT aún planificada]
 note bottom of anulada
   Estado previsto en el modelo. Con las reglas vigentes

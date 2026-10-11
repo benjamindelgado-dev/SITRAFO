@@ -32,6 +32,7 @@ class ControlCalidad {
   - fecha_hora : datetime
   - estado : Estado
   - observacion : str [0..1]
+  - aprobado_en : datetime [0..1]
   + puntos_pendientes «property»
   + actualizar_estado(guardar)
 }
@@ -39,6 +40,7 @@ enum "ControlCalidad.Estado" as ControlCalidad_Estado {
   en_proceso
   conforme
   con_nc
+  aprobado
 }
 ControlCalidad ..> ControlCalidad_Estado
 class ResultadoControl {
@@ -77,6 +79,7 @@ PuntoControl "*" --> "1" ProtocoloCalidad : protocolo
 ControlCalidad "*" --> "1" OrdenTrabajo : orden_trabajo
 ControlCalidad "*" --> "1" ProtocoloCalidad : protocolo
 ControlCalidad "*" --> "1" Usuario : inspector
+ControlCalidad "*" --> "0..1" Usuario : aprobado_por
 ResultadoControl "*" --> "1" ControlCalidad : control
 ResultadoControl "*" --> "1" PuntoControl : punto
 NoConformidad "0..1" --> "1" ResultadoControl : resultado

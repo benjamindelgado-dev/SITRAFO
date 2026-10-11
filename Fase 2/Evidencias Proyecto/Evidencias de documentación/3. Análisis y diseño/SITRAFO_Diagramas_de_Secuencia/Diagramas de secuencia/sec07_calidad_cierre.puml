@@ -1,5 +1,5 @@
 @startuml SEC-07_Calidad_cierre
-title SEC-07 — Control de calidad y cierre de la orden de trabajo (RF-CAL-03, CU-OT-07, CU-OT-08, RN-11, RN-12)
+title SEC-07 — Control de calidad y cierre de la orden de trabajo (RF-CAL-03, CU-CAL-07, CU-OT-08, RN-11, RN-12)
 !include _skin_secuencia.txt
 
 actor "Jefe de\nproducción" as J
@@ -11,6 +11,7 @@ box "Servidor SITRAFO (Render)" #F7F9FC
   control "calidad.services" as SC
   entity "OrdenTrabajo" as OT
   control "pagos.services.cobros" as CB
+  control "notificaciones" as NO
   database "PostgreSQL" as DB
 end box
 
@@ -43,14 +44,33 @@ opt hay no conformidades abiertas
   note over I, SC : Luego el ensayo se repite y se registra\nun nuevo resultado sin borrar el anterior.
 end
 
+I -> P : aprobar y liberar la orden
+P -> A : POST controles-calidad/{id}/aprobar/
+A -> SC : aprobar_control(control, usuario)
+alt ensayos obligatorios sin medir o NC abiertas
+  A --> P : 409 «No se puede aprobar: ...»
+else control conforme
+  SC -> DB : control_calidad → aprobado\n(aprobado_por, aprobado_en) + auditoria
+  opt era el último control pendiente de la OT
+    SC -> DB : orden_trabajo → liberada + historial
+    SC -> NO : on_commit: avisar_ot_liberada(ot)
+    NO -> NO : correo a los usuarios con\npermiso orden_trabajo.actualizar
+  end
+  A --> P : 200 control aprobado
+end
+
 J -> P : cerrar la orden de trabajo
 P -> A : POST ordenes-trabajo/{id}/cerrar/ {justificación?}
 A -> SP : cerrar(ot, usuario, justificación)
-SP -> OT : puede_cerrarse()
+alt la OT sigue en_calidad
+  A --> P : 409 «el inspector debe aprobar\nel control para liberarla»
+end
+SP -> OT : exige estado liberada\ny puede_cerrarse()
 note right of OT
   Impedimentos (RN-12):
+  - orden no liberada por calidad
   - tareas sin terminar
-  - sin control de calidad ejecutado
+  - sin control de calidad aprobado
   - puntos obligatorios sin resultado
   - no conformidades abiertas
 end note

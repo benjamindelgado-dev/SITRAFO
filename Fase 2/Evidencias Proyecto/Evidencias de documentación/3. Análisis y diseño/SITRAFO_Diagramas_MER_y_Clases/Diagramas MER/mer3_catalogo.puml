@@ -27,6 +27,9 @@ entity "parametro_tecnico" as t2 {
   * unidad : varchar(20)
   * tipo_dato : varchar(20)
   * obligatorio : boolean
+  valor_minimo : numeric(12,3)
+  valor_maximo : numeric(12,3)
+  * fija_el_modelo : boolean
 }
 entity "valor_parametro" as t3 {
   * id_valor : serial <<PK>>

@@ -1,5 +1,5 @@
 @startuml SEC-08_Tareas_diarias
-title SEC-08 — Tareas automáticas diarias (RF-PAG-05, RF-COM-12, RF-INT-01 a 03)
+title SEC-08 — Tareas automáticas diarias (RF-PAG-03, RF-PAG-05, RF-COM-12, RF-INT-01 a 03)
 !include _skin_secuencia.txt
 
 participant "Cron Job\n(Render)" as CR
@@ -12,6 +12,7 @@ box "Servidor SITRAFO (Render)" #F7F9FC
 end box
 participant "mindicador.cl" as MI
 participant "API de feriados\n(Nager.Date)" as FE
+participant "PayPal\n(sandbox)" as PP
 
 CR -> T : ejecución programada diaria
 
@@ -43,6 +44,22 @@ T -> DB : cotizaciones emitidas con vence_el < hoy
 loop por cada cotización vencida
   T -> DB : estado → vencida
   T -> DB : INSERT cotizacion_historial\n(usuario del sistema)
+end
+
+== 4. Conciliación de pagos pendientes ==
+T -> DB : transacciones en pendiente_conciliacion
+loop por cada transacción (cada una en su propia transacción de BD)
+  T -> PP : consultar_orden(id_externo)
+  alt sin respuesta
+    PP --> T : (timeout) — se reintentará mañana
+  else captura COMPLETED y monto coincide
+    PP --> T : captura confirmada
+    T -> DB : transaccion_pago → aprobada\ndocumento_cobro → pagado
+    T -> DB : anticipo: orden de compra → confirmada (RN-07)
+    T -> T : on_commit: correo «pago confirmado» al cliente\n(+ aviso interno si era el saldo)
+  else monto distinto
+    T -> DB : sigue pendiente_conciliacion\n(requiere revisión manual)
+  end
 end
 T --> CR : resumen en la salida del job
 
