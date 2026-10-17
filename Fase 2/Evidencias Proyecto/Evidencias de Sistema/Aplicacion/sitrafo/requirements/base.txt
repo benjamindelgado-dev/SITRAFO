@@ -8,3 +8,5 @@ requests==2.32.3
 Pillow==11.1.0
 reportlab==4.4.10
 openpyxl==3.1.5
+drf-spectacular==0.30.0
+drf-spectacular-sidecar==2026.10.1

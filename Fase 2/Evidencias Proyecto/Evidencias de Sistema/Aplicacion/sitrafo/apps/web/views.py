@@ -5,6 +5,7 @@ Todas las consultas se restringen al cliente de la cuenta autenticada
 (RN-16). El filtro se aplica aqui, en la capa de vista y servicio, y nunca
 en la plantilla.
 """
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
@@ -23,6 +24,7 @@ from django.urls import reverse, reverse_lazy
 from django.views.decorators.http import require_POST
 from django.views.generic import FormView
 
+from apps.api_publica.codigos import codigo_seguimiento
 from apps.catalogo.models import ModeloProducto
 from apps.comercial import services as comercial_services
 from apps.comercial.models import (
@@ -421,10 +423,30 @@ def mis_pedidos(request):
         .prefetch_related("ordenes_trabajo__estado", "documentos_cobro")
         .order_by("-creado_en")
     )
+    # Codigo para consultar el pedido en la API publica de seguimiento
+    ordenes = list(ordenes)
+    for orden in ordenes:
+        orden.codigo_seguimiento = codigo_seguimiento(orden)
     contexto = _contexto_base(request)
     contexto["ordenes"] = ordenes
     contexto["seccion"] = "pedidos"
     return render(request, "web/mis_pedidos.html", contexto)
+
+
+def seguimiento_publico(request):
+    """
+    Consulta de un pedido con su numero y codigo, sin iniciar sesion.
+
+    La pagina consume la API publica de seguimiento desde el navegador con la
+    clave de API del portal web.
+    """
+    contexto = _contexto_base(request)
+    contexto.update({
+        "numero": request.GET.get("numero", "").strip(),
+        "codigo": request.GET.get("codigo", "").strip(),
+        "clave_api": settings.API_PUBLICA_CLAVE_PORTAL,
+    })
+    return render(request, "web/seguimiento_publico.html", contexto)
 
 
 @login_required

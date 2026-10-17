@@ -41,6 +41,8 @@ urlpatterns = [
     path("mis-pedidos/", views.mis_pedidos, name="mis_pedidos"),
     path("seguimiento/<int:pk>/", views.seguimiento, name="seguimiento"),
     path("seguimiento/<int:pk>/ensayos.pdf", views.informe_ensayos, name="informe_ensayos"),
+    # Consulta sin sesion con numero y codigo (consume la API publica)
+    path("seguimiento-pedido/", views.seguimiento_publico, name="seguimiento_publico"),
 
     # Pago en linea
     path("cobro/<int:pk>/", views.documento_cobro, name="documento_cobro"),

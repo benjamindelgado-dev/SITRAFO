@@ -8,6 +8,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # API REST: unico punto de acceso a los datos
     path("api/v1/", include("config.api_urls")),
+    # API publica: sistemas externos y portal web, con clave de API
+    path("api/publica/v1/", include("apps.api_publica.urls")),
     # Aplicacion web orientada al cliente
     path("", include("apps.web.urls")),
 ]

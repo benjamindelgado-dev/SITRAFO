@@ -2,6 +2,8 @@
 Configuracion base de SITRAFO.
 Compartida por todos los entornos. Lo especifico va en dev.py y prod.py.
 """
+import hashlib
+import hmac
 from datetime import timedelta
 from pathlib import Path
 
@@ -34,6 +36,10 @@ THIRD_PARTY_APPS = [
     # Revocacion de tokens al cerrar sesion (RNF-04). Agrega dos tablas propias
     # de la libreria, fuera del modelo de datos del negocio.
     "rest_framework_simplejwt.token_blacklist",
+    # Documentacion OpenAPI (Swagger) de la API publica
+    "drf_spectacular",
+    # Archivos de Swagger UI servidos desde el propio sitio (sin depender de un CDN)
+    "drf_spectacular_sidecar",
 ]
 
 LOCAL_APPS = [
@@ -48,6 +54,7 @@ LOCAL_APPS = [
     "apps.pagos",
     "apps.configuracion",
     "apps.web",
+    "apps.api_publica",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -170,6 +177,41 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "apps.common.pagination.Paginacion",
     "PAGE_SIZE": 25,
+    # Genera la documentacion OpenAPI (Swagger) de la API publica
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+# --------------------------------------------------------------------------
+# API publica (/api/publica/v1/): consumida con clave de API
+# --------------------------------------------------------------------------
+# Clave del portal web. Si no se define, se deriva de la clave secreta de
+# Django, de modo que el despliegue no requiere configuracion adicional.
+API_PUBLICA_CLAVE_PORTAL = env(
+    "API_PUBLICA_CLAVE_PORTAL",
+    default=hmac.new(SECRET_KEY.encode(), b"api-publica-portal", hashlib.sha256).hexdigest()[:32],
+)
+# Claves de otros consumidores, con el formato "nombre:clave,nombre2:clave2"
+API_PUBLICA_CLAVES = {"portal-web": API_PUBLICA_CLAVE_PORTAL} | dict(
+    par.split(":", 1) for par in env.list("API_PUBLICA_CLAVES", default=[]) if ":" in par
+)
+API_PUBLICA_LIMITE = env("API_PUBLICA_LIMITE", default="60/min")
+# Firma de los codigos de seguimiento de pedidos
+SEGUIMIENTO_CLAVE = env("SEGUIMIENTO_CLAVE", default=SECRET_KEY)
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "SITRAFO - API publica",
+    "DESCRIPTION": (
+        "API publica de SITRAFO para sistemas externos y el portal web. Cada solicitud "
+        "requiere una clave de API en el encabezado X-API-Key y tiene un limite de "
+        "solicitudes por minuto."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
+    "PREPROCESSING_HOOKS": ["apps.api_publica.esquema.solo_api_publica"],
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "SWAGGER_UI_SETTINGS": {"persistAuthorization": True},
 }
 
 # --------------------------------------------------------------------------

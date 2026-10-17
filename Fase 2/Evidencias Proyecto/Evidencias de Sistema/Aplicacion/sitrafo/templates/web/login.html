@@ -36,6 +36,10 @@
         Si su empresa aun no tiene cuenta, <a href="{% url 'web:registro' %}">cree una aqui</a>.
       </p>
     {% endif %}
+    <p class="mt-2" style="font-size:.9rem">
+      ¿Tiene un codigo de seguimiento?
+      <a href="{% url 'web:seguimiento_publico' %}">Consulte su pedido sin iniciar sesion</a>.
+    </p>
   </div>
 </div>
 {% endblock %}

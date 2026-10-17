@@ -28,6 +28,13 @@
             <span class="datos__etiqueta">Saldo contra entrega</span>
             <span class="datos__valor">{{ o.monto_saldo_uf }} UF</span>
           </div>
+          <div class="datos__fila">
+            <span class="datos__etiqueta">Codigo de seguimiento</span>
+            <span class="datos__valor">
+              <strong style="letter-spacing:.06em">{{ o.codigo_seguimiento }}</strong>
+              <a class="ms-2" href="{% url 'web:seguimiento_publico' %}?numero={{ o.numero|urlencode }}&codigo={{ o.codigo_seguimiento|urlencode }}">Ver seguimiento</a>
+            </span>
+          </div>
         </div>
         <span class="estado">{{ o.estado.nombre }}</span>
       </div>
