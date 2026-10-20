@@ -60,6 +60,127 @@
         </a>
       </div>
     </div>
+
+    <div class="placa mt-3">
+      <div class="placa__cabecera"><span class="placa__codigo">ESTIMAR PRECIO</span></div>
+      <div class="placa__cuerpo">
+        <form id="form-estimar" class="d-flex gap-2 align-items-end" novalidate>
+          <div class="flex-grow-1">
+            <label class="form-label" for="cantidad">Unidades</label>
+            <input class="form-control" type="number" id="cantidad" name="cantidad"
+                   min="1" value="1" required>
+          </div>
+          <button type="submit" class="btn btn-principal">Estimar</button>
+        </form>
+
+        <div id="estimar-error" class="aviso aviso--mal mt-3 mb-0" hidden></div>
+
+        <div id="estimar-resultado" class="mt-3" hidden>
+          <div class="datos">
+            <div class="datos__fila">
+              <span class="datos__etiqueta">Precio unitario</span>
+              <span class="datos__valor" id="e-unitario"></span>
+            </div>
+            <div class="datos__fila">
+              <span class="datos__etiqueta">Total</span>
+              <span class="datos__valor" id="e-total"></span>
+            </div>
+            <div class="datos__fila">
+              <span class="datos__etiqueta">Equivalente</span>
+              <span class="datos__valor" id="e-equivalente"></span>
+            </div>
+            <div class="datos__fila">
+              <span class="datos__etiqueta">Entrega estimada</span>
+              <span class="datos__valor" id="e-entrega"></span>
+            </div>
+            <div class="datos__fila">
+              <span class="datos__etiqueta">Valido hasta</span>
+              <span class="datos__valor" id="e-validez"></span>
+            </div>
+          </div>
+          <p class="text-secondary mt-2 mb-2" style="font-size:.78rem" id="e-avisos"></p>
+          <a id="e-solicitar" class="btn btn-plano w-100" href="#">Pedir presupuesto por estas unidades</a>
+        </div>
+
+        <p class="mt-3 mb-0 text-secondary" style="font-size:.78rem">
+          Calculado con la API del cotizador de SITRAFO.
+          <a href="/api/publica/v1/docs/" target="_blank" rel="noopener">Ver documentacion</a>.
+        </p>
+      </div>
+    </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ clave_api|json_script:"clave-api" }}
+{{ modelo.codigo|json_script:"codigo-modelo" }}
+<script>
+(function () {
+  const CLAVE = JSON.parse(document.getElementById("clave-api").textContent);
+  const CODIGO = JSON.parse(document.getElementById("codigo-modelo").textContent);
+  const form = document.getElementById("form-estimar");
+  const error = document.getElementById("estimar-error");
+  const resultado = document.getElementById("estimar-resultado");
+  const texto = (id, valor) => { document.getElementById(id).textContent = valor; };
+
+  const numero = (valor, decimales) => Number(valor).toLocaleString("es-CL",
+    { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
+  const fecha = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("es-CL");
+
+  function primerError(datos) {
+    if (datos.detail) return datos.detail;
+    const item = datos.items && (Array.isArray(datos.items) ? datos.items.find((i) => i && Object.keys(i).length) : datos.items);
+    if (typeof item === "string") return item;
+    if (item) return Object.values(item).flat()[0];
+    return "No fue posible estimar el precio.";
+  }
+
+  form.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+    error.hidden = true;
+    resultado.hidden = true;
+    const cantidad = parseInt(form.cantidad.value, 10);
+    if (!cantidad || cantidad < 1) {
+      error.textContent = "Ingrese una cantidad de al menos una unidad.";
+      error.hidden = false;
+      return;
+    }
+    try {
+      const resp = await fetch("/api/publica/v1/cotizador/estimacion/", {
+        method: "POST",
+        headers: { "X-API-Key": CLAVE, "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ items: [{ modelo: CODIGO, cantidad: cantidad }] }),
+      });
+      const datos = await resp.json();
+      if (!resp.ok) throw new Error(primerError(datos));
+
+      const item = datos.items[0];
+      if (item.disponible) {
+        texto("e-unitario", numero(item.precio_unitario_uf, 2) + " UF");
+        texto("e-total", numero(item.subtotal_uf, 2) + " UF");
+        const partes = [];
+        if (datos.total_clp !== null) partes.push("$" + numero(datos.total_clp, 0));
+        if (datos.total_usd !== null) partes.push("US$" + numero(datos.total_usd, 2));
+        texto("e-equivalente", partes.length ? partes.join(" · ") : "No disponible");
+      } else {
+        texto("e-unitario", "Segun especificacion");
+        texto("e-total", "Se confirma en la cotizacion");
+        texto("e-equivalente", "—");
+      }
+      texto("e-entrega", fecha(datos.plazo.fecha_entrega_estimada) + " (" +
+            datos.plazo.dias_habiles + " dias habiles)");
+      texto("e-validez", fecha(datos.valida_hasta));
+      texto("e-avisos", datos.avisos.join(" "));
+      // El enlace usa la ruta del portal actual con el modelo y la cantidad
+      const url = new URL(item.solicitar_presupuesto);
+      document.getElementById("e-solicitar").href = url.pathname + url.search;
+      resultado.hidden = false;
+    } catch (e) {
+      error.textContent = e.message;
+      error.hidden = false;
+    }
+  });
+})();
+</script>
 {% endblock %}

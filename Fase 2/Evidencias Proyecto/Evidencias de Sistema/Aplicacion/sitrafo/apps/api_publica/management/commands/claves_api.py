@@ -10,6 +10,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from apps.api_publica.codigos import codigo_seguimiento
+from apps.api_publica.seguridad import alcances_de
 from apps.comercial.models import OrdenCompra
 
 
@@ -23,7 +24,9 @@ class Command(BaseCommand):
     def handle(self, *args, **opciones):
         self.stdout.write("Consumidores de la API publica (encabezado X-API-Key):")
         for nombre, clave in settings.API_PUBLICA_CLAVES.items():
-            self.stdout.write(f"  {nombre:<16} {clave}")
+            alcances = alcances_de(nombre)
+            servicios = "todos los servicios" if alcances is None else ", ".join(sorted(alcances))
+            self.stdout.write(f"  {nombre:<16} {clave}  ({servicios})")
         self.stdout.write(f"Limite: {settings.API_PUBLICA_LIMITE} por consumidor")
         self.stdout.write("Documentacion: /api/publica/v1/docs/")
 

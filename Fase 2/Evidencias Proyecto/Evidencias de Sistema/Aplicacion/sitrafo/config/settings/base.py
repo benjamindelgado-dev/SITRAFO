@@ -184,16 +184,29 @@ REST_FRAMEWORK = {
 # --------------------------------------------------------------------------
 # API publica (/api/publica/v1/): consumida con clave de API
 # --------------------------------------------------------------------------
-# Clave del portal web. Si no se define, se deriva de la clave secreta de
+def _clave_derivada(etiqueta: bytes) -> str:
+    return hmac.new(SECRET_KEY.encode(), etiqueta, hashlib.sha256).hexdigest()[:32]
+
+
+# Claves del portal. Si no se definen, se derivan de la clave secreta de
 # Django, de modo que el despliegue no requiere configuracion adicional.
-API_PUBLICA_CLAVE_PORTAL = env(
-    "API_PUBLICA_CLAVE_PORTAL",
-    default=hmac.new(SECRET_KEY.encode(), b"api-publica-portal", hashlib.sha256).hexdigest()[:32],
-)
+# - portal-web: pagina de seguimiento sin sesion (la ve cualquier visitante).
+# - portal-clientes: paginas que exigen sesion de cliente (cotizador).
+API_PUBLICA_CLAVE_PORTAL = env("API_PUBLICA_CLAVE_PORTAL",
+                               default=_clave_derivada(b"api-publica-portal"))
+API_PUBLICA_CLAVE_CLIENTES = env("API_PUBLICA_CLAVE_CLIENTES",
+                                 default=_clave_derivada(b"api-publica-clientes"))
 # Claves de otros consumidores, con el formato "nombre:clave,nombre2:clave2"
-API_PUBLICA_CLAVES = {"portal-web": API_PUBLICA_CLAVE_PORTAL} | dict(
-    par.split(":", 1) for par in env.list("API_PUBLICA_CLAVES", default=[]) if ":" in par
-)
+API_PUBLICA_CLAVES = {
+    "portal-web": API_PUBLICA_CLAVE_PORTAL,
+    "portal-clientes": API_PUBLICA_CLAVE_CLIENTES,
+} | dict(par.split(":", 1) for par in env.list("API_PUBLICA_CLAVES", default=[]) if ":" in par)
+# Servicios permitidos por consumidor. Un consumidor que no aparece aqui
+# (un sistema externo autorizado) puede usar todos los servicios.
+API_PUBLICA_ALCANCES = {
+    "portal-web": ["seguimiento"],
+    "portal-clientes": ["seguimiento", "cotizador"],
+}
 API_PUBLICA_LIMITE = env("API_PUBLICA_LIMITE", default="60/min")
 # Firma de los codigos de seguimiento de pedidos
 SEGUIMIENTO_CLAVE = env("SEGUIMIENTO_CLAVE", default=SECRET_KEY)
@@ -205,7 +218,13 @@ SPECTACULAR_SETTINGS = {
         "requiere una clave de API en el encabezado X-API-Key y tiene un limite de "
         "solicitudes por minuto."
     ),
-    "VERSION": "1.0.0",
+    "VERSION": "1.1.0",
+    "TAGS": [
+        {"name": "Seguimiento de pedidos",
+         "description": "Estado, avance y fecha estimada de entrega de un pedido."},
+        {"name": "Cotizador",
+         "description": "Catalogo de modelos y precio referencial con plazo de entrega."},
+    ],
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
     "PREPROCESSING_HOOKS": ["apps.api_publica.esquema.solo_api_publica"],
