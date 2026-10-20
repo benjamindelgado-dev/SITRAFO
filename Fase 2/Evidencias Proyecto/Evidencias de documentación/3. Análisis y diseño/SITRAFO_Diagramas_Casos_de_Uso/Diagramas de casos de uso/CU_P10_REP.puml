@@ -10,12 +10,16 @@ actor "Brevo" as MAIL <<sistema>>
 actor "Programador de tareas" as CRON <<sistema>>
 actor "mindicador.cl" as UF <<sistema>>
 actor "Nager.Date" as FER <<sistema>>
+actor "Cliente\n(con o sin sesión)" as CLI
+actor "Sistema externo\n(clave de API)" as EXT <<sistema>>
 rectangle "Reportes, integraciones, avisos y tareas programadas" {
   usecase "CU-REP-01\nGenerar y exportar reportes de gestión" as CU_REP_01 <<nuevo>>
   usecase "CU-REP-02\nConsultar registro de integraciones" as CU_REP_02 <<nuevo>>
   usecase "CU-REP-03\nEjecutar tareas diarias" as CU_REP_03 <<nuevo>>
   usecase "CU-REP-04\nConsultar la bandeja de pendientes" as CU_REP_04 <<nuevo>>
   usecase "CU-REP-05\nAvisar por correo el relevo entre roles" as CU_REP_05 <<nuevo>>
+  usecase "CU-REP-06\nConsultar el seguimiento de un pedido\npor la API pública" as CU_REP_06 <<nuevo>>
+  usecase "CU-REP-07\nEstimar el precio referencial\npor la API del cotizador" as CU_REP_07 <<nuevo>>
 }
 ADM --> CU_REP_01
 EJE --> CU_REP_01
@@ -27,4 +31,10 @@ CU_REP_03 --> FER
 UI --> CU_REP_04
 SIS --> CU_REP_05
 CU_REP_05 --> MAIL
+CLI --> CU_REP_06
+EXT --> CU_REP_06
+CLI --> CU_REP_07
+EXT --> CU_REP_07
+CU_REP_06 --> FER
+CU_REP_07 --> UF
 @enduml
