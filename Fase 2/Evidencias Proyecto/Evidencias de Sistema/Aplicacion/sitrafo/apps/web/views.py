@@ -226,6 +226,8 @@ def ficha_modelo(request, pk):
     )
     contexto = _contexto_base(request)
     contexto["modelo"] = modelo
+    # El estimador de la ficha consume la API publica del cotizador
+    contexto["clave_api"] = settings.API_PUBLICA_CLAVE_CLIENTES
     return render(request, "web/ficha_modelo.html", contexto)
 
 
@@ -244,6 +246,10 @@ def solicitar_presupuesto(request):
     modelo_id = request.GET.get("modelo")
     if modelo_id:
         inicial["modelo"] = modelo_id
+    # Cantidad que viene del estimador de precio (API del cotizador)
+    cantidad = request.GET.get("cantidad", "")
+    if cantidad.isdigit() and int(cantidad) > 0:
+        inicial["cantidad"] = int(cantidad)
 
     form = SolicitudPresupuestoForm(
         request.POST or None, cliente=cliente, initial=inicial

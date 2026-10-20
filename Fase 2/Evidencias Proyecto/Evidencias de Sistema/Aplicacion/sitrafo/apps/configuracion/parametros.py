@@ -20,6 +20,7 @@ RANGOS = {
     "comercial.anticipo_pct": (0, 100, False),
     "comercial.margen_defecto_pct": (0, 500, False),
     "comercial.max_unidades_solicitud": (1, 100000, True),
+    "comercial.validez_estimacion_dias": (1, 90, True),
     "produccion.max_horas_diarias": (1, 24, False),
     "produccion.umbral_desviacion_costo_pct": (0, 1000, False),
     "produccion.costo_indirecto_pct": (0, 500, False),
@@ -59,6 +60,12 @@ def anticipo_pct() -> Decimal:
 def vigencia_cotizacion_dias() -> int:
     return int(decimal("comercial.vigencia_cotizacion_dias",
                        _por_defecto("VIGENCIA_COTIZACION_DIAS", 30)))
+
+
+def validez_estimacion_dias() -> int:
+    """Dias de validez del precio referencial de la API del cotizador."""
+    return int(decimal("comercial.validez_estimacion_dias",
+                       _por_defecto("VALIDEZ_ESTIMACION_DIAS", 15)))
 
 
 def max_unidades_solicitud() -> int:

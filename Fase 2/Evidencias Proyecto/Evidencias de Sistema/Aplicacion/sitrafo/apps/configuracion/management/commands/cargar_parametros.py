@@ -28,6 +28,8 @@ PARAMETROS = [
      "Margen aplicado por defecto al costo estimado."),
     ("comercial.max_unidades_solicitud", "500", "numerico", "comercial",
      "Maximo de unidades por solicitud de presupuesto y por linea de cotizacion."),
+    ("comercial.validez_estimacion_dias", "15", "numerico", "comercial",
+     "Dias de validez del precio referencial que entrega la API del cotizador."),
     ("produccion.max_horas_diarias", "12", "numerico", "produccion",
      "Maximo de horas hombre registrables por empleado y dia."),
     ("produccion.umbral_desviacion_costo_pct", "15", "numerico", "produccion",

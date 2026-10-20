@@ -1,0 +1,47 @@
+platform linux -- Python 3.13.16, pytest-8.3.4, pluggy-1.7.0 -- /home/claude/venv/bin/python
+collecting ... collected 43 items
+apps/api_publica/test_cotizador.py::test_sin_clave_responde_401 PASSED
+apps/api_publica/test_cotizador.py::test_la_clave_publica_del_seguimiento_no_puede_cotizar PASSED
+apps/api_publica/test_cotizador.py::test_un_consumidor_externo_sin_restriccion_puede_cotizar PASSED
+apps/api_publica/test_cotizador.py::test_lista_solo_modelos_publicados PASSED
+apps/api_publica/test_cotizador.py::test_usa_el_mismo_costeo_que_las_cotizaciones PASSED
+apps/api_publica/test_cotizador.py::test_no_expone_costos_internos_ni_margen PASSED
+apps/api_publica/test_cotizador.py::test_modelo_sin_costeo_usa_el_precio_base PASSED
+apps/api_publica/test_cotizador.py::test_conversion_a_pesos_y_dolares PASSED
+apps/api_publica/test_cotizador.py::test_varios_modelos_y_uno_sin_precio PASSED
+apps/api_publica/test_cotizador.py::test_sin_ningun_precio_no_hay_total PASSED
+apps/api_publica/test_cotizador.py::test_sin_uf_omite_pesos_y_dolares PASSED
+apps/api_publica/test_cotizador.py::test_plazo_y_validez PASSED
+apps/api_publica/test_cotizador.py::test_validez_configurable_desde_parametros PASSED
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items0] PASSED
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items1] PASSED
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items2] PASSED
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items3] PASSED
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items4] PASSED
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items5] PASSED
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items6] PASSED
+apps/api_publica/test_cotizador.py::test_cada_consulta_queda_registrada PASSED
+apps/api_publica/test_cotizador.py::test_swagger_documenta_el_cotizador PASSED
+apps/api_publica/test_cotizador.py::test_ficha_del_modelo_usa_la_clave_del_portal_de_clientes PASSED
+apps/api_publica/test_cotizador.py::test_la_solicitud_llega_con_la_cantidad_estimada PASSED
+apps/api_publica/tests.py::test_codigo_tiene_formato_y_acepta_variantes PASSED
+apps/api_publica/tests.py::test_codigo_depende_de_la_clave_secreta PASSED
+apps/api_publica/tests.py::test_sin_clave_responde_401 PASSED
+apps/api_publica/tests.py::test_clave_invalida_responde_401 PASSED
+apps/api_publica/tests.py::test_codigo_incorrecto_y_numero_inexistente_dan_el_mismo_404 PASSED
+apps/api_publica/tests.py::test_limite_de_solicitudes_por_clave PASSED
+apps/api_publica/tests.py::test_la_api_interna_sigue_exigiendo_usuario PASSED
+apps/api_publica/tests.py::test_pedido_recien_recibido PASSED
+apps/api_publica/tests.py::test_avance_durante_la_fabricacion PASSED
+apps/api_publica/tests.py::test_la_etapa_la_marca_la_ot_mas_atrasada PASSED
+apps/api_publica/tests.py::test_pedido_entregado PASSED
+apps/api_publica/tests.py::test_pedido_anulado PASSED
+apps/api_publica/tests.py::test_fecha_calculada_en_dias_habiles PASSED
+apps/api_publica/tests.py::test_feriado_desplaza_la_fecha PASSED
+apps/api_publica/tests.py::test_fecha_comprometida_atrasada PASSED
+apps/api_publica/tests.py::test_cada_consulta_queda_registrada_sin_el_codigo PASSED
+apps/api_publica/tests.py::test_documentacion_swagger_solo_muestra_la_api_publica PASSED
+apps/api_publica/tests.py::test_pagina_publica_no_exige_sesion_y_usa_la_clave_del_portal PASSED
+apps/api_publica/tests.py::test_mis_pedidos_muestra_el_codigo_de_seguimiento PASSED
+============================== 43 passed in 4.52s ==============================
+279 passed in 31.26s

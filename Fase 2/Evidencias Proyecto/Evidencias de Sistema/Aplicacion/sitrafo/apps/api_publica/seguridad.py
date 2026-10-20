@@ -50,6 +50,28 @@ class TieneClaveApi(BasePermission):
         return bool(request.auth)
 
 
+def alcances_de(consumidor: str) -> set[str] | None:
+    """Servicios que puede usar el consumidor; None significa todos."""
+    alcances = settings.API_PUBLICA_ALCANCES.get(consumidor)
+    return None if alcances is None else set(alcances)
+
+
+class TieneAlcance(BasePermission):
+    """
+    Cada clave puede usar solo los servicios que tiene asignados.
+
+    La clave del portal publico (pagina de seguimiento sin sesion) queda
+    visible en el navegador de cualquier visitante, por lo que solo sirve
+    para el seguimiento; el cotizador exige la clave del portal de clientes.
+    """
+
+    message = "Su clave de API no tiene acceso a este servicio."
+
+    def has_permission(self, request, view):
+        alcances = alcances_de(request.auth)
+        return alcances is None or getattr(view, "alcance", None) in alcances
+
+
 class LimitePorClave(SimpleRateThrottle):
     """Limite de solicitudes por consumidor (por defecto, 60 por minuto)."""
 

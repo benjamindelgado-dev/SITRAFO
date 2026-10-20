@@ -1,0 +1,52 @@
+@startuml SEC-10_Seguimiento_API
+title SEC-10 — Consulta del seguimiento de un pedido por la API pública (RF-OT-09, RF-OT-12)
+!include _skin_secuencia.txt
+
+actor "Cliente o\nsistema externo" as CL
+boundary "Página seguimiento-pedido/\n(o sistema externo)" as P
+box "Servidor SITRAFO (Render)" #F7F9FC
+  boundary "SeguimientoView\nGET seguimiento/{numero}/" as V
+  control "ClaveApiAutenticacion\nTieneClaveApi · TieneAlcance" as SEG
+  control "LimitePorClave\n(60/min)" as LIM
+  control "codigos\ncodigo_valido()" as COD
+  control "seguimiento\nestado_pedido()" as EP
+  entity "OrdenCompra\nOrdenTrabajo" as OC
+  database "PostgreSQL" as DB
+end box
+
+CL -> P : ingresa número de orden\ny código de seguimiento
+P -> V : GET /api/publica/v1/seguimiento/OC-2026-0001/?codigo=…\nX-API-Key: clave del consumidor
+V -> SEG : authenticate (encabezado X-API-Key)
+alt clave ausente o inválida
+  SEG --> V : 401
+else clave sin el servicio «seguimiento»
+  SEG --> V : 403
+else autorizada
+  V -> LIM : allow_request(consumidor)
+  alt más de 60 consultas en el último minuto
+    LIM --> V : 429
+  else dentro del límite
+    V -> OC : filter(numero)
+    OC -> DB : SELECT orden_compra
+    V -> COD : codigo_valido(orden, código)
+    COD -> COD : HMAC-SHA256(clave secreta,\n"seguimiento:id:número")\ncompare_digest
+    alt orden inexistente o código incorrecto
+      COD --> V : no válido
+      V --> V : 404 (mismo mensaje en ambos casos)
+    else código válido
+      V -> EP : estado_pedido(orden)
+      EP -> DB : SELECT órdenes de trabajo, tareas,\nhistorial de estados, feriados
+      EP -> EP : etapa = la OT más atrasada\navance = 15 % + 60 % × avance promedio\nentrega en días hábiles (comprometida o calculada)
+      EP --> V : etapa, avance, entrega, productos, historial
+      V --> V : 200 (sin montos ni datos del cliente)
+    end
+  end
+end
+V -> DB : INSERT log_integracion\n(api_seguimiento, ruta sin el código,\nconsumidor, código HTTP, latencia)
+V --> P : respuesta JSON
+P --> CL : barra de avance, etapas,\nfecha estimada e historial
+note over P, V
+  La clave «portal-web» sólo tiene el servicio de seguimiento,
+  por lo que puede quedar visible en la página pública.
+end note
+@enduml

@@ -8,7 +8,12 @@ aplicacion de escritorio.
 """
 import time
 
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+)
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,20 +22,33 @@ from apps.comercial.models import OrdenCompra
 from apps.configuracion.models import LogIntegracion
 
 from .codigos import codigo_valido
+from .cotizador import estimar, modelos_cotizables
 from .seguimiento import estado_pedido
-from .seguridad import ClaveApiAutenticacion, LimitePorClave, TieneClaveApi
-from .serializers import ErrorSerializer, SeguimientoSerializer
+from .seguridad import ClaveApiAutenticacion, LimitePorClave, TieneAlcance, TieneClaveApi
+from .serializers import (
+    ErrorSerializer,
+    EstimacionEntradaSerializer,
+    EstimacionSerializer,
+    ModeloCatalogoSerializer,
+    SeguimientoSerializer,
+)
 
 NO_ENCONTRADO = "No existe un pedido con ese numero y codigo de seguimiento."
+RESPUESTAS_ACCESO = {
+    401: OpenApiResponse(ErrorSerializer, description="Falta la clave de API o no es valida."),
+    403: OpenApiResponse(ErrorSerializer, description="La clave no tiene acceso a este servicio."),
+    429: OpenApiResponse(ErrorSerializer, description="Se supero el limite de solicitudes."),
+}
 
 
 class VistaApiPublica(APIView):
-    """Base comun: clave de API, limite de solicitudes y registro de uso."""
+    """Base comun: clave de API, alcance, limite de solicitudes y registro de uso."""
 
     authentication_classes = [ClaveApiAutenticacion]
-    permission_classes = [TieneClaveApi]
+    permission_classes = [TieneClaveApi, TieneAlcance]
     throttle_classes = [LimitePorClave]
     servicio = "api_publica"
+    alcance = None
 
     def dispatch(self, request, *args, **kwargs):
         inicio = time.monotonic()
@@ -58,6 +76,7 @@ class VistaApiPublica(APIView):
 
 class SeguimientoView(VistaApiPublica):
     servicio = "api_seguimiento"
+    alcance = "seguimiento"
 
     @extend_schema(
         operation_id="consultar_seguimiento",
@@ -76,9 +95,8 @@ class SeguimientoView(VistaApiPublica):
         ],
         responses={
             200: SeguimientoSerializer,
-            401: OpenApiResponse(ErrorSerializer, description="Falta la clave de API o no es valida."),
             404: OpenApiResponse(ErrorSerializer, description="Numero o codigo incorrectos."),
-            429: OpenApiResponse(ErrorSerializer, description="Se supero el limite de solicitudes."),
+            **RESPUESTAS_ACCESO,
         },
     )
     def get(self, request, numero):
@@ -89,3 +107,53 @@ class SeguimientoView(VistaApiPublica):
         if orden is None or not codigo_valido(orden, request.query_params.get("codigo", "")):
             raise NotFound(NO_ENCONTRADO)
         return Response(SeguimientoSerializer(estado_pedido(orden)).data)
+
+
+class ModelosCotizadorView(VistaApiPublica):
+    servicio = "api_cotizador"
+    alcance = "cotizador"
+
+    @extend_schema(
+        operation_id="listar_modelos",
+        summary="Listar los modelos que se pueden cotizar",
+        description="Modelos publicados en el catalogo, con el codigo que se usa en la estimacion.",
+        tags=["Cotizador"],
+        responses={200: ModeloCatalogoSerializer(many=True), **RESPUESTAS_ACCESO},
+    )
+    def get(self, request):
+        return Response(ModeloCatalogoSerializer(modelos_cotizables(), many=True).data)
+
+
+class EstimacionView(VistaApiPublica):
+    servicio = "api_cotizador"
+    alcance = "cotizador"
+
+    @extend_schema(
+        operation_id="estimar_precio",
+        summary="Estimar el precio referencial de uno o mas modelos",
+        description=(
+            "Calcula el precio referencial de hasta 10 modelos con su cantidad, en UF, pesos "
+            "y dolares con los indicadores del dia, junto con la fecha estimada de entrega en "
+            "dias habiles y la validez de la estimacion. Usa el mismo costeo que el area "
+            "comercial aplica en las cotizaciones, pero no expone costos internos ni margen. "
+            "No crea ningun documento: para cotizar formalmente se usa el enlace "
+            "solicitar_presupuesto de cada item."
+        ),
+        tags=["Cotizador"],
+        request=EstimacionEntradaSerializer,
+        examples=[OpenApiExample(
+            "Dos modelos",
+            value={"items": [{"modelo": "TD-100", "cantidad": 2},
+                             {"modelo": "TD-250", "cantidad": 1}]},
+            request_only=True,
+        )],
+        responses={
+            200: EstimacionSerializer,
+            400: OpenApiResponse(description="Modelo inexistente, cantidad o items invalidos."),
+            **RESPUESTAS_ACCESO,
+        },
+    )
+    def post(self, request):
+        entrada = EstimacionEntradaSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        return Response(EstimacionSerializer(estimar(entrada.validated_data["items"])).data)
