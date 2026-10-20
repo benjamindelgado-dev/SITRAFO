@@ -1,0 +1,51 @@
+@startuml SEC-11_Cotizador_API
+title SEC-11 — Estimación de precio por la API pública del cotizador (RF-COM-18)
+!include _skin_secuencia.txt
+
+actor "Cliente o\nsistema externo" as CL
+boundary "Ficha del modelo\n(o sistema externo)" as P
+box "Servidor SITRAFO (Render)" #F7F9FC
+  boundary "EstimacionView\nPOST cotizador/estimacion/" as V
+  control "ClaveApiAutenticacion\nTieneAlcance · LimitePorClave" as SEG
+  control "EstimacionEntradaSerializer" as SER
+  control "cotizador\nestimar()" as EST
+  control "comercial.services\ncostear_modelo()" as COS
+  control "indicadores · feriados\n· parametros" as CFG
+  database "PostgreSQL" as DB
+end box
+
+CL -> P : indica las unidades\ny presiona «Estimar»
+P -> V : POST /api/publica/v1/cotizador/estimacion/\nX-API-Key · {"items": [{"modelo": "TD-100", "cantidad": 3}]}
+V -> SEG : clave válida, servicio «cotizador», límite 60/min
+alt sin clave (401), sin el servicio (403) o sobre el límite (429)
+  SEG --> V : rechazo
+else autorizada
+  V -> SER : is_valid()
+  alt modelo inexistente o no publicado, cantidad fuera de rango,\nmás de 10 ítems o modelo repetido
+    SER --> V : 400 con el campo que falla
+  else entrada válida
+    V -> EST : estimar(items)
+    EST -> CFG : valor_uf() y dólar observado
+    CFG -> DB : SELECT indicador_economico
+    loop por cada ítem
+      EST -> COS : costear_modelo(modelo)
+      COS -> DB : SELECT bom_modelo, precio_material,\ntarea_estandar_modelo, tarifas
+      opt sin lista de materiales ni tareas
+        COS -> DB : SELECT precio_base_modelo
+      end
+      COS --> EST : precio sugerido en UF\n(materiales + horas) × indirectos × margen,\no precio base, o sin precio
+    end
+    EST -> EST : subtotales en UF, total en pesos y dólares
+    EST -> CFG : plazo_en_dias_habiles(30)\nvalidez_estimacion_dias()
+    EST --> V : precio, totales, plazo, validez, avisos
+    V --> V : 200 (sin costos internos ni margen)
+  end
+end
+V -> DB : INSERT log_integracion (api_cotizador)
+V --> P : respuesta JSON
+P --> CL : precio unitario, total en UF, pesos y dólares,\nentrega estimada, validez y enlace\n«Pedir presupuesto por estas unidades»
+note over EST, COS
+  Es el mismo costeo que usa el ejecutivo comercial en las
+  cotizaciones. La estimación no crea documentos.
+end note
+@enduml
