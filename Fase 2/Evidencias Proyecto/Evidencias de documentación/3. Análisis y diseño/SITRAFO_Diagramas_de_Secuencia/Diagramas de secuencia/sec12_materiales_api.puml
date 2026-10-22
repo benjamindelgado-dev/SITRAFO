@@ -1,0 +1,44 @@
+@startuml SEC-12_Materiales_API
+title SEC-12 — Consulta de materiales a reponer por la API de disponibilidad (RF-INV-09)
+!include _skin_secuencia.txt
+
+actor "Proveedor autorizado\no sistema externo" as PR
+boundary "Sistema del proveedor" as P
+box "Servidor SITRAFO (Render)" #F7F9FC
+  boundary "ReposicionMaterialesView\nGET materiales/reposicion/" as V
+  control "ClaveApiAutenticacion\nTieneAlcance · LimitePorClave" as SEG
+  control "materiales\nmateriales_a_reponer()" as MAT
+  control "ReposicionSerializer" as SER
+  database "PostgreSQL" as DB
+end box
+
+PR -> P : solicita los materiales a reponer
+P -> V : GET /api/publica/v1/materiales/reposicion/\nX-API-Key (clave «proveedores»)
+V -> SEG : clave válida, servicio «materiales», límite 60/min
+alt sin clave (401), sin el servicio (403) o sobre el límite (429)
+  SEG --> V : rechazo, sin datos de inventario
+else autorizada
+  V -> MAT : materiales_a_reponer()
+  MAT -> DB : SELECT material, SUM(cantidad)\nFROM movimiento_inventario\nGROUP BY material (todas las bodegas)
+  MAT -> DB : SELECT material activo\ncon stock_minimo definido
+  loop por cada material activo
+    alt stock actual < stock mínimo
+      MAT -> MAT : sugerida = 2 × stock mínimo − stock actual\n(en unidades, redondeo hacia arriba)
+    else stock suficiente
+      MAT -> MAT : se omite
+    end
+  end
+  MAT --> V : materiales ordenados por código,\ntotal y fecha y hora del cálculo
+  V -> SER : serializar
+  SER --> V : código, nombre, categoría, unidad,\nstock mínimo y cantidad sugerida
+  V --> V : 200 (lista vacía si no hay materiales bajo el mínimo)
+end
+V -> DB : INSERT log_integracion (api_materiales)
+V --> P : respuesta JSON
+P --> PR : materiales y cantidades\npara preparar el despacho
+note over MAT, DB
+  Es el mismo cálculo de stock que la alerta de reposición del
+  escritorio (CU-INV-06): el saldo no se almacena, se suma el kardex.
+  La respuesta no incluye costos, precios, bodegas ni stock actual.
+end note
+@enduml
