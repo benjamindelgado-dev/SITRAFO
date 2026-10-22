@@ -23,6 +23,7 @@ from apps.configuracion.models import LogIntegracion
 
 from .codigos import codigo_valido
 from .cotizador import estimar, modelos_cotizables
+from .materiales import materiales_a_reponer
 from .seguimiento import estado_pedido
 from .seguridad import ClaveApiAutenticacion, LimitePorClave, TieneAlcance, TieneClaveApi
 from .serializers import (
@@ -30,6 +31,7 @@ from .serializers import (
     EstimacionEntradaSerializer,
     EstimacionSerializer,
     ModeloCatalogoSerializer,
+    ReposicionSerializer,
     SeguimientoSerializer,
 )
 
@@ -157,3 +159,23 @@ class EstimacionView(VistaApiPublica):
         entrada = EstimacionEntradaSerializer(data=request.data)
         entrada.is_valid(raise_exception=True)
         return Response(EstimacionSerializer(estimar(entrada.validated_data["items"])).data)
+
+
+class ReposicionMaterialesView(VistaApiPublica):
+    servicio = "api_materiales"
+    alcance = "materiales"
+
+    @extend_schema(
+        operation_id="materiales_a_reponer",
+        summary="Consultar los materiales bajo su stock minimo",
+        description=(
+            "Devuelve los materiales cuyo stock actual, calculado desde el kardex, esta bajo "
+            "su stock minimo, con la cantidad sugerida de reposicion (la que deja el stock en "
+            "el doble del minimo). Pensado para que un proveedor autorizado prepare el "
+            "despacho a tiempo. No expone costos, precios, bodegas ni movimientos."
+        ),
+        tags=["Disponibilidad de materiales"],
+        responses={200: ReposicionSerializer, **RESPUESTAS_ACCESO},
+    )
+    def get(self, request):
+        return Response(ReposicionSerializer(materiales_a_reponer()).data)

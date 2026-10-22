@@ -153,3 +153,25 @@ class EstimacionSerializer(serializers.Serializer):
     valida_hasta = serializers.DateField()
     avisos = serializers.ListField(child=serializers.CharField())
     consultado_en = serializers.DateTimeField()
+
+
+# --------------------------------------------------------------------------
+# Disponibilidad de materiales
+# --------------------------------------------------------------------------
+class MaterialReposicionSerializer(serializers.Serializer):
+    codigo = serializers.CharField()
+    nombre = serializers.CharField()
+    categoria = serializers.CharField()
+    unidad = serializers.CharField(help_text="un, kg, m, m2 o l.")
+    stock_minimo = serializers.DecimalField(14, 2)
+    cantidad_sugerida = serializers.DecimalField(
+        14, 2, help_text="Cantidad que conviene despachar para dejar el stock en el doble "
+                         "del minimo.")
+
+
+class ReposicionSerializer(serializers.Serializer):
+    materiales = MaterialReposicionSerializer(
+        many=True, help_text="Materiales bajo su stock minimo. Lista vacia si no hay.")
+    total = serializers.IntegerField()
+    criterio = serializers.CharField()
+    calculado_en = serializers.DateTimeField(help_text="Fecha y hora del calculo.")
