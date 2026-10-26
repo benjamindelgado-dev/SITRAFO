@@ -1,0 +1,9 @@
+Verificación manual de la alerta 40024 de OWASP ZAP (inyección SQL basada en tiempo)
+Formulario: POST /clave/recuperar/ · campo email · 6 repeticiones por valor · servidor sin otra carga
+Fecha: 14-10-2026
+
+valor normal HTTP 302  mediana     13 ms  máximo     14 ms
+carga 1e8    HTTP 200  mediana     13 ms  máximo     14 ms
+carga 1e9    HTTP 200  mediana     13 ms  máximo     19 ms
+
+Conclusión: los tiempos no cambian con la carga de ZAP; falso positivo.

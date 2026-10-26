@@ -1,0 +1,7 @@
+Prueba de carga SITRAFO — 14-10-2026 01:07
+Destino: https://localhost:8443
+Usuarios concurrentes: 30 · peticiones por usuario: 20
+Peticiones totales: 600 en 35.8 s (16.8 por segundo)
+Mediana: 0.899 s · Percentil 95: 1.272 s · Maximo: 18.700 s
+Errores (5xx o sin respuesta): 0 (0.0 %)
+Resultado: CUMPLE (percentil 95 <= 2.0 s y sin errores)

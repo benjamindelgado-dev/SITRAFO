@@ -1,43 +1,122 @@
-# SITRAFO - Sistema Integral de Gestión Comercial y Productiva para Transformadores Eléctricos
+# SITRAFO
 
-## 📝 Descripción
-SITRAFO es un sistema integral diseñado para solucionar la desconexión existente en la cadena comercial-productiva de las pequeñas y medianas empresas fabricantes de transformadores eléctricos. 
+**Sistema Integral de Gestión Comercial y Productiva para Fabricación de Transformadores Eléctricos**
 
-Actualmente, estas empresas gestionan sus cotizaciones en planillas, las órdenes de compra por correo y el avance de fabricación en papel, lo que genera falta de trazabilidad, costeo impreciso y nula visibilidad para el cliente. SITRAFO resuelve este problema conectando todo el flujo: desde el catálogo de productos y la solicitud de presupuesto, pasando por la cotización, orden de compra y orden de trabajo (con captura de materiales y horas hombre), hasta el control de calidad y el pago en línea.
+Proyecto Capstone (APT122 · PTY4614) de Ingeniería en Informática, Duoc UC Sede Puente Alto.
 
-**¿A quién va dirigido?**
-A pymes manufactureras chilenas del rubro eléctrico, impactando positivamente a sus áreas comerciales, de producción y a sus clientes finales, quienes ahora tendrán visibilidad completa del estado de sus pedidos.
+- Sistema publicado: https://sitrafo.onrender.com
+- Documentación de la API pública (Swagger): https://sitrafo.onrender.com/api/publica/v1/docs/
 
-## 🛠️ Tecnologías utilizadas
-*   **Backend & API:** Python, Django, Django REST Framework (DRF)
-*   **Base de Datos:** PostgreSQL
-*   **Aplicación Web (Cliente):** HTML5, Bootstrap 5, htmx
-*   **Aplicación de Escritorio (Administración):** Python, PySide6
-*   **Infraestructura & DevOps:** Git, GitHub, Docker, GitHub Actions, Despliegue en Render/Cloud Run
-*   **Pruebas & Seguridad:** pytest-django, Selenium, OWASP ZAP
-*   **Integraciones Externas (APIs):** PayPal Sandbox, mindicador.cl, Feriados de Chile, Correo transaccional, Geocodificación.
+## Descripción
 
-## 🚀 Instrucciones para ejecutar localmente
-*(Nota: Estas instrucciones se detallarán durante el Sprint 0 una vez configurado el entorno Docker)*
-1. Clonar el repositorio: `git clone https://github.com/benjamindelgado-dev/SITRAFO.git`
-2. Navegar a la carpeta del proyecto.
-3. Levantar los contenedores: `docker-compose up -d`
-4. Aplicar las migraciones de la base de datos.
-5. El sistema web estará disponible en `http://localhost:8000` y la API en `http://localhost:8000/api/`.
+Las pymes chilenas que fabrican transformadores eléctricos a pedido cotizan en planillas, reciben las órdenes de compra por correo y siguen la fabricación en papel. Eso se traduce en falta de trazabilidad, costeo impreciso y clientes que no saben en qué estado está su pedido.
 
-## 👥 Integrantes del equipo y roles
-*   **Benjamín Delgado:** Líder de Proyecto y Product Owner. Responsable de la arquitectura, el núcleo del backend, seguridad, roles, auditoría, integraciones externas y la aplicación de escritorio.
-*   **Camila Olivares:** Scrum Master. Responsable del proceso comercial y de la interfaz web orientada al cliente.
-*   **Milko Soto:** Desarrollador y Responsable de Calidad. A cargo del proceso productivo, el inventario, los controles de calidad, el entorno Docker y pipeline CI/CD.
+SITRAFO conecta todo el ciclo en un solo flujo trazable:
 
-## ⚙️ Metodología de trabajo
-El proyecto se desarrolla bajo el marco de trabajo **Scrum**, aplicado desde la Fase 1 hasta la Fase 3 del ramo Capstone (18 semanas). 
-*   **Gestión:** Trabajo organizado por Sprints con un Product Backlog priorizado, Sprint Backlog y un Tablero Kanban.
-*   **Desarrollo:** El reparto de tareas se organiza por módulos verticales (modelo, API, interfaz y pruebas) para asegurar la contribución individual demostrable de cada integrante.
-*   **Trazabilidad:** Cada commit en este repositorio estará referenciado a las historias de usuario correspondientes.
+1. El cliente solicita un presupuesto con la especificación técnica del transformador.
+2. El área comercial cotiza con el costo calculado desde la receta del modelo y la UF del día.
+3. El cliente acepta en el portal: la orden de compra se genera sola.
+4. El cliente paga el anticipo con PayPal: la orden se confirma y se generan las órdenes de trabajo.
+5. El taller registra horas y materiales; el sistema compara el costo real con el estimado.
+6. Calidad ejecuta los ensayos del protocolo y aprueba la orden para que se pueda cerrar.
+7. Se cobra el saldo y se registra la entrega.
 
-## 🏗️ Arquitectura de la solución
-SITRAFO utiliza una arquitectura de **tres componentes sobre un backend común**:
-1.  **API REST (Núcleo):** Construida con Django REST Framework sobre PostgreSQL. Es el único punto de acceso y manipulación de datos, garantizando la seguridad y centralización de la lógica de negocio.
-2.  **Aplicación Web:** Servida por Django (con plantillas HTML, Bootstrap y htmx), orientada a los clientes para la solicitud de presupuestos y seguimiento.
-3.  **Aplicación de Escritorio:** Desarrollada en PySide6, orientada a la administración interna. **Regla de negocio estricta:** La app de escritorio administra el sistema consumiendo exclusivamente la API REST, sin conexión directa a la base de datos.
+## Arquitectura
+
+Tres componentes sobre un backend común:
+
+| Componente | Tecnología | Para quién |
+|---|---|---|
+| API REST | Django, Django REST Framework, PostgreSQL | Único punto de acceso a los datos |
+| Aplicación web | Django, Bootstrap 5, htmx | Clientes |
+| Aplicación de escritorio | PySide6 (SITRAFO.exe) | Personal interno, por rol |
+
+**Regla de arquitectura:** la aplicación de escritorio nunca accede directo a la base de datos; toda operación pasa por la API REST autenticada, igual que la web.
+
+### APIs
+
+| Tipo | API | Uso |
+|---|---|---|
+| Propia | Seguimiento de pedidos | Estado, avance y fecha estimada de entrega, también sin iniciar sesión |
+| Propia | Cotizador | Precio referencial de uno o más modelos, con plazo de entrega |
+| Propia | Disponibilidad de materiales | Materiales bajo el stock mínimo para proveedores autorizados |
+| Externa | PayPal (Sandbox) | Pago del anticipo y del saldo |
+| Externa | mindicador.cl | UF y dólar del día |
+| Externa | Nager.Date | Feriados de Chile para los plazos en días hábiles |
+| Externa | Brevo | Correo transaccional (cotizaciones, cobros y avisos) |
+| Externa | Nominatim (OpenStreetMap) | Validación de direcciones |
+
+Las APIs propias se consumen con una clave en el encabezado `X-API-Key`, cada clave tiene solo los servicios que se le asignan y un límite de consultas por minuto, y cada consulta queda registrada. El detalle está en el manual técnico TEC-01, sección 10.
+
+## Estructura del repositorio
+
+```
+Fase 1/   Definición del proyecto (evidencias individuales y grupales)
+Fase 2/
+  Evidencias Individuales/   Diarios de reflexión
+  Evidencias Grupales/       Guías 2.4 y 2.6
+  Evidencias Proyecto/
+    Evidencias de documentación/
+      1. Inicio del proyecto/         Acta de constitución, ERS-01, visión del producto VIS-01
+      2. Metodología Scrum/           MET-01, backlogs, burndown, historias, actas y dailies
+      3. Análisis y diseño/           CU-01, MER-01, ARQ-01, SEC-01, MOC-01 y diagramas
+      4. Evidencias de funcionamiento/ EVI-01 y capturas
+      5. Manual de usuario/           MAN-01
+      6. Manual técnico/              TEC-01
+    Evidencias de Sistema/
+      Aplicacion/sitrafo/   Código de la aplicación (API, web y escritorio)
+      Base de Datos/        Esquema, datos de demostración y diccionario de datos
+      Pruebas de Calidad/   Plan de pruebas PPR-01, informes PRU-01 y QA-01 y sus evidencias
+Fase 3/   Cierre y defensa
+render.yaml   Despliegue en Render (web, tareas diarias y base de datos)
+```
+
+## Cómo ejecutarlo en local
+
+Requisitos: Git y Docker Desktop.
+
+```powershell
+git clone https://github.com/benjamindelgado-dev/SITRAFO.git
+cd "SITRAFO\Fase 2\Evidencias Proyecto\Evidencias de Sistema\Aplicacion\sitrafo"
+copy .env.example .env
+docker compose up -d --build
+docker compose exec web python manage.py migrate
+docker compose exec web python manage.py cargar_estados
+docker compose exec web python manage.py cargar_parametros
+docker compose exec web python manage.py cargar_roles --usuarios-demo
+docker compose exec web python manage.py cargar_demo
+docker compose exec web python manage.py cargar_demo_produccion
+```
+
+La web queda en http://localhost:8000 y la API pública en http://localhost:8000/api/publica/v1/docs/. La aplicación de escritorio, la configuración completa y el despliegue en Render están en el manual técnico TEC-01 y en el [README de la aplicación](Fase%202/Evidencias%20Proyecto/Evidencias%20de%20Sistema/Aplicacion/sitrafo/README.md).
+
+## Pruebas
+
+- 291 pruebas automatizadas (pytest), 55 de ellas de las APIs propias, con 93 % de cobertura.
+- GitHub Actions ejecuta ruff, la revisión de migraciones y las pruebas en cada cambio; Render publica una versión solo si la integración continua termina en verde.
+- Seguridad con OWASP ZAP, prueba de carga y pruebas de interfaz con Selenium: informes PRU-01 (producción) y QA-01 (réplica local).
+
+```powershell
+docker compose exec web pytest
+```
+
+## Metodología
+
+Scrum, en cuatro sprints:
+
+| Sprint | Período | Objetivo |
+|---|---|---|
+| 0 | Fase 1 | Análisis, arquitectura, backlog y preparación técnica |
+| 1 | 14 al 26 de septiembre | Las 14 historias del sistema |
+| 2 | 29 de septiembre al 15 de octubre | Despliegue, documentación y pruebas de calidad |
+| 3 | 16 al 31 de octubre | APIs propias, verificación y cierre de la Fase 2 |
+
+Los artefactos (Product Backlog, Sprint Backlog, Burndown, actas y registro de dailies) están en `Fase 2/Evidencias Proyecto/Evidencias de documentación/2. Metodología Scrum`.
+
+## Equipo
+
+| Integrante | Rol |
+|---|---|
+| Benjamín Delgado Bravo | Líder de Proyecto · Product Owner |
+| Camila Olivares | Scrum Master |
+| Milko Soto | Desarrollador · Responsable de Calidad del Producto |
