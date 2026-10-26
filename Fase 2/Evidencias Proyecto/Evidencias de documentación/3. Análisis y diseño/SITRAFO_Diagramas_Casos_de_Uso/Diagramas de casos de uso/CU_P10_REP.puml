@@ -12,6 +12,7 @@ actor "mindicador.cl" as UF <<sistema>>
 actor "Nager.Date" as FER <<sistema>>
 actor "Cliente\n(con o sin sesión)" as CLI
 actor "Sistema externo\n(clave de API)" as EXT <<sistema>>
+actor "Proveedor autorizado\n(clave de API)" as PROV <<sistema>>
 rectangle "Reportes, integraciones, avisos y tareas programadas" {
   usecase "CU-REP-01\nGenerar y exportar reportes de gestión" as CU_REP_01 <<nuevo>>
   usecase "CU-REP-02\nConsultar registro de integraciones" as CU_REP_02 <<nuevo>>
@@ -20,6 +21,7 @@ rectangle "Reportes, integraciones, avisos y tareas programadas" {
   usecase "CU-REP-05\nAvisar por correo el relevo entre roles" as CU_REP_05 <<nuevo>>
   usecase "CU-REP-06\nConsultar el seguimiento de un pedido\npor la API pública" as CU_REP_06 <<nuevo>>
   usecase "CU-REP-07\nEstimar el precio referencial\npor la API del cotizador" as CU_REP_07 <<nuevo>>
+  usecase "CU-REP-08\nConsultar los materiales a reponer\npor la API de disponibilidad" as CU_REP_08 <<nuevo>>
 }
 ADM --> CU_REP_01
 EJE --> CU_REP_01
@@ -37,4 +39,6 @@ CLI --> CU_REP_07
 EXT --> CU_REP_07
 CU_REP_06 --> FER
 CU_REP_07 --> UF
+PROV --> CU_REP_08
+EXT --> CU_REP_08
 @enduml
