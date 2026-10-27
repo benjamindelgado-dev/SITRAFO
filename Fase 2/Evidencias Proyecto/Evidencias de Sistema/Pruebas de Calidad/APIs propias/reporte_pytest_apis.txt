@@ -1,47 +1,254 @@
-platform linux -- Python 3.13.16, pytest-8.3.4, pluggy-1.7.0 -- /home/claude/venv/bin/python
-collecting ... collected 43 items
-apps/api_publica/test_cotizador.py::test_sin_clave_responde_401 PASSED
-apps/api_publica/test_cotizador.py::test_la_clave_publica_del_seguimiento_no_puede_cotizar PASSED
-apps/api_publica/test_cotizador.py::test_un_consumidor_externo_sin_restriccion_puede_cotizar PASSED
-apps/api_publica/test_cotizador.py::test_lista_solo_modelos_publicados PASSED
-apps/api_publica/test_cotizador.py::test_usa_el_mismo_costeo_que_las_cotizaciones PASSED
-apps/api_publica/test_cotizador.py::test_no_expone_costos_internos_ni_margen PASSED
-apps/api_publica/test_cotizador.py::test_modelo_sin_costeo_usa_el_precio_base PASSED
-apps/api_publica/test_cotizador.py::test_conversion_a_pesos_y_dolares PASSED
-apps/api_publica/test_cotizador.py::test_varios_modelos_y_uno_sin_precio PASSED
-apps/api_publica/test_cotizador.py::test_sin_ningun_precio_no_hay_total PASSED
-apps/api_publica/test_cotizador.py::test_sin_uf_omite_pesos_y_dolares PASSED
-apps/api_publica/test_cotizador.py::test_plazo_y_validez PASSED
-apps/api_publica/test_cotizador.py::test_validez_configurable_desde_parametros PASSED
-apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items0] PASSED
-apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items1] PASSED
-apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items2] PASSED
-apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items3] PASSED
-apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items4] PASSED
-apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items5] PASSED
-apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items6] PASSED
-apps/api_publica/test_cotizador.py::test_cada_consulta_queda_registrada PASSED
-apps/api_publica/test_cotizador.py::test_swagger_documenta_el_cotizador PASSED
-apps/api_publica/test_cotizador.py::test_ficha_del_modelo_usa_la_clave_del_portal_de_clientes PASSED
-apps/api_publica/test_cotizador.py::test_la_solicitud_llega_con_la_cantidad_estimada PASSED
-apps/api_publica/tests.py::test_codigo_tiene_formato_y_acepta_variantes PASSED
-apps/api_publica/tests.py::test_codigo_depende_de_la_clave_secreta PASSED
-apps/api_publica/tests.py::test_sin_clave_responde_401 PASSED
-apps/api_publica/tests.py::test_clave_invalida_responde_401 PASSED
-apps/api_publica/tests.py::test_codigo_incorrecto_y_numero_inexistente_dan_el_mismo_404 PASSED
-apps/api_publica/tests.py::test_limite_de_solicitudes_por_clave PASSED
-apps/api_publica/tests.py::test_la_api_interna_sigue_exigiendo_usuario PASSED
-apps/api_publica/tests.py::test_pedido_recien_recibido PASSED
-apps/api_publica/tests.py::test_avance_durante_la_fabricacion PASSED
-apps/api_publica/tests.py::test_la_etapa_la_marca_la_ot_mas_atrasada PASSED
-apps/api_publica/tests.py::test_pedido_entregado PASSED
-apps/api_publica/tests.py::test_pedido_anulado PASSED
-apps/api_publica/tests.py::test_fecha_calculada_en_dias_habiles PASSED
-apps/api_publica/tests.py::test_feriado_desplaza_la_fecha PASSED
-apps/api_publica/tests.py::test_fecha_comprometida_atrasada PASSED
-apps/api_publica/tests.py::test_cada_consulta_queda_registrada_sin_el_codigo PASSED
-apps/api_publica/tests.py::test_documentacion_swagger_solo_muestra_la_api_publica PASSED
-apps/api_publica/tests.py::test_pagina_publica_no_exige_sesion_y_usa_la_clave_del_portal PASSED
-apps/api_publica/tests.py::test_mis_pedidos_muestra_el_codigo_de_seguimiento PASSED
-============================== 43 passed in 4.52s ==============================
-279 passed in 31.26s
+﻿============================= test session starts ==============================
+platform linux -- Python 3.12.15, pytest-8.3.4, pluggy-1.7.0 -- /usr/local/bin/python3.12
+cachedir: .pytest_cache
+django: version: 5.1.6, settings: config.settings.test (from option)
+rootdir: /app
+configfile: pytest.ini
+plugins: cov-6.0.0, django-4.9.0, Faker-40.43.0
+collecting ... collected 55 items
+
+apps/api_publica/test_cotizador.py::test_sin_clave_responde_401 PASSED   [  1%]
+apps/api_publica/test_cotizador.py::test_la_clave_publica_del_seguimiento_no_puede_cotizar PASSED [  3%]
+apps/api_publica/test_cotizador.py::test_un_consumidor_externo_sin_restriccion_puede_cotizar PASSED [  5%]
+apps/api_publica/test_cotizador.py::test_lista_solo_modelos_publicados PASSED [  7%]
+apps/api_publica/test_cotizador.py::test_usa_el_mismo_costeo_que_las_cotizaciones PASSED [  9%]
+apps/api_publica/test_cotizador.py::test_no_expone_costos_internos_ni_margen PASSED [ 10%]
+apps/api_publica/test_cotizador.py::test_modelo_sin_costeo_usa_el_precio_base PASSED [ 12%]
+apps/api_publica/test_cotizador.py::test_conversion_a_pesos_y_dolares PASSED [ 14%]
+apps/api_publica/test_cotizador.py::test_varios_modelos_y_uno_sin_precio PASSED [ 16%]
+apps/api_publica/test_cotizador.py::test_sin_ningun_precio_no_hay_total PASSED [ 18%]
+apps/api_publica/test_cotizador.py::test_sin_uf_omite_pesos_y_dolares PASSED [ 20%]
+apps/api_publica/test_cotizador.py::test_plazo_y_validez PASSED          [ 21%]
+apps/api_publica/test_cotizador.py::test_validez_configurable_desde_parametros PASSED [ 23%]
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items0] PASSED [ 25%]
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items1] PASSED [ 27%]
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items2] PASSED [ 29%]
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items3] PASSED [ 30%]
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items4] PASSED [ 32%]
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items5] PASSED [ 34%]
+apps/api_publica/test_cotizador.py::test_entradas_invalidas_responden_400[items6] PASSED [ 36%]
+apps/api_publica/test_cotizador.py::test_cada_consulta_queda_registrada PASSED [ 38%]
+apps/api_publica/test_cotizador.py::test_swagger_documenta_el_cotizador PASSED [ 40%]
+apps/api_publica/test_cotizador.py::test_ficha_del_modelo_usa_la_clave_del_portal_de_clientes PASSED [ 41%]
+apps/api_publica/test_cotizador.py::test_la_solicitud_llega_con_la_cantidad_estimada PASSED [ 43%]
+apps/api_publica/test_materiales.py::test_devuelve_los_materiales_bajo_el_minimo PASSED [ 45%]
+apps/api_publica/test_materiales.py::test_cantidad_sugerida_lleva_el_stock_al_doble_del_minimo PASSED [ 47%]
+apps/api_publica/test_materiales.py::test_no_expone_costos_bodegas_ni_stock PASSED [ 49%]
+apps/api_publica/test_materiales.py::test_un_consumo_que_baja_del_minimo_aparece_en_la_consulta PASSED [ 50%]
+apps/api_publica/test_materiales.py::test_sin_materiales_bajo_el_minimo_devuelve_lista_vacia PASSED [ 52%]
+apps/api_publica/test_materiales.py::test_sin_clave_responde_401 PASSED  [ 54%]
+apps/api_publica/test_materiales.py::test_las_claves_del_portal_no_ven_el_inventario[clave-publica-1234567890abcdef] PASSED [ 56%]
+apps/api_publica/test_materiales.py::test_las_claves_del_portal_no_ven_el_inventario[clave-clientes-1234567890abcdef] PASSED [ 58%]
+apps/api_publica/test_materiales.py::test_la_clave_de_proveedores_no_puede_cotizar_ni_seguir_pedidos PASSED [ 60%]
+apps/api_publica/test_materiales.py::test_un_consumidor_externo_sin_restriccion_puede_consultar PASSED [ 61%]
+apps/api_publica/test_materiales.py::test_cada_consulta_queda_registrada PASSED [ 63%]
+apps/api_publica/test_materiales.py::test_swagger_documenta_la_disponibilidad_de_materiales PASSED [ 65%]
+apps/api_publica/tests.py::test_codigo_tiene_formato_y_acepta_variantes PASSED [ 67%]
+apps/api_publica/tests.py::test_codigo_depende_de_la_clave_secreta PASSED [ 69%]
+apps/api_publica/tests.py::test_sin_clave_responde_401 PASSED            [ 70%]
+apps/api_publica/tests.py::test_clave_invalida_responde_401 PASSED       [ 72%]
+apps/api_publica/tests.py::test_codigo_incorrecto_y_numero_inexistente_dan_el_mismo_404 PASSED [ 74%]
+apps/api_publica/tests.py::test_limite_de_solicitudes_por_clave PASSED   [ 76%]
+apps/api_publica/tests.py::test_la_api_interna_sigue_exigiendo_usuario PASSED [ 78%]
+apps/api_publica/tests.py::test_pedido_recien_recibido PASSED            [ 80%]
+apps/api_publica/tests.py::test_avance_durante_la_fabricacion PASSED     [ 81%]
+apps/api_publica/tests.py::test_la_etapa_la_marca_la_ot_mas_atrasada PASSED [ 83%]
+apps/api_publica/tests.py::test_pedido_entregado PASSED                  [ 85%]
+apps/api_publica/tests.py::test_pedido_anulado PASSED                    [ 87%]
+apps/api_publica/tests.py::test_fecha_calculada_en_dias_habiles PASSED   [ 89%]
+apps/api_publica/tests.py::test_feriado_desplaza_la_fecha PASSED         [ 90%]
+apps/api_publica/tests.py::test_fecha_comprometida_atrasada PASSED       [ 92%]
+apps/api_publica/tests.py::test_cada_consulta_queda_registrada_sin_el_codigo PASSED [ 94%]
+apps/api_publica/tests.py::test_documentacion_swagger_solo_muestra_la_api_publica PASSED [ 96%]
+apps/api_publica/tests.py::test_pagina_publica_no_exige_sesion_y_usa_la_clave_del_portal PASSED [ 98%]
+apps/api_publica/tests.py::test_mis_pedidos_muestra_el_codigo_de_seguimiento PASSED [100%]
+
+---------- coverage: platform linux, python 3.12.15-final-0 ----------
+Name                                                                       Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------------------------------------------
+apps/__init__.py                                                               0      0   100%
+apps/api_publica/__init__.py                                                   0      0   100%
+apps/api_publica/apps.py                                                       7      0   100%
+apps/api_publica/codigos.py                                                   16      0   100%
+apps/api_publica/cotizador.py                                                 55      1    98%   103
+apps/api_publica/esquema.py                                                    9      0   100%
+apps/api_publica/management/__init__.py                                        0      0   100%
+apps/api_publica/management/commands/__init__.py                               0      0   100%
+apps/api_publica/management/commands/claves_api.py                            21     21     0%   9-36
+apps/api_publica/materiales.py                                                20      0   100%
+apps/api_publica/seguimiento.py                                               61      1    98%   88
+apps/api_publica/seguridad.py                                                 43      0   100%
+apps/api_publica/serializers.py                                              114      0   100%
+apps/api_publica/test_cotizador.py                                           142      0   100%
+apps/api_publica/test_materiales.py                                           96      0   100%
+apps/api_publica/tests.py                                                    183      1    99%   233
+apps/api_publica/urls.py                                                       5      0   100%
+apps/api_publica/views.py                                                     62      0   100%
+apps/calidad/__init__.py                                                       0      0   100%
+apps/calidad/admin.py                                                         42      3    93%   45, 48-49
+apps/calidad/apps.py                                                           5      0   100%
+apps/calidad/migrations/0001_initial.py                                        7      0   100%
+apps/calidad/migrations/0002_initial.py                                        7      0   100%
+apps/calidad/migrations/0003_aprobacion_del_control.py                        11      0   100%
+apps/calidad/migrations/__init__.py                                            0      0   100%
+apps/calidad/models.py                                                       137     35    74%   45, 49, 94, 98-102, 151, 155-166, 171-172, 210-211, 215-217, 275, 278-285
+apps/calidad/pdf.py                                                           22     22     0%   2-54
+apps/calidad/serializers.py                                                   67      7    90%   30, 87, 90-101
+apps/calidad/services.py                                                     139    117    16%   36, 46-55, 59-60, 77-105, 113-123, 132-145, 150-159, 168-204, 215-245, 251-259
+apps/calidad/test_flujo.py                                                   227    227     0%   6-392
+apps/calidad/tests.py                                                          0      0   100%
+apps/calidad/views.py                                                         94     45    52%   24, 45, 49-60, 65, 68, 84, 90-99, 103-116, 121-126, 141, 148-154
+apps/catalogo/__init__.py                                                      0      0   100%
+apps/catalogo/admin.py                                                        51      5    90%   73, 77-78, 82-83
+apps/catalogo/apps.py                                                          5      0   100%
+apps/catalogo/migrations/0001_initial.py                                       7      0   100%
+apps/catalogo/migrations/0002_responsable_habitual.py                          5      0   100%
+apps/catalogo/migrations/0003_rangos_parametros_tecnicos.py                   11      0   100%
+apps/catalogo/migrations/__init__.py                                           0      0   100%
+apps/catalogo/models.py                                                      129      8    94%   31, 82, 87, 115, 196, 230, 272, 311
+apps/catalogo/pdf.py                                                          20     20     0%   2-39
+apps/catalogo/serializers.py                                                  81     18    78%   34, 37-41, 44-58, 134-136
+apps/catalogo/services.py                                                    103     86    17%   27, 36-50, 54-65, 71-95, 102-123, 142-180
+apps/catalogo/tests.py                                                        98     98     0%   7-176
+apps/catalogo/views.py                                                       169    109    36%   27, 46-50, 53-56, 61-72, 76-81, 101-102, 106-111, 115-125, 130-149, 154-164, 192-201, 204-208, 211-229, 234, 237, 247-267, 272-276, 302-311, 316-320
+apps/clientes/__init__.py                                                      0      0   100%
+apps/clientes/admin.py                                                        25      0   100%
+apps/clientes/apps.py                                                          5      0   100%
+apps/clientes/geocodificacion.py                                              25     25     0%   12-52
+apps/clientes/migrations/0001_initial.py                                       7      0   100%
+apps/clientes/migrations/0002_regiones_y_comunas.py                           12      0   100%
+apps/clientes/migrations/__init__.py                                           0      0   100%
+apps/clientes/models.py                                                       86      5    94%   27, 57, 95, 126, 175
+apps/clientes/serializers.py                                                  39      8    79%   40, 56-64
+apps/clientes/test_gestion.py                                                124    124     0%   5-207
+apps/clientes/tests.py                                                         0      0   100%
+apps/clientes/views.py                                                       127     56    56%   69-75, 80-88, 105-106, 114-131, 136-138, 142-144, 158, 161, 166-167, 172-178, 194-197, 201-210, 213, 221-228
+apps/comercial/__init__.py                                                     0      0   100%
+apps/comercial/admin.py                                                       90     13    86%   41, 63, 74, 103, 107, 114-120, 141, 156, 160
+apps/comercial/apps.py                                                         5      0   100%
+apps/comercial/management/__init__.py                                          0      0   100%
+apps/comercial/management/commands/__init__.py                                 0      0   100%
+apps/comercial/management/commands/cargar_demo.py                             97     97     0%   16-329
+apps/comercial/management/commands/cargar_estados.py                          13      0   100%
+apps/comercial/migrations/0001_initial.py                                      8      0   100%
+apps/comercial/migrations/__init__.py                                          0      0   100%
+apps/comercial/models.py                                                     209     41    80%   57, 112, 117-124, 157, 239, 245, 249, 253-258, 263-271, 276, 281-283, 286-287, 294-301, 352, 357, 361-364, 420, 431, 440-447, 485
+apps/comercial/pdf.py                                                         18     18     0%   2-52
+apps/comercial/serializers.py                                                129     42    67%   75-103, 111-133, 166-167, 219, 223-230, 236, 240
+apps/comercial/services.py                                                   295    211    28%   65, 128-129, 149-178, 182, 202-268, 275-278, 282-284, 299-317, 323-346, 356-392, 409-443, 452-459, 466-468, 480-496, 508-526, 539-570, 580-620
+apps/comercial/test_anulacion.py                                              63     63     0%   5-96
+apps/comercial/test_flujo.py                                                 247    247     0%   6-413
+apps/comercial/test_lineas_versiones.py                                       93     93     0%   5-158
+apps/comercial/tests.py                                                      106    106     0%   8-227
+apps/comercial/views.py                                                      276    176    36%   50-55, 87-104, 109, 119-131, 154-165, 202-214, 217-221, 231-254, 259-275, 287-339, 343-355, 360-375, 380-387, 392-398, 404, 409-419, 424-438, 443-453, 463-468, 499-504, 514-522, 528, 538-562
+apps/common/__init__.py                                                        0      0   100%
+apps/common/admin.py                                                           1      0   100%
+apps/common/apps.py                                                            5      0   100%
+apps/common/migrations/__init__.py                                             0      0   100%
+apps/common/mixins.py                                                         10      7    30%   17-26
+apps/common/models.py                                                         32      5    84%   52-57
+apps/common/pagination.py                                                      5      0   100%
+apps/common/pdf.py                                                            64     42    34%   42-45, 49, 53, 57-75, 80-86, 91-114, 118
+apps/common/permissions.py                                                    86     63    27%   45-56, 65-66, 73-78, 114-139, 142-152, 158-161, 166-185
+apps/common/tests.py                                                          16     16     0%   2-31
+apps/common/validators.py                                                     23     17    26%   14-24, 33-40
+apps/configuracion/__init__.py                                                 0      0   100%
+apps/configuracion/admin.py                                                   34      3    91%   29, 51, 54
+apps/configuracion/apps.py                                                     5      0   100%
+apps/configuracion/management/__init__.py                                      0      0   100%
+apps/configuracion/management/commands/__init__.py                             0      0   100%
+apps/configuracion/management/commands/cargar_parametros.py                   18     18     0%   7-77
+apps/configuracion/management/commands/sincronizar_feriados.py                14     14     0%   8-38
+apps/configuracion/management/commands/sincronizar_indicadores.py             12     12     0%   9-31
+apps/configuracion/management/commands/tareas_diarias.py                      46     46     0%   17-83
+apps/configuracion/management/commands/usar_alias_correo.py                   53     53     0%   15-88
+apps/configuracion/migrations/0001_initial.py                                  7      0   100%
+apps/configuracion/migrations/0002_parametro_max_unidades.py                  11      1    91%   19
+apps/configuracion/migrations/__init__.py                                      0      0   100%
+apps/configuracion/models.py                                                 126     14    89%   67, 73, 78, 126, 130-133, 173, 194-196, 226-227
+apps/configuracion/parametros.py                                              44     21    52%   42-43, 46, 52, 61, 79, 84, 89-102
+apps/configuracion/serializers.py                                             46     20    57%   21, 25-44
+apps/configuracion/services/__init__.py                                        0      0   100%
+apps/configuracion/services/base.py                                           82     24    71%   70-72, 113, 115, 117, 119, 122-143, 149-153
+apps/configuracion/services/correo.py                                         56     56     0%   20-105
+apps/configuracion/services/feriados.py                                       53     32    40%   42, 51-53, 63-67, 80-90, 94-119
+apps/configuracion/services/indicadores.py                                    40     16    60%   41-62, 79
+apps/configuracion/services/notificaciones.py                                106     79    25%   37-44, 52-53, 63-73, 77-79, 83-84, 96-124, 132, 142-150, 162-163, 174, 184, 199, 207-208, 213, 228, 244-252, 261-272, 281, 295-296, 310, 323-326
+apps/configuracion/services/pendientes.py                                     82     82     0%   12-170
+apps/configuracion/tests.py                                                  280    280     0%   9-485
+apps/configuracion/views.py                                                   95     37    61%   29, 71-74, 78-85, 88-90, 98-115, 128, 133-134, 137-139, 143-145, 176-181
+apps/inventario/__init__.py                                                    0      0   100%
+apps/inventario/admin.py                                                      38      2    95%   37, 42
+apps/inventario/apps.py                                                        5      0   100%
+apps/inventario/migrations/0001_initial.py                                     7      0   100%
+apps/inventario/migrations/0002_movimientoinventario.py                        5      0   100%
+apps/inventario/migrations/0003_movimientoinventario_consumo_and_more.py       6      0   100%
+apps/inventario/migrations/__init__.py                                         0      0   100%
+apps/inventario/models.py                                                    112     13    88%   29, 71, 98, 101-102, 122, 162, 233, 238-242
+apps/inventario/serializers.py                                                62      9    85%   36, 39, 45-48, 52-55, 59
+apps/inventario/services.py                                                   97     78    20%   31-32, 38-58, 67-85, 95-118, 128-155, 161-163, 177-190, 204-214
+apps/inventario/test_flujo.py                                                104    104     0%   5-187
+apps/inventario/tests.py                                                       0      0   100%
+apps/inventario/views.py                                                     162     95    41%   31, 57-60, 63-66, 69-84, 89, 92, 96-109, 113-124, 128-138, 143-156, 184-187, 190-193, 198-213, 217-221, 225-227, 255, 258-263
+apps/pagos/__init__.py                                                         0      0   100%
+apps/pagos/admin.py                                                           34      3    91%   32, 36, 49
+apps/pagos/apps.py                                                             5      0   100%
+apps/pagos/management/__init__.py                                              0      0   100%
+apps/pagos/management/commands/__init__.py                                     0      0   100%
+apps/pagos/management/commands/conciliar_pagos.py                             13     13     0%   11-31
+apps/pagos/management/commands/emitir_cobros.py                               26     26     0%   13-51
+apps/pagos/migrations/0001_initial.py                                          6      0   100%
+apps/pagos/migrations/__init__.py                                              0      0   100%
+apps/pagos/models.py                                                         116     31    73%   58, 133, 137, 144-147, 151-152, 156-163, 218, 228-235, 247-250, 258-264
+apps/pagos/services/__init__.py                                                0      0   100%
+apps/pagos/services/cobros.py                                                157    116    26%   58-84, 89-90, 102-126, 130, 147-148, 153, 161, 165-170, 185-232, 237-245, 260-318, 324-327, 338-365, 374-388
+apps/pagos/services/paypal.py                                                 96     58    40%   70-72, 79, 83-101, 104-111, 128-172, 178-187, 191-194, 204-208, 213-216, 220-229
+apps/pagos/tests.py                                                          232    232     0%   9-416
+apps/produccion/__init__.py                                                    0      0   100%
+apps/produccion/admin.py                                                      87     20    77%   30-31, 42, 53, 80-83, 87-92, 96-99, 121, 135
+apps/produccion/apps.py                                                        5      0   100%
+apps/produccion/management/__init__.py                                         0      0   100%
+apps/produccion/management/commands/__init__.py                                0      0   100%
+apps/produccion/management/commands/cargar_demo_produccion.py                110    110     0%   12-259
+apps/produccion/migrations/0001_initial.py                                     8      0   100%
+apps/produccion/migrations/__init__.py                                         0      0   100%
+apps/produccion/models.py                                                    228     78    66%   46, 58-59, 103, 161, 166-170, 174-178, 190-191, 195-199, 203-204, 208-210, 216-219, 232-242, 247, 255-281, 285-292, 358, 362, 377-390, 442, 446, 496, 500, 503-509
+apps/produccion/serializers.py                                                74     15    80%   22-30, 33, 39-40, 73-75, 108-110
+apps/produccion/services.py                                                  246    203    17%   44-45, 49, 53-56, 63-64, 81-128, 136-146, 152-158, 164-176, 182-189, 193-200, 205-222, 234-237, 241-245, 249-251, 255-256, 263-299, 305-320, 332-362, 366-372, 380-388, 394-426, 439-468
+apps/produccion/test_flujo.py                                                228    228     0%   6-404
+apps/produccion/tests.py                                                     127    127     0%   8-330
+apps/produccion/views.py                                                     164     98    40%   27, 55-60, 64, 68, 72, 76, 80-87, 91-97, 125-135, 139-147, 150, 154-160, 164-175, 179-192, 196-205, 209-214, 236-239, 242-247, 251-261
+apps/reportes/__init__.py                                                      0      0   100%
+apps/reportes/exportar.py                                                     44     33    25%   15-17, 21-43, 47-59
+apps/reportes/servicios.py                                                    72     58    19%   31, 36-59, 73-86, 99-113, 125-138, 150-168
+apps/reportes/tests.py                                                        39     39     0%   2-55
+apps/reportes/views.py                                                        38     24    37%   28-59
+apps/seguridad/__init__.py                                                     0      0   100%
+apps/seguridad/admin.py                                                       47      3    94%   72, 75, 78
+apps/seguridad/apps.py                                                         5      0   100%
+apps/seguridad/management/__init__.py                                          0      0   100%
+apps/seguridad/management/commands/__init__.py                                 0      0   100%
+apps/seguridad/management/commands/cargar_roles.py                            34     34     0%   11-78
+apps/seguridad/matriz.py                                                      30     18    40%   81-91, 96-103
+apps/seguridad/migrations/0001_initial.py                                      8      0   100%
+apps/seguridad/migrations/0002_bloqueo_temporal.py                             4      0   100%
+apps/seguridad/migrations/__init__.py                                          0      0   100%
+apps/seguridad/models.py                                                     163     40    75%   30, 60, 89, 99, 101, 110-115, 188, 196-198, 208-213, 216-218, 228-230, 238-244, 248-255, 284, 342
+apps/seguridad/serializers.py                                                 47     14    70%   28, 31-34, 49-51, 54-59
+apps/seguridad/services.py                                                   101     80    21%   30-34, 38-41, 45, 52, 56-59, 63-70, 74-89, 96-104, 109-131, 136-146, 150-160
+apps/seguridad/test_usuarios.py                                              112    112     0%   4-187
+apps/seguridad/tests.py                                                      101    101     0%   8-173
+apps/seguridad/views.py                                                      163    105    36%   34-39, 54-58, 62, 85-97, 101-126, 151-168, 171-183, 186-191, 195, 199, 203-209, 216, 223-227, 242-261, 282-297, 302
+apps/web/__init__.py                                                           0      0   100%
+apps/web/apps.py                                                               5      0   100%
+apps/web/forms.py                                                            192    106    45%   28, 47-66, 70-72, 104-112, 115-118, 121-124, 134-141, 145-168, 216-251, 254-260, 264-276, 281, 284-287, 301, 305-308, 325-328, 347-350, 353-356, 369-374
+apps/web/middleware.py                                                        29      9    69%   28, 31-35, 57-63
+apps/web/test_seguridad.py                                                    94     94     0%   6-153
+apps/web/tests.py                                                            176    176     0%   8-391
+apps/web/urls.py                                                               4      0   100%
+apps/web/views.py                                                            366    228    38%   86-91, 106-113, 116-122, 130-160, 169-214, 242-243, 259-291, 300-309, 317-328, 333-343, 347-352, 367-395, 400-417, 461-470, 475-479, 483-485, 495-516, 522-535, 542-544, 550-568, 574-583, 591, 600-624, 631-646, 651, 661-667, 672-675, 683-685, 691-696, 702-708, 714-723, 731
+--------------------------------------------------------------------------------------------------------
+TOTAL                                                                      10256   6040    41%
+
+
+============================= 55 passed in 21.59s ==============================
