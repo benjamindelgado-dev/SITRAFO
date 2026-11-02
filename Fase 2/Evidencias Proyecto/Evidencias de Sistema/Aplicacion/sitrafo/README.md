@@ -546,8 +546,8 @@ docker compose exec web pytest --cov-fail-under=70
 docker compose exec web pytest
 ```
 
-187 pruebas automatizadas con 91% de cobertura sobre `apps/`, por encima del
-70% exigido por RNF-13. Las llamadas a servicios externos (incluido PayPal) se
+291 pruebas automatizadas con 93% de cobertura sobre `apps/` (25-10-2026), por
+encima del 70% exigido por RNF-13. Las llamadas a servicios externos (incluido PayPal) se
 simulan con dobles de prueba.
 
 ## Convenciones
