@@ -21,7 +21,7 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_safe
 from django.views.generic import FormView
 
 from apps.api_publica.codigos import codigo_seguimiento
@@ -125,6 +125,7 @@ class RegistroView(FormView):
 # ---------------------------------------------------------------------------
 # Inicio
 # ---------------------------------------------------------------------------
+@require_safe
 @login_required
 def inicio(request):
     cliente = _cliente_de(request)
@@ -163,6 +164,7 @@ def inicio(request):
 # ---------------------------------------------------------------------------
 # Catalogo
 # ---------------------------------------------------------------------------
+@require_safe
 @login_required
 def catalogo(request):
     """Solo modelos publicados desde la aplicacion de escritorio (RF-ADM-06)."""
@@ -214,6 +216,7 @@ def catalogo(request):
     return render(request, "web/catalogo.html", contexto)
 
 
+@require_safe
 @login_required
 def ficha_modelo(request, pk):
     modelo = get_object_or_404(
@@ -295,6 +298,7 @@ def solicitar_presupuesto(request):
     return render(request, "web/solicitar.html", contexto)
 
 
+@require_safe
 @login_required
 def mis_solicitudes(request):
     cliente = _cliente_de(request)
@@ -312,6 +316,7 @@ def mis_solicitudes(request):
 # ---------------------------------------------------------------------------
 # Cotizaciones
 # ---------------------------------------------------------------------------
+@require_safe
 @login_required
 def mis_cotizaciones(request):
     cliente = _cliente_de(request)
@@ -328,6 +333,7 @@ def mis_cotizaciones(request):
     return render(request, "web/mis_cotizaciones.html", contexto)
 
 
+@require_safe
 @login_required
 def detalle_cotizacion(request, pk):
     cliente = _cliente_de(request)
@@ -420,6 +426,7 @@ def rechazar_cotizacion(request, pk):
 # ---------------------------------------------------------------------------
 # Pedidos y seguimiento
 # ---------------------------------------------------------------------------
+@require_safe
 @login_required
 def mis_pedidos(request):
     cliente = _cliente_de(request)
@@ -439,6 +446,7 @@ def mis_pedidos(request):
     return render(request, "web/mis_pedidos.html", contexto)
 
 
+@require_safe
 def seguimiento_publico(request):
     """
     Consulta de un pedido con su numero y codigo, sin iniciar sesion.
@@ -455,6 +463,7 @@ def seguimiento_publico(request):
     return render(request, "web/seguimiento_publico.html", contexto)
 
 
+@require_safe
 @login_required
 def seguimiento(request, pk):
     """Avance de fabricacion visible para el cliente (RF-OT-09)."""
@@ -470,6 +479,7 @@ def seguimiento(request, pk):
     return render(request, "web/seguimiento.html", contexto)
 
 
+@require_safe
 @login_required
 def perfil(request):
     cliente = _cliente_de(request)
@@ -595,6 +605,7 @@ def _documento_del_cliente(request, pk):
     )
 
 
+@require_safe
 @login_required
 def documento_cobro(request, pk):
     documento = _documento_del_cliente(request, pk)
@@ -655,6 +666,7 @@ def _transaccion_de_retorno(request):
     )
 
 
+@require_safe
 @login_required
 def pago_retorno(request):
     """El cliente aprobo el pago en PayPal: se captura y se concilia."""
@@ -667,6 +679,7 @@ def pago_retorno(request):
     return redirect("web:documento_cobro", pk=transaccion.documento_cobro_id)
 
 
+@require_safe
 @login_required
 def pago_cancelado(request):
     transaccion = _transaccion_de_retorno(request)
@@ -685,6 +698,7 @@ def _pdf(contenido: bytes, nombre: str) -> HttpResponse:
     return respuesta
 
 
+@require_safe
 @login_required
 def ficha_pdf(request, pk):
     """Ficha tecnica descargable de un modelo publicado."""
@@ -696,6 +710,7 @@ def ficha_pdf(request, pk):
     return _pdf(generar(modelo), f"Ficha-{modelo.codigo}.pdf")
 
 
+@require_safe
 @login_required
 def cotizacion_pdf(request, pk):
     """Cotizacion emitida del cliente en PDF (RN-16: solo las propias)."""
@@ -708,6 +723,7 @@ def cotizacion_pdf(request, pk):
     return _pdf(generar(cotizacion), f"{cotizacion.numero}.pdf")
 
 
+@require_safe
 @login_required
 def informe_ensayos(request, pk):
     """Informe de ensayos de una orden de trabajo del cliente."""
@@ -727,6 +743,7 @@ def informe_ensayos(request, pk):
 # ---------------------------------------------------------------------------
 # Privacidad y recuperacion de contrasena (RNF-17, RF-SEG-05)
 # ---------------------------------------------------------------------------
+@require_safe
 def privacidad(request):
     return render(request, "web/privacidad.html", _contexto_base(request))
 

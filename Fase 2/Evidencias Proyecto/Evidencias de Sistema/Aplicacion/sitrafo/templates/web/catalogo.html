@@ -10,10 +10,12 @@
 
 <form method="get" class="row g-2 mb-4">
   <div class="col-md-5">
-    <input type="search" name="q" value="{{ busqueda }}" class="form-control" placeholder="Buscar por nombre o codigo">
+    <label for="filtro-busqueda" class="visually-hidden">Buscar por nombre o codigo</label>
+    <input type="search" id="filtro-busqueda" name="q" value="{{ busqueda }}" class="form-control" placeholder="Buscar por nombre o codigo">
   </div>
   <div class="col-md-4">
-    <select name="familia" class="form-select">
+    <label for="filtro-familia" class="visually-hidden">Familia</label>
+    <select id="filtro-familia" name="familia" class="form-select">
       <option value="">Todas las familias</option>
       {% for f in familias %}
         <option value="{{ f.pk }}" {% if familia_seleccionada == f.pk|stringformat:"s" %}selected{% endif %}>{{ f.nombre }}</option>
@@ -25,7 +27,8 @@
   </div>
   {% for f in filtros %}
     <div class="col-md-3 col-6">
-      <select name="p_{{ f.codigo }}" class="form-select" onchange="this.form.submit()">
+      <label for="filtro-{{ f.codigo }}" class="visually-hidden">{{ f.nombre }}</label>
+      <select id="filtro-{{ f.codigo }}" name="p_{{ f.codigo }}" class="form-select" onchange="this.form.submit()">
         <option value="">{{ f.nombre }}: todas</option>
         {% for v in f.valores %}
           <option value="{{ v }}" {% if v == f.elegido %}selected{% endif %}>{{ v }} {{ f.unidad }}</option>

@@ -122,13 +122,15 @@ class PermisoPorRol(BasePermission):
         permisos_accion = getattr(view, "permisos_accion", {})
         if accion in permisos_accion and permisos_accion[accion] is None:
             self.message = "Esta operacion no esta disponible por esta via."
-            return self._denegar(request, view, accion, None)
+            self._registrar_denegacion(request, view, accion, None)
+            return False
 
         if not usuario.es_interno:
             if accion in getattr(view, "acciones_cliente", ()):
                 return True
             self.message = "Esta operacion es exclusiva de usuarios internos."
-            return self._denegar(request, view, accion, None)
+            self._registrar_denegacion(request, view, accion, None)
+            return False
 
         if usuario.is_superuser:
             return True
@@ -136,7 +138,8 @@ class PermisoPorRol(BasePermission):
         requeridos = self.permisos_requeridos(view, accion)
         if requeridos and any(usuario.has_perm(p) for p in requeridos):
             return True
-        return self._denegar(request, view, accion, requeridos)
+        self._registrar_denegacion(request, view, accion, requeridos)
+        return False
 
     def permisos_requeridos(self, view, accion) -> list[str]:
         alternativos = getattr(view, "permisos_alternativos", {})
@@ -152,13 +155,13 @@ class PermisoPorRol(BasePermission):
         return []
 
     @staticmethod
-    def _denegar(request, view, accion, requeridos) -> bool:
+    def _registrar_denegacion(request, view, accion, requeridos) -> None:
+        """Audita el acceso denegado; quien llama devuelve False."""
         # El navegador de la API evalua permisos de otros metodos para dibujar
         # sus formularios; esas consultas no son intentos reales y no se auditan.
         if request.method != getattr(request, "_request", request).method:
-            return False
+            return
         registrar_acceso_denegado(request, view, accion, requeridos)
-        return False
 
 
 def registrar_acceso_denegado(request, view, accion, requeridos=None) -> None:

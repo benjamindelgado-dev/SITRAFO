@@ -19,9 +19,9 @@
       <table class="table mb-0">
         <thead>
           <tr style="background:#f4f6f4">
-            <th style="font-size:.78rem;color:var(--acero);font-weight:500;border:0">Modelo</th>
-            <th class="text-end" style="font-size:.78rem;color:var(--acero);font-weight:500;border:0">Unidades</th>
-            <th class="text-end" style="font-size:.78rem;color:var(--acero);font-weight:500;border:0">Precio unitario UF</th>
+            <th scope="col" style="font-size:.78rem;color:var(--acero);font-weight:500;border:0">Modelo</th>
+            <th scope="col" class="text-end" style="font-size:.78rem;color:var(--acero);font-weight:500;border:0">Unidades</th>
+            <th scope="col" class="text-end" style="font-size:.78rem;color:var(--acero);font-weight:500;border:0">Precio unitario UF</th>
           </tr>
         </thead>
         <tbody>
@@ -38,8 +38,8 @@
         </tbody>
         <tfoot>
           <tr style="background:#f4f6f4">
-            <th colspan="2" class="text-end" style="font-size:.9rem">Total</th>
-            <th class="text-end" style="font-size:.9rem">{{ cotizacion.total_uf }} UF</th>
+            <th scope="row" colspan="2" class="text-end" style="font-size:.9rem">Total</th>
+            <td class="text-end fw-bold" style="font-size:.9rem">{{ cotizacion.total_uf }} UF</td>
           </tr>
         </tfoot>
       </table>

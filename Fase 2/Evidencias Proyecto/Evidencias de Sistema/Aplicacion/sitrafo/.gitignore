@@ -34,3 +34,7 @@ reporte-pruebas.xml
 escritorio/build/
 escritorio/dist/
 escritorio/*.spec
+
+# Analisis de SonarQube (resultados generados)
+coverage.xml
+.scannerwork/

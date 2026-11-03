@@ -140,7 +140,7 @@
     evento.preventDefault();
     error.hidden = true;
     resultado.hidden = true;
-    const cantidad = parseInt(form.cantidad.value, 10);
+    const cantidad = Number.parseInt(form.cantidad.value, 10);
     if (!cantidad || cantidad < 1) {
       error.textContent = "Ingrese una cantidad de al menos una unidad.";
       error.hidden = false;

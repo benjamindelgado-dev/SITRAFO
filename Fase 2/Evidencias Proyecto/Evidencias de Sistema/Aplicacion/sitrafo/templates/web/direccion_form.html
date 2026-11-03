@@ -13,6 +13,7 @@
         <div class="mb-3">
           <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
           {% if campo.name == "comuna" %}
+            <label for="buscar-comuna" class="visually-hidden">Buscar comuna</label>
             <input type="search" id="buscar-comuna" class="form-control mb-2" autocomplete="off"
                    placeholder="Escriba para buscar su comuna">
           {% endif %}
