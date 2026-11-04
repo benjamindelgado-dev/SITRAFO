@@ -304,13 +304,16 @@ class PanelCatalogo(PanelBase):
         except ErrorAPI as error:
             return self.manejar_error(error)
 
+        # Import local: paneles_comercial importa este modulo
+        from paneles_comercial import uf
+
         self.datos = respuesta.get("results", respuesta)
         self.llenar(self.tabla, [
             [
                 m["codigo"],
                 m["nombre"],
                 m.get("familia_nombre", ""),
-                m.get("precio_vigente") or "sin precio",
+                uf(m["precio_vigente"]) if m.get("precio_vigente") else "sin precio",
                 "Publicado" if m["publicado"] else "Retirado",
             ]
             for m in self.datos
