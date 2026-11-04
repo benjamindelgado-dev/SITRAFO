@@ -63,7 +63,7 @@
         <tr>
           <td class="numero-doc">{{ c.numero }}<span class="text-secondary fw-normal"> v{{ c.version }}</span></td>
           <td>{{ c.creado_en|date:"d-m-Y" }}</td>
-          <td class="text-end">{{ c.total_uf }}</td>
+          <td class="text-end">{{ c.total_uf|floatformat:2 }}</td>
           <td>{{ c.vence_el|date:"d-m-Y" }}</td>
           <td>
             {% if c.estado.codigo == "emitida" %}<span class="estado estado--espera">{{ c.estado.nombre }}</span>

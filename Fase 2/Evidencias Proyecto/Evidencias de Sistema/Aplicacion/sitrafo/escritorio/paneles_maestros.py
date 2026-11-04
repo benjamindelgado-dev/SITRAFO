@@ -10,7 +10,7 @@ from decimal import Decimal, InvalidOperation
 
 from cliente_api import ClienteAPI, ErrorAPI
 from paneles import PanelBase
-from paneles_comercial import fecha, uf
+from paneles_comercial import CajaUF, fecha, uf
 from PySide6.QtCore import QDate
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -265,7 +265,7 @@ class DialogoLineas(QDialog):
         cantidad.setRange(1, 1000)
         precio = QDoubleSpinBox()
         precio.setRange(0, 1_000_000)
-        precio.setDecimals(4)
+        precio.setDecimals(2)
         if linea:
             modelo.setCurrentIndex(max(0, modelo.findData(linea["modelo"])))
             cantidad.setValue(int(linea["cantidad"]))
@@ -292,9 +292,9 @@ class DialogoLineas(QDialog):
         for i in range(self.tabla.rowCount()):
             subtotal = (_dec(self.tabla.cellWidget(i, 2).value())
                         * self.tabla.cellWidget(i, 1).value())
-            self.tabla.setItem(i, 3, QTableWidgetItem(uf(subtotal, 4)))
+            self.tabla.setItem(i, 3, QTableWidgetItem(uf(subtotal)))
             total += subtotal
-        self.total.setText(f"Total antes de descuento: <b>{uf(total, 4)}</b>")
+        self.total.setText(f"Total antes de descuento: <b>{uf(total)}</b>")
 
     def _guardar(self):
         lineas = [{"modelo": self.tabla.cellWidget(i, 0).currentData(),
@@ -324,9 +324,8 @@ class DialogoEmpleado(QDialog):
         self.cargo.setPlaceholderText("Ej.: Bobinador, Armador, Tecnico de ensayos")
         self.activo = QCheckBox("Activo")
         self.activo.setChecked(True)
-        self.tarifa = QDoubleSpinBox()
+        self.tarifa = CajaUF()
         self.tarifa.setRange(0, 10)
-        self.tarifa.setDecimals(4)
         self.tarifa.setSuffix(" UF/h")
         formulario.addRow("RUT:", self.rut)
         formulario.addRow("Nombre completo:", self.nombre)
@@ -378,9 +377,8 @@ class DialogoTarifa(QDialog):
         capa.addWidget(QLabel("Historial de tarifas"))
         capa.addWidget(historial)
         formulario = QFormLayout()
-        self.valor = QDoubleSpinBox()
+        self.valor = CajaUF()
         self.valor.setRange(0.0001, 10)
-        self.valor.setDecimals(4)
         self.valor.setSuffix(" UF/h")
         self.valor.setValue(float(_dec(empleado.get("tarifa_vigente_uf") or 0.4)))
         self.desde = QDateEdit(QDate.currentDate())

@@ -166,7 +166,7 @@ class DialogoAnularHoras(QDialog):
         for i, r in enumerate(self.registros):
             for j, v in enumerate([r["fecha"][8:10] + "-" + r["fecha"][5:7] + "-" + r["fecha"][:4],
                                    r["empleado_nombre"], f"{_decimal(r['horas']):g} h",
-                                   f"{_decimal(r['costo_total_uf']):.4f}"]):
+                                   uf(r['costo_total_uf'], 4)]):
                 self.tabla.setItem(i, j, QTableWidgetItem(v))
         capa.addWidget(self.tabla, 1)
         self.motivo = QLineEdit()

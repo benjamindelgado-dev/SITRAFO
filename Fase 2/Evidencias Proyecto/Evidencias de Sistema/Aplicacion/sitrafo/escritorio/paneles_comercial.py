@@ -44,11 +44,45 @@ def _decimal(valor) -> Decimal:
         return Decimal("0")
 
 
+def _sin_ceros(texto: str, separador: str, minimo: int = 2) -> str:
+    """Quita los ceros finales de la parte decimal, dejando al menos `minimo`."""
+    if separador not in texto:
+        return texto
+    entero, decimales = texto.split(separador, 1)
+    decimales = decimales.rstrip("0").ljust(minimo, "0")
+    return f"{entero}{separador}{decimales}"
+
+
 def uf(valor, decimales: int = 2) -> str:
+    """
+    Monto en UF con formato chileno.
+
+    Con 2 decimales (montos y totales) siempre muestra 2: 1.234,50 UF.
+    Con mas decimales (costos unitarios internos) muestra solo los necesarios,
+    con un minimo de 2: 0,4000 -> 0,40 UF y 0,0123 -> 0,0123 UF.
+    """
     if valor in (None, ""):
         return "-"
     texto = f"{_decimal(valor):,.{decimales}f}"
-    return texto.replace(",", "X").replace(".", ",").replace("X", ".") + " UF"
+    texto = texto.replace(",", "X").replace(".", ",").replace("X", ".")
+    if decimales > 2:
+        texto = _sin_ceros(texto, ",")
+    return texto + " UF"
+
+
+class CajaUF(QDoubleSpinBox):
+    """
+    Campo numerico para costos unitarios internos: acepta hasta 4 decimales,
+    pero no muestra los ceros sobrantes (0,40 en vez de 0,4000).
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setDecimals(4)
+
+    def textFromValue(self, valor: float) -> str:
+        texto = self.locale().toString(valor, "f", self.decimals())
+        return _sin_ceros(texto, self.locale().decimalPoint())
 
 
 def clp(valor) -> str:
@@ -150,7 +184,7 @@ class DialogoCotizacion(QDialog):
 
         self.precio = QDoubleSpinBox()
         self.precio.setRange(0, 1_000_000)
-        self.precio.setDecimals(4)
+        self.precio.setDecimals(2)
         self.precio.setSuffix(" UF")
         self.precio.setValue(float(_decimal(c.get("precio_sugerido_uf") or 0)))
         self.precio.valueChanged.connect(self._recalcular)
@@ -385,7 +419,7 @@ class PanelCotizaciones(PanelBase):
         self.lineas.setRowCount(len(c["lineas"]))
         for i, linea in enumerate(c["lineas"]):
             valores = [linea["modelo_nombre"], linea["cantidad"],
-                       uf(linea["precio_uf"], 4), uf(linea["costo_estimado_uf"], 4)]
+                       uf(linea["precio_uf"]), uf(linea["costo_estimado_uf"], 4)]
             for j, valor in enumerate(valores):
                 self.lineas.setItem(i, j, self._item(valor))
 

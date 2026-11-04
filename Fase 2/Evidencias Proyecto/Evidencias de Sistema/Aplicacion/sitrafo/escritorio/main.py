@@ -19,6 +19,7 @@ from pathlib import Path
 import configuracion_local
 from cliente_api import ClienteAPI
 from estilos import aplicar_tema
+from PySide6.QtCore import QLocale
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QDialog
 from ventana_login import VentanaLogin
@@ -46,6 +47,9 @@ def main() -> int:
 
     aplicacion = QApplication(sys.argv)
     aplicacion.setApplicationName("SITRAFO")
+    # Formato chileno en los campos numericos: coma decimal (187,69 UF), igual
+    # que en las etiquetas y tablas. Sin esto Qt usa el idioma del equipo.
+    QLocale.setDefault(QLocale(QLocale.Language.Spanish, QLocale.Country.Chile))
     aplicar_tema(aplicacion)
     aplicacion.setWindowIcon(QIcon(recurso("sitrafo.ico")))
 

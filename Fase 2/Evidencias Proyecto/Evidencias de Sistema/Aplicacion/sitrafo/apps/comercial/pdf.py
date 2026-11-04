@@ -24,18 +24,18 @@ def cotizacion_pdf(cotizacion) -> bytes:
     filas = [["Modelo", "Cantidad", "Precio unitario", "Subtotal"]]
     for linea in c.lineas.select_related("modelo"):
         filas.append([f"{linea.modelo.codigo} — {linea.modelo.nombre}", linea.cantidad,
-                      f"{numero(linea.precio_uf, 4)} UF",
-                      f"{numero(linea.precio_uf * linea.cantidad, 4)} UF"])
+                      f"{numero(linea.precio_uf, 2)} UF",
+                      f"{numero(linea.precio_uf * linea.cantidad, 2)} UF"])
     contenido.append(tabla(filas, [82, 20, 34, 38]))
     contenido.append(espacio())
 
     bruto = sum((linea.precio_uf * linea.cantidad for linea in c.lineas.all()), 0)
-    resumen = [("Subtotal", f"{numero(bruto, 4)} UF")]
+    resumen = [("Subtotal", f"{numero(bruto, 2)} UF")]
     if c.descuento_pct:
         resumen.append(("Descuento", f"{numero(c.descuento_pct)} %"))
     resumen += [
-        ("<b>Total</b>", f"<b>{numero(c.total_uf, 4)} UF</b>"),
-        ("Valor UF congelado", f"{pesos(c.valor_uf)} ({fecha(c.fecha_valor_uf)})"),
+        ("<b>Total</b>", f"<b>{numero(c.total_uf, 2)} UF</b>"),
+        ("Valor UF congelado", f"${numero(c.valor_uf, 2)} ({fecha(c.fecha_valor_uf)})"),
         ("<b>Total en pesos</b>", f"<b>{pesos(c.total_clp)}</b>"),
     ]
     contenido.append(datos(resumen, anchos=(120, 54)))

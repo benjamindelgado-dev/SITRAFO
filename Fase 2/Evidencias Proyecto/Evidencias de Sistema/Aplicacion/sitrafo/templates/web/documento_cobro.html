@@ -28,7 +28,7 @@
         <div class="datos">
           <div class="datos__fila">
             <span class="datos__etiqueta">Monto</span>
-            <span class="datos__valor">{{ documento.monto_uf }} UF</span>
+            <span class="datos__valor">{{ documento.monto_uf|floatformat:2 }} UF</span>
           </div>
           <div class="datos__fila">
             <span class="datos__etiqueta">Valor UF aplicado</span>
@@ -85,7 +85,7 @@
           <div class="datos mb-3">
             <div class="datos__fila">
               <span class="datos__etiqueta">Se cobrara</span>
-              <span class="datos__valor">US$ {{ monto_usd }}</span>
+              <span class="datos__valor">US$ {{ monto_usd|floatformat:2 }}</span>
             </div>
             <div class="datos__fila">
               <span class="datos__etiqueta">Dolar observado</span>

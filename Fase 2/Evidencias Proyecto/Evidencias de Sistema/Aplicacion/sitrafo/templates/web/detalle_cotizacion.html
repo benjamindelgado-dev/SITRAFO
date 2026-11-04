@@ -32,14 +32,14 @@
                 <div class="text-secondary" style="font-size:.78rem">{{ l.modelo.codigo }}</div>
               </td>
               <td class="text-end" style="font-size:.9rem">{{ l.cantidad }}</td>
-              <td class="text-end" style="font-size:.9rem">{{ l.precio_uf }}</td>
+              <td class="text-end" style="font-size:.9rem">{{ l.precio_uf|floatformat:2 }}</td>
             </tr>
           {% endfor %}
         </tbody>
         <tfoot>
           <tr style="background:#f4f6f4">
             <th scope="row" colspan="2" class="text-end" style="font-size:.9rem">Total</th>
-            <td class="text-end fw-bold" style="font-size:.9rem">{{ cotizacion.total_uf }} UF</td>
+            <td class="text-end fw-bold" style="font-size:.9rem">{{ cotizacion.total_uf|floatformat:2 }} UF</td>
           </tr>
         </tfoot>
       </table>

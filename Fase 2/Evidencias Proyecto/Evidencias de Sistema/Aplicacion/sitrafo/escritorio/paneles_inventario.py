@@ -10,7 +10,7 @@ queda en el kardex (RN-09). Administracion y produccion ven en lectura.
 """
 from cliente_api import ClienteAPI, ErrorAPI
 from paneles import PanelBase
-from paneles_comercial import _decimal, fecha, uf
+from paneles_comercial import CajaUF, _decimal, fecha, uf
 from PySide6.QtCore import QDate
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
@@ -103,9 +103,8 @@ class DialogoRecepcion(_DialogoMovimiento):
                 self.proveedor.addItem(p["razon_social"], p["id_proveedor"])
         self.documento = QLineEdit()
         self.documento.setPlaceholderText("Ej.: Factura 12345 / Guia 678")
-        self.costo = QDoubleSpinBox()
+        self.costo = CajaUF()
         self.costo.setRange(0, 100_000)
-        self.costo.setDecimals(4)
         self.costo.setSuffix(" UF")
         self.costo.setValue(float(_decimal(material.get("costo_vigente_uf") or 0)))
         self.actualizar = QCheckBox("Usar este costo como nuevo precio vigente")
@@ -410,9 +409,8 @@ class DialogoMaterial(QDialog):
         self.minimo = QDoubleSpinBox()
         self.minimo.setRange(0, 1_000_000)
         self.minimo.setDecimals(2)
-        self.costo = QDoubleSpinBox()
+        self.costo = CajaUF()
         self.costo.setRange(0, 100_000)
-        self.costo.setDecimals(4)
         self.costo.setSuffix(" UF")
         formulario.addRow("Categoria:", fila)
         formulario.addRow("Codigo:", self.codigo)

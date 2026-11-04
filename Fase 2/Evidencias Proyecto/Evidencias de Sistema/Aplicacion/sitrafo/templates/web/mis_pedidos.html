@@ -18,15 +18,15 @@
         <div class="datos flex-grow-1 me-4">
           <div class="datos__fila">
             <span class="datos__etiqueta">Total</span>
-            <span class="datos__valor">{{ o.total_uf }} UF</span>
+            <span class="datos__valor">{{ o.total_uf|floatformat:2 }} UF</span>
           </div>
           <div class="datos__fila">
             <span class="datos__etiqueta">Anticipo</span>
-            <span class="datos__valor">{{ o.monto_anticipo_uf }} UF</span>
+            <span class="datos__valor">{{ o.monto_anticipo_uf|floatformat:2 }} UF</span>
           </div>
           <div class="datos__fila">
             <span class="datos__etiqueta">Saldo contra entrega</span>
-            <span class="datos__valor">{{ o.monto_saldo_uf }} UF</span>
+            <span class="datos__valor">{{ o.monto_saldo_uf|floatformat:2 }} UF</span>
           </div>
           <div class="datos__fila">
             <span class="datos__etiqueta">Codigo de seguimiento</span>

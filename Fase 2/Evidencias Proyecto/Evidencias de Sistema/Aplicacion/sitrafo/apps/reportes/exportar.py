@@ -36,6 +36,12 @@ def a_excel(reporte: dict, periodo: str) -> bytes:
         hoja.append([float(v) if isinstance(v, Decimal) else v for v in reporte["totales"]])
         for celda in hoja[hoja.max_row]:
             celda.font = Font(bold=True)
+    # Los montos se guardan con 4 decimales; en la planilla se muestran con 2,
+    # igual que en el PDF. La celda conserva el valor completo.
+    for fila in hoja.iter_rows(min_row=fila_encabezado + 1):
+        for celda in fila:
+            if isinstance(celda.value, float):
+                celda.number_format = "#,##0.00"
     for i, _ in enumerate(reporte["columnas"], start=1):
         hoja.column_dimensions[get_column_letter(i)].width = 20
     memoria = BytesIO()

@@ -66,7 +66,7 @@
         <div class="placa__pie">
           <div class="placa__precio">
             {% if m.precio_vigente %}
-              <strong>{{ m.precio_vigente }} UF</strong>
+              <strong>{{ m.precio_vigente|floatformat:2 }} UF</strong>
               <span class="text-secondary">referencial</span>
             {% else %}
               <span class="text-secondary">Precio segun especificacion</span>

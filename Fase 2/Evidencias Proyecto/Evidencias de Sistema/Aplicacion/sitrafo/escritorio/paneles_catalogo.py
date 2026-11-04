@@ -78,7 +78,7 @@ class DialogoModelo(QDialog):
 
         self.precio = QDoubleSpinBox()
         self.precio.setRange(0, 1_000_000)
-        self.precio.setDecimals(4)
+        self.precio.setDecimals(2)
         self.precio.setSuffix(" UF")
         self.puede_precio = self.cliente.puede("precio.actualizar")
         self.precio.setEnabled(self.puede_precio)

@@ -148,6 +148,7 @@ USE_TZ = True
 
 # Formato chileno: punto como separador de miles, coma como decimal
 USE_THOUSAND_SEPARATOR = True
+FORMAT_MODULE_PATH = ["config.formats"]
 
 # --------------------------------------------------------------------------
 # Archivos estaticos y media

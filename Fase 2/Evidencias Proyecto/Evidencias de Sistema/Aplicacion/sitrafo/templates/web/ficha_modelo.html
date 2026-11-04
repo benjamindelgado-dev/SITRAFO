@@ -44,7 +44,7 @@
       <div class="placa__cuerpo">
         {% if modelo.precio_vigente %}
           <div class="text-secondary" style="font-size:.8rem">Precio base referencial</div>
-          <div style="font-size:1.95rem;font-weight:600;line-height:1.1">{{ modelo.precio_vigente }} UF</div>
+          <div style="font-size:1.95rem;font-weight:600;line-height:1.1">{{ modelo.precio_vigente|floatformat:2 }} UF</div>
         {% else %}
           <div style="font-size:1.25rem;font-weight:600">Precio segun especificacion</div>
         {% endif %}
