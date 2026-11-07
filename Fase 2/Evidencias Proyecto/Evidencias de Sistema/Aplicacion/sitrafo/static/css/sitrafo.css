@@ -307,48 +307,106 @@ table, .cifra, .placa__valor, .metrica__cifra,
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
 /* ==========================================================================
-   Acceso — portada del portal
+   Acceso — portada del portal (pantalla completa)
+   Izquierda: chapa grafito con grilla de plano, la marca y la placa de acceso.
+   Derecha: la vista explotada del transformador trifasico, fundida con el
+   grafito mediante un degradado.
    ========================================================================== */
+.acceso-main { display: flex; flex-direction: column; }
+.acceso-main > .aviso { width: calc(100% - 2rem); max-width: 960px; margin: 1rem auto 0 !important; }
+
 .acceso {
-  display: grid; grid-template-columns: 1.2fr 0.8fr;
-  border: 1px solid var(--ansi); border-radius: 2px;
-  overflow: hidden; background: var(--grafito); min-height: 440px;
+  position: relative; flex: 1; isolation: isolate; overflow: hidden;
+  display: flex; align-items: center;
+  min-height: 600px;
+  background: var(--grafito);
 }
-.acceso__plano {
-  position: relative; overflow: hidden;
-  background: radial-gradient(130% 120% at 30% 25%, #26333d 0%, var(--grafito) 55%, var(--grafito-hondo) 100%);
+.acceso__imagen {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: right center;
+  z-index: -3;
+}
+.acceso__velo {
+  position: absolute; inset: 0; z-index: -2;
+  background: linear-gradient(90deg,
+    var(--grafito) 0%, var(--grafito) 27%,
+    rgba(27,36,43,.88) 38%, rgba(27,36,43,.5) 50%, rgba(27,36,43,0) 63%);
 }
 .acceso__grilla {
-  position: absolute; inset: 0; opacity: .5;
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background-image:
-    linear-gradient(rgba(168,176,174,.10) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(168,176,174,.10) 1px, transparent 1px);
-  background-size: 30px 30px;
+    linear-gradient(rgba(168,176,174,.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168,176,174,.09) 1px, transparent 1px);
+  background-size: 32px 32px;
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 34%, transparent 56%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 34%, transparent 56%);
 }
-.acceso__marco { position: absolute; inset: 16px; border: 1px solid rgba(194,129,74,.28); border-radius: 2px; pointer-events: none; }
-.acceso__marco::before, .acceso__marco::after { content: ""; position: absolute; width: 11px; height: 11px; border: 1.5px solid rgba(194,129,74,.55); }
-.acceso__marco::before { left: -1px; top: -1px; border-right: none; border-bottom: none; }
-.acceso__marco::after  { right: -1px; bottom: -1px; border-left: none; border-top: none; }
-.acceso__svg { position: absolute; left: 55%; top: 48%; transform: translate(-50%, -50%); width: 86%; max-width: 540px; color: var(--cobre-plano); }
-.acceso__svg .acero { stroke: var(--ansi); }
-.acceso__rotulo { position: absolute; right: 24px; bottom: 24px; display: flex; border: 1px solid rgba(194,129,74,.4); border-radius: 2px; overflow: hidden; font-size: .62rem; letter-spacing: .14em; }
-.acceso__rotulo span { padding: 4px 9px; color: var(--cobre-plano); border-right: 1px solid rgba(194,129,74,.25); }
-.acceso__rotulo span:last-child { border-right: 0; color: var(--ansi); }
-.acceso__marca { position: absolute; left: 34px; top: 34px; max-width: 290px; background: rgba(18,25,31,.66); border: 1px solid rgba(194,129,74,.22); border-radius: 2px; padding: 20px; }
-.acceso__marca .nombre { font-family: var(--tipo-titulo); font-size: var(--t-xl); font-weight: 700; letter-spacing: .05em; color: #f3efe9; line-height: 1; }
-.acceso__marca .nombre::after { content: ""; display: block; width: 44px; height: 3px; background: var(--cobre-plano); margin-top: 11px; }
-.acceso__marca .linea { font-size: .68rem; letter-spacing: .2em; color: var(--cobre-plano); margin-top: 11px; }
-.acceso__marca .nota { color: #c5cdd2; font-size: .82rem; line-height: 1.5; margin: 11px 0 0; max-width: none; }
-.acceso__forma { background: var(--placa); padding: 2rem 1.9rem; display: flex; flex-direction: column; justify-content: center; }
-.acceso__forma h1 { font-size: var(--t-l); margin: 0 0 .2rem; }
-.acceso__forma .guia { color: var(--acero); font-size: var(--t-s); margin: 0 0 1.3rem; }
-.acceso__extra { margin-top: 1.1rem; font-size: var(--t-xs); color: var(--acero); }
+
+.acceso__contenido {
+  width: 100%; max-width: 1440px; margin: 0 auto;
+  padding: 3rem max(1.5rem, 6vw);
+}
+.acceso__columna { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 2.1rem; }
+
+.acceso__marca .nombre {
+  font-family: var(--tipo-titulo); font-weight: 700; letter-spacing: .05em;
+  font-size: clamp(2.3rem, 3.3vw, 3.1rem); color: #f3efe9; line-height: 1;
+}
+.acceso__marca .nombre::after {
+  content: ""; display: block; width: 54px; height: 3px;
+  background: var(--cobre-plano); margin-top: 15px;
+}
+.acceso__marca .linea {
+  font-family: var(--tipo-mono); font-size: .74rem; letter-spacing: .24em;
+  color: var(--cobre-plano); margin-top: 15px;
+}
+.acceso__marca .nota { color: #c5cdd2; font-size: .98rem; line-height: 1.55; margin: 12px 0 0; max-width: 38ch; }
+
+.acceso__tarjeta {
+  background: var(--placa); border-radius: var(--radio);
+  box-shadow: 0 30px 60px -28px rgba(0,0,0,.7), 0 2px 8px -4px rgba(0,0,0,.3);
+  padding: 2.3rem 2.3rem 2rem;
+}
+.acceso__tarjeta h1 { font-size: 1.8rem; margin: 0 0 .25rem; }
+.acceso__tarjeta .guia { color: var(--acero); font-size: var(--t-s); margin: 0 0 1.6rem; }
+.acceso__tarjeta .form-label { font-size: var(--t-s); }
+.acceso__tarjeta .form-control { padding: .78rem .9rem; font-size: 1rem; }
+.acceso__tarjeta .btn-principal { padding: .82rem 1rem; font-size: 1rem; }
+.acceso__extra {
+  margin-top: 1.5rem; padding-top: 1.15rem; border-top: 1px solid var(--linea);
+  font-size: var(--t-xs); color: var(--acero);
+}
 .acceso__extra p { margin: .4rem 0 0; max-width: none; }
-@media (max-width: 767px) {
-  .acceso { grid-template-columns: 1fr; }
-  .acceso__plano { min-height: 0; padding-bottom: 6px; }
-  .acceso__svg { position: static; transform: none; width: 80%; max-width: 300px; display: block; margin: 22px auto 4px; }
-  .acceso__marco, .acceso__rotulo { display: none; }
-  .acceso__marca { position: static; max-width: none; margin: 14px; }
-  .acceso__forma { padding: 1.5rem 1.4rem; }
+.acceso__extra p:first-child { margin-top: 0; }
+
+/* Notebooks y pantallas bajas: todo entra sin scroll */
+@media (min-width: 992px) and (max-height: 820px) {
+  .acceso__contenido { padding-top: 1.6rem; padding-bottom: 1.6rem; }
+  .acceso__columna { gap: 1.3rem; }
+  .acceso__marca .nombre { font-size: 2.3rem; }
+  .acceso__marca .nombre::after, .acceso__marca .linea { margin-top: 11px; }
+  .acceso__tarjeta { padding: 1.7rem 2rem 1.5rem; }
+  .acceso__tarjeta h1 { font-size: 1.6rem; }
+  .acceso__tarjeta .guia { margin-bottom: 1.1rem; }
+  .acceso__extra { margin-top: 1.1rem; padding-top: .9rem; }
+}
+
+/* Pantallas angostas: el transformador arriba (sin rotulos cortados) y
+   se funde hacia el formulario */
+@media (max-width: 991px) {
+  .acceso { align-items: flex-start; }
+  .acceso__imagen { height: 52vh; object-position: 58% center; }
+  .acceso__velo {
+    inset: 0 0 auto 0; height: 52vh;
+    background: linear-gradient(180deg,
+      rgba(27,36,43,.1) 0%, rgba(27,36,43,.45) 60%, var(--grafito) 100%);
+  }
+  .acceso__grilla {
+    -webkit-mask-image: linear-gradient(180deg, transparent 40%, #000 65%);
+            mask-image: linear-gradient(180deg, transparent 40%, #000 65%);
+  }
+  .acceso__contenido { padding: 42vh 1.25rem 2rem; }
+  .acceso__columna { max-width: 520px; margin: 0 auto; gap: 1.5rem; }
+  .acceso__marca .nombre { font-size: 2.3rem; }
+  .acceso__tarjeta { padding: 1.7rem 1.4rem 1.5rem; }
 }

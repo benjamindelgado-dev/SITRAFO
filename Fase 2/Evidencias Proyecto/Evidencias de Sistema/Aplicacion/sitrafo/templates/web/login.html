@@ -1,95 +1,24 @@
 {% extends "base.html" %}
+{% load static %}
 {% block titulo %}Acceso — SITRAFO{% endblock %}
+{% block main_clase %}acceso-main{% endblock %}
+{% block pie %}{% endblock %}
 {% block contenido %}
-<div class="row justify-content-center">
-  <div class="col-12 col-lg-11 col-xl-10">
-    <div class="acceso">
+<section class="acceso">
+  <img class="acceso__imagen" src="{% static 'img/acceso_despiece.jpg' %}" alt="" aria-hidden="true">
+  <div class="acceso__velo"></div>
+  <div class="acceso__grilla"></div>
 
-      <div class="acceso__plano">
-        <div class="acceso__grilla"></div>
-        <div class="acceso__marco"></div>
+  <div class="acceso__contenido">
+    <div class="acceso__columna">
 
-        <svg class="acceso__svg" viewBox="0 0 620 340" fill="none" aria-hidden="true">
-          <!-- eje de montaje -->
-          <line x1="40" y1="182" x2="585" y2="182" stroke="currentColor" stroke-width="1.4" opacity=".4" stroke-dasharray="5 5"/>
-          <!-- cuba -->
-          <g class="acero" stroke-width="1.6" opacity=".5" fill="none">
-            <rect x="452" y="104" width="138" height="158" rx="10"/>
-            <line x1="452" y1="126" x2="590" y2="126"/>
-            <line x1="462" y1="150" x2="580" y2="150"/>
-            <line x1="462" y1="180" x2="580" y2="180"/>
-            <line x1="462" y1="210" x2="580" y2="210"/>
-            <line x1="462" y1="240" x2="580" y2="240"/>
-          </g>
-          <!-- nucleo 3 columnas -->
-          <g stroke="currentColor" stroke-width="2" fill="none">
-            <rect x="250" y="112" width="170" height="140" rx="3"/>
-            <rect x="280" y="138" width="40" height="88"/>
-            <rect x="350" y="138" width="40" height="88"/>
-          </g>
-          <!-- bobina montada -->
-          <g stroke="currentColor" stroke-width="1.8" fill="none">
-            <ellipse cx="335" cy="128" rx="30" ry="8"/>
-            <line x1="305" y1="128" x2="305" y2="236"/>
-            <line x1="365" y1="128" x2="365" y2="236"/>
-            <path d="M305 236 A30 8 0 0 0 365 236"/>
-            <path d="M305 156 A30 8 0 0 0 365 156" opacity=".55"/>
-            <path d="M305 182 A30 8 0 0 0 365 182" opacity=".55"/>
-            <path d="M305 208 A30 8 0 0 0 365 208" opacity=".55"/>
-          </g>
-          <!-- bobina despiezada + guia -->
-          <g stroke="currentColor" stroke-width="1.8" fill="none">
-            <ellipse cx="108" cy="128" rx="30" ry="8"/>
-            <line x1="78" y1="128" x2="78" y2="236"/>
-            <line x1="138" y1="128" x2="138" y2="236"/>
-            <path d="M78 236 A30 8 0 0 0 138 236"/>
-            <path d="M78 156 A30 8 0 0 0 138 156" opacity=".55"/>
-            <path d="M78 182 A30 8 0 0 0 138 182" opacity=".55"/>
-            <path d="M78 208 A30 8 0 0 0 138 208" opacity=".55"/>
-          </g>
-          <line x1="140" y1="182" x2="300" y2="182" stroke="currentColor" stroke-width="1.4" opacity=".5" stroke-dasharray="5 5"/>
-          <!-- bujes + guias -->
-          <g stroke="currentColor" stroke-width="1.6" fill="none">
-            <line x1="285" y1="60" x2="285" y2="88"/>
-            <ellipse cx="285" cy="64" rx="9" ry="3.2"/><ellipse cx="285" cy="72" rx="9" ry="3.2"/><ellipse cx="285" cy="80" rx="9" ry="3.2"/>
-            <line x1="335" y1="56" x2="335" y2="88"/>
-            <ellipse cx="335" cy="60" rx="9" ry="3.2"/><ellipse cx="335" cy="68" rx="9" ry="3.2"/><ellipse cx="335" cy="76" rx="9" ry="3.2"/>
-            <line x1="385" y1="60" x2="385" y2="88"/>
-            <ellipse cx="385" cy="64" rx="9" ry="3.2"/><ellipse cx="385" cy="72" rx="9" ry="3.2"/><ellipse cx="385" cy="80" rx="9" ry="3.2"/>
-          </g>
-          <g stroke="currentColor" stroke-width="1.4" opacity=".5" stroke-dasharray="5 5">
-            <line x1="285" y1="92" x2="285" y2="112"/>
-            <line x1="335" y1="92" x2="335" y2="112"/>
-            <line x1="385" y1="92" x2="385" y2="112"/>
-          </g>
-          <!-- guia nucleo -> cuba -->
-          <line class="acero" x1="420" y1="182" x2="452" y2="182" stroke-width="1.4" opacity=".5" stroke-dasharray="5 5"/>
-          <!-- etiquetas -->
-          <g fill="currentColor" opacity=".85" font-size="11" letter-spacing="1.5" text-anchor="middle" font-family="Archivo, system-ui, sans-serif">
-            <text x="335" y="34">BUJES</text>
-            <text x="108" y="266">BOBINA</text>
-            <text x="335" y="274">NUCLEO</text>
-            <text x="521" y="284">CUBA</text>
-          </g>
-          <!-- cota -->
-          <g stroke="currentColor" stroke-width="1.2" opacity=".45">
-            <line x1="60" y1="306" x2="585" y2="306"/>
-            <line x1="60" y1="300" x2="60" y2="312"/>
-            <line x1="585" y1="300" x2="585" y2="312"/>
-          </g>
-          <text x="322" y="326" fill="currentColor" opacity=".6" font-size="10" letter-spacing="2" text-anchor="middle" font-family="Archivo, system-ui, sans-serif">DESPIECE DEL TRANSFORMADOR</text>
-        </svg>
-
-        <div class="acceso__rotulo"><span>SITRAFO</span><span>DESPIECE · TD</span></div>
-
-        <div class="acceso__marca">
-          <div class="nombre">SITRAFO</div>
-          <div class="linea">PORTAL DE CLIENTES</div>
-          <p class="nota">Siga su pedido de transformadores de principio a fin: cotizacion, fabricacion, calidad y entrega.</p>
-        </div>
+      <div class="acceso__marca">
+        <div class="nombre">SITRAFO</div>
+        <div class="linea">PORTAL DE CLIENTES</div>
+        <p class="nota">Siga su pedido de transformadores de principio a fin: cotizacion, fabricacion, calidad y entrega.</p>
       </div>
 
-      <div class="acceso__forma">
+      <div class="acceso__tarjeta">
         <h1>Iniciar sesion</h1>
         <p class="guia">Ingrese con la cuenta de su empresa.</p>
         <form method="post">
@@ -120,5 +49,5 @@
 
     </div>
   </div>
-</div>
+</section>
 {% endblock %}
