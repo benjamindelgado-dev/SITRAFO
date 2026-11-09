@@ -55,7 +55,8 @@ jobs:
       - name: Construir el ejecutable
         run: >
           pyinstaller --noconfirm --clean --onefile --windowed
-          --name SITRAFO --icon sitrafo.ico --add-data "sitrafo.ico;." main.py
+          --name SITRAFO --icon sitrafo.ico --add-data "sitrafo.ico;."
+          --add-data "fuentes;fuentes" --add-data "img;img" main.py
 
       - name: Verificar el resultado
         run: |
