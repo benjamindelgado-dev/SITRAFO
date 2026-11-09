@@ -96,6 +96,9 @@ def construir(titulo: str, contenido: list, pagina=A4) -> bytes:
         lienzo.setFillColor(ACERO)
         ancho, alto = pagina
         lienzo.rect(0, alto - 16 * mm, ancho, 16 * mm, stroke=0, fill=1)
+        # Filete cobre bajo la cabecera, igual que en el portal y el escritorio
+        lienzo.setFillColor(COBRE)
+        lienzo.rect(0, alto - 17.2 * mm, ancho, 1.2 * mm, stroke=0, fill=1)
         lienzo.setFillColor(colors.white)
         lienzo.setFont("Helvetica-Bold", 13)
         lienzo.drawString(18 * mm, alto - 10.5 * mm, "SITRAFO")

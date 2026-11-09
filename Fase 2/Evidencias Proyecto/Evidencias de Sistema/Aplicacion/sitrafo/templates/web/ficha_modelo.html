@@ -34,7 +34,7 @@
         </div>
       </div>
     </div>
-    <p class="mt-2" style="font-size:.8rem;color:var(--acero)">
+    <p class="mt-2 texto-nota">
       Los valores marcados con <span class="obligatorio">*</span> son obligatorios al pedir el presupuesto.
     </p>
   </div>
@@ -43,10 +43,10 @@
     <div class="placa">
       <div class="placa__cuerpo">
         {% if modelo.precio_vigente %}
-          <div class="text-secondary" style="font-size:.8rem">Precio base referencial</div>
-          <div style="font-size:1.95rem;font-weight:600;line-height:1.1">{{ modelo.precio_vigente|floatformat:2 }} UF</div>
+          <div class="texto-nota">Precio base referencial</div>
+          <div class="cifra-grande">{{ modelo.precio_vigente|floatformat:2 }} UF</div>
         {% else %}
-          <div style="font-size:1.25rem;font-weight:600">Precio segun especificacion</div>
+          <div class="cifra-media">Precio segun especificacion</div>
         {% endif %}
         <p class="placa__descripcion mt-3">
           El precio definitivo depende de la especificacion tecnica que usted
@@ -98,11 +98,11 @@
               <span class="datos__valor" id="e-validez"></span>
             </div>
           </div>
-          <p class="text-secondary mt-2 mb-2" style="font-size:.78rem" id="e-avisos"></p>
+          <p class="texto-nota mt-2 mb-2" id="e-avisos"></p>
           <a id="e-solicitar" class="btn btn-plano w-100" href="#">Pedir presupuesto por estas unidades</a>
         </div>
 
-        <p class="mt-3 mb-0 text-secondary" style="font-size:.78rem">
+        <p class="mt-3 mb-0 texto-nota">
           Calculado con la API del cotizador de SITRAFO.
           <a href="/api/publica/v1/docs/" target="_blank" rel="noopener">Ver documentacion</a>.
         </p>

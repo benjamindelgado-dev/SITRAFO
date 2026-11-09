@@ -1,0 +1,12 @@
+{% extends "web/_portada.html" %}
+{% block titulo %}Pagina no encontrada — SITRAFO{% endblock %}
+{% block nota %}{% endblock %}
+{% block tarjeta %}
+<span class="estado">Error 404</span>
+<h1 class="mt-3">No encontramos esta pagina</h1>
+<p class="guia">La direccion no existe o el documento ya no esta disponible para su cuenta.</p>
+<div class="d-flex flex-wrap gap-2">
+  <a href="{% url 'web:inicio' %}" class="btn btn-principal">Ir al inicio</a>
+  <a href="{% url 'web:seguimiento_publico' %}" class="btn btn-plano">Seguir un pedido</a>
+</div>
+{% endblock %}

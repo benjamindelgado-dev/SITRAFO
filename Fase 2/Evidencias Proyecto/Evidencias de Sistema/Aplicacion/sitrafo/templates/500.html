@@ -1,0 +1,40 @@
+{% load static %}<!DOCTYPE html>
+{% comment %}
+  Error del servidor. No hereda de base.html a proposito: se muestra cuando
+  algo fallo, asi que no depende de la sesion, de la base de datos ni de los
+  procesadores de contexto. Solo usa archivos estaticos.
+{% endcomment %}
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1b242b">
+  <title>Error — SITRAFO</title>
+  <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="{% static 'css/sitrafo.css' %}" rel="stylesheet">
+</head>
+<body class="d-flex flex-column min-vh-100">
+<main class="acceso-main flex-grow-1">
+  <section class="acceso">
+    <img class="acceso__imagen" src="{% static 'img/acceso_despiece.jpg' %}" alt="" aria-hidden="true">
+    <div class="acceso__velo"></div>
+    <div class="acceso__grilla"></div>
+    <div class="acceso__contenido">
+      <div class="acceso__columna">
+        <div class="acceso__marca">
+          <div class="nombre">SITRAFO</div>
+          <div class="linea">PORTAL DE CLIENTES</div>
+        </div>
+        <div class="acceso__tarjeta">
+          <span class="estado estado--mal">Error 500</span>
+          <h1 class="mt-3">Algo fallo de nuestro lado</h1>
+          <p class="guia">No pudimos completar la operacion. Sus datos no se perdieron: intente de nuevo en unos minutos. Si el problema sigue, escriba al area comercial.</p>
+          <a href="/" class="btn btn-principal">Volver al inicio</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

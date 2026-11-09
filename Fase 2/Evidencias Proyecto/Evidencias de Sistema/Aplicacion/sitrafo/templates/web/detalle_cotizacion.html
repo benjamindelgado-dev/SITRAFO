@@ -16,30 +16,30 @@
         <span class="placa__familia">{{ cotizacion.creado_en|date:"d-m-Y" }}</span>
       </div>
       <div class="table-responsive">
-      <table class="table mb-0">
+      <table class="table mb-0 tabla-lineas">
         <thead>
-          <tr style="background:#f4f6f4">
-            <th scope="col" style="font-size:.78rem;color:var(--acero);font-weight:500;border:0">Modelo</th>
-            <th scope="col" class="text-end" style="font-size:.78rem;color:var(--acero);font-weight:500;border:0">Unidades</th>
-            <th scope="col" class="text-end" style="font-size:.78rem;color:var(--acero);font-weight:500;border:0">Precio unitario UF</th>
+          <tr>
+            <th scope="col">Modelo</th>
+            <th scope="col" class="text-end">Unidades</th>
+            <th scope="col" class="text-end">Precio unitario UF</th>
           </tr>
         </thead>
         <tbody>
           {% for l in cotizacion.lineas.all %}
             <tr>
-              <td style="font-size:.9rem">
+              <td>
                 {{ l.modelo.nombre }}
-                <div class="text-secondary" style="font-size:.78rem">{{ l.modelo.codigo }}</div>
+                <div class="texto-nota codigo">{{ l.modelo.codigo }}</div>
               </td>
-              <td class="text-end" style="font-size:.9rem">{{ l.cantidad }}</td>
-              <td class="text-end" style="font-size:.9rem">{{ l.precio_uf|floatformat:2 }}</td>
+              <td class="text-end">{{ l.cantidad }}</td>
+              <td class="text-end">{{ l.precio_uf|floatformat:2 }}</td>
             </tr>
           {% endfor %}
         </tbody>
         <tfoot>
-          <tr style="background:#f4f6f4">
-            <th scope="row" colspan="2" class="text-end" style="font-size:.9rem">Total</th>
-            <td class="text-end fw-bold" style="font-size:.9rem">{{ cotizacion.total_uf|floatformat:2 }} UF</td>
+          <tr>
+            <th scope="row" colspan="2" class="text-end">Total</th>
+            <td class="text-end fw-bold">{{ cotizacion.total_uf|floatformat:2 }} UF</td>
           </tr>
         </tfoot>
       </table>
@@ -53,9 +53,9 @@
           <li>
             <span>
               {% if h.estado_anterior %}{{ h.estado_anterior.nombre }} a {% endif %}<strong>{{ h.estado_nuevo.nombre }}</strong>
-              {% if h.observacion %}<div class="text-secondary" style="font-size:.8rem">{{ h.observacion }}</div>{% endif %}
+              {% if h.observacion %}<div class="texto-nota">{{ h.observacion }}</div>{% endif %}
             </span>
-            <span class="text-secondary" style="font-size:.8rem;white-space:nowrap">{{ h.fecha_hora|date:"d-m-Y H:i" }}</span>
+            <span class="texto-nota sin-salto">{{ h.fecha_hora|date:"d-m-Y H:i" }}</span>
           </li>
         {% empty %}
           <li><span class="text-secondary">Sin movimientos registrados.</span></li>
@@ -67,8 +67,8 @@
   <div class="col-lg-5">
     <div class="placa mb-3">
       <div class="placa__cuerpo">
-        <div class="text-secondary" style="font-size:.8rem">Total en pesos</div>
-        <div style="font-size:1.95rem;font-weight:600;line-height:1.1">${{ cotizacion.total_clp|floatformat:0 }}</div>
+        <div class="texto-nota">Total en pesos</div>
+        <div class="cifra-grande">${{ cotizacion.total_clp|floatformat:0 }}</div>
         <p class="placa__descripcion mt-2 mb-3">
           Calculado con la UF del {{ cotizacion.fecha_valor_uf|date:"d-m-Y" }}
           (${{ cotizacion.valor_uf|floatformat:2 }}). Ese valor queda fijo en

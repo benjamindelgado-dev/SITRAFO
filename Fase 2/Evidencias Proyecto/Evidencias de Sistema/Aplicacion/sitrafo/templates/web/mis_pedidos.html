@@ -31,7 +31,7 @@
           <div class="datos__fila">
             <span class="datos__etiqueta">Codigo de seguimiento</span>
             <span class="datos__valor">
-              <strong style="letter-spacing:.06em">{{ o.codigo_seguimiento }}</strong>
+              <strong class="codigo">{{ o.codigo_seguimiento }}</strong>
               <a class="ms-2" href="{% url 'web:seguimiento_publico' %}?numero={{ o.numero|urlencode }}&codigo={{ o.codigo_seguimiento|urlencode }}">Ver seguimiento</a>
             </span>
           </div>
@@ -41,12 +41,12 @@
     </div>
 
     {% if o.documentos_cobro.all %}
-      <ul class="etapas-ot" style="border-top:1px solid var(--ansi-tenue)">
+      <ul class="etapas-ot etapas-ot--lista etapas-ot--separada">
         {% for d in o.documentos_cobro.all %}
           <li>
             <span>
               <strong>{{ d.numero }}</strong>
-              <span class="text-secondary ms-2" style="font-size:.85rem">{{ d.get_tipo_display }} · ${{ d.monto_clp|floatformat:0 }}</span>
+              <span class="texto-nota ms-2">{{ d.get_tipo_display }} · ${{ d.monto_clp|floatformat:0 }}</span>
             </span>
             <span class="d-flex align-items-center gap-3">
               {% if d.estado == "pagado" %}
@@ -66,18 +66,18 @@
     {% endif %}
 
     {% if o.ordenes_trabajo.all %}
-      <ul class="etapas-ot" style="border-top:1px solid var(--ansi-tenue)">
+      <ul class="etapas-ot etapas-ot--lista etapas-ot--separada">
         {% for ot in o.ordenes_trabajo.all %}
           <li>
             <span>
               <strong>{{ ot.numero }}</strong>
               <span class="estado ms-2">{{ ot.estado.nombre }}</span>
             </span>
-            <span class="d-flex align-items-center gap-3" style="min-width:230px">
+            <span class="d-flex align-items-center gap-3 avance-fila">
               <span class="avance flex-grow-1">
                 <span class="avance__relleno" style="width: {{ ot.avance_pct|default:0 }}%"></span>
               </span>
-              <span class="text-secondary" style="font-size:.8rem;min-width:40px;text-align:right">{{ ot.avance_pct|default:0 }}%</span>
+              <span class="texto-nota avance-pct">{{ ot.avance_pct|default:0 }}%</span>
               <a href="{% url 'web:seguimiento' ot.pk %}">Seguir</a>
             </span>
           </li>

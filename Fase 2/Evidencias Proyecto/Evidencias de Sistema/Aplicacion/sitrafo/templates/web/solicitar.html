@@ -23,7 +23,7 @@
             <div class="mb-3">
               <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
               {{ campo }}
-              {% if campo.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ campo.errors|striptags }}</div>{% endif %}
+              {% if campo.errors %}<div class="error-campo">{{ campo.errors|striptags }}</div>{% endif %}
             </div>
           {% endif %}{% endfor %}
         </div>
@@ -41,8 +41,8 @@
                   {{ campo.label }}{% if parametro.obligatorio %} <span class="obligatorio">*</span>{% endif %}
                 </label>
                 {{ campo }}
-                {% if campo.help_text %}<div class="text-muted mt-1" style="font-size:.78rem">{{ campo.help_text }}</div>{% endif %}
-                {% if campo.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ campo.errors|striptags }}</div>{% endif %}
+                {% if campo.help_text %}<div class="ayuda-campo">{{ campo.help_text }}</div>{% endif %}
+                {% if campo.errors %}<div class="error-campo">{{ campo.errors|striptags }}</div>{% endif %}
               </div>
             {% empty %}
               <div class="col-12 text-secondary">No hay parametros tecnicos configurados.</div>

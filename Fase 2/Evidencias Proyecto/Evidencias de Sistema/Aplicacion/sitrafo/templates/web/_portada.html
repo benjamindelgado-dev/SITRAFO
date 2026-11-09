@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load static %}
+{% comment %}
+  Portada comun de las paginas de acceso (ingreso, recuperar contrasena,
+  crear cuenta, mantencion y errores): la vista explotada del transformador
+  sobre chapa grafito y la placa con el contenido al costado. Cada pagina
+  llena el bloque "tarjeta"; "columna_clase" permite una columna mas ancha.
+{% endcomment %}
+{% block main_clase %}acceso-main{% endblock %}
+{% block barra_publica %}{% endblock %}
+{% block pie %}{% endblock %}
+{% block contenido %}
+<section class="acceso">
+  <img class="acceso__imagen" src="{% static 'img/acceso_despiece.jpg' %}" alt="" aria-hidden="true">
+  <div class="acceso__velo"></div>
+  <div class="acceso__grilla"></div>
+
+  <div class="acceso__contenido">
+    <div class="acceso__columna {% block columna_clase %}{% endblock %}">
+
+      <div class="acceso__marca">
+        <div class="nombre">SITRAFO</div>
+        <div class="linea">PORTAL DE CLIENTES</div>
+        {% block nota %}<p class="nota">Siga su pedido de transformadores de principio a fin: cotizacion, fabricacion, calidad y entrega.</p>{% endblock %}
+      </div>
+
+      <div class="acceso__tarjeta">
+        {% block tarjeta %}{% endblock %}
+      </div>
+
+    </div>
+  </div>
+</section>
+{% endblock %}

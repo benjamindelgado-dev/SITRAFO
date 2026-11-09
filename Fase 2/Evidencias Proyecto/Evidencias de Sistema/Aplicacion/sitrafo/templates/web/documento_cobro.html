@@ -53,11 +53,11 @@
           <li>
             <span>
               <strong>{{ t.get_estado_display }}</strong>
-              <div class="text-secondary" style="font-size:.8rem">
+              <div class="texto-nota">
                 {{ t.pasarela|upper }} · {{ t.monto }} {{ t.moneda }} · ref. {{ t.id_externo }}
               </div>
             </span>
-            <span class="text-secondary" style="font-size:.8rem;white-space:nowrap">{{ t.iniciada_en|date:"d-m-Y H:i" }}</span>
+            <span class="texto-nota sin-salto">{{ t.iniciada_en|date:"d-m-Y H:i" }}</span>
           </li>
         {% empty %}
           <li><span class="text-secondary">Aun no hay intentos de pago.</span></li>
@@ -69,8 +69,8 @@
   <div class="col-lg-5">
     <div class="placa mb-3">
       <div class="placa__cuerpo">
-        <div class="text-secondary" style="font-size:.8rem">Total en pesos</div>
-        <div style="font-size:1.95rem;font-weight:600;line-height:1.1">${{ documento.monto_clp|floatformat:0 }}</div>
+        <div class="texto-nota">Total en pesos</div>
+        <div class="cifra-grande">${{ documento.monto_clp|floatformat:0 }}</div>
         <p class="placa__descripcion mt-2 mb-0">
           Monto fijado al emitir el documento con la UF del dia. No cambia si
           la UF varia.

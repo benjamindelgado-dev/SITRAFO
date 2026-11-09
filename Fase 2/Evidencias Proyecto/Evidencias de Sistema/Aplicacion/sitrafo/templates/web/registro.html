@@ -1,64 +1,52 @@
-{% extends "base.html" %}
+{% extends "web/_portada.html" %}
 {% block titulo %}Crear cuenta — SITRAFO{% endblock %}
-{% block contenido %}
-<div class="row justify-content-center">
-  <div class="col-lg-8">
+{% block columna_clase %}acceso__columna--ancha{% endblock %}
+{% block nota %}<p class="nota">Con su cuenta puede pedir presupuestos, responder cotizaciones y seguir la fabricacion de sus equipos.</p>{% endblock %}
+{% block tarjeta %}
+<h1>Crear cuenta</h1>
+<p class="guia">Complete los datos de su empresa y los de acceso al portal.</p>
 
-    <div class="seccion">
-      <h1>Crear cuenta</h1>
-      <p>Con su cuenta puede pedir presupuestos, responder cotizaciones y
-         seguir la fabricacion de sus equipos.</p>
-    </div>
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="aviso aviso--mal mb-3">{{ form.non_field_errors|striptags }}</div>
+  {% endif %}
 
-    <form method="post" novalidate>
-      {% csrf_token %}
-      {% if form.non_field_errors %}
-        <div class="aviso aviso--mal mb-3">{{ form.non_field_errors|striptags }}</div>
-      {% endif %}
-
-      <div class="placa mb-3">
-        <div class="placa__cabecera"><span class="placa__codigo">DATOS DEL CLIENTE</span></div>
-        <div class="placa__cuerpo">
-          <div class="row g-3">
-            {% for campo in form %}{% if campo.name in "rut,razon_social,tipo_persona,giro" %}
-              <div class="col-md-6">
-                <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
-                {{ campo }}
-                {% if campo.help_text %}<div class="text-secondary mt-1" style="font-size:.78rem">{{ campo.help_text }}</div>{% endif %}
-                {% if campo.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ campo.errors|striptags }}</div>{% endif %}
-              </div>
-            {% endif %}{% endfor %}
-          </div>
-        </div>
+  <h2 class="acceso__seccion">Datos del cliente</h2>
+  <div class="row g-3">
+    {% for campo in form %}{% if campo.name in "rut,razon_social,tipo_persona,giro" %}
+      <div class="col-md-6">
+        <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+        {{ campo }}
+        {% if campo.help_text %}<div class="ayuda-campo">{{ campo.help_text }}</div>{% endif %}
+        {% if campo.errors %}<div class="error-campo">{{ campo.errors|striptags }}</div>{% endif %}
       </div>
-
-      <div class="placa mb-3">
-        <div class="placa__cabecera"><span class="placa__codigo">DATOS DE ACCESO</span></div>
-        <div class="placa__cuerpo">
-          <div class="row g-3">
-            {% for campo in form %}{% if campo.name in "username,email,password1,password2" %}
-              <div class="col-md-6">
-                <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
-                {{ campo }}
-                {% if campo.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ campo.errors|striptags }}</div>{% endif %}
-              </div>
-            {% endif %}{% endfor %}
-          </div>
-        </div>
-      </div>
-
-      <div class="form-check mb-3">
-        {{ form.acepta_privacidad }}
-        <label class="form-check-label" for="{{ form.acepta_privacidad.id_for_label }}">
-          He leido y acepto la <a href="{% url 'web:privacidad' %}" target="_blank">politica de
-          privacidad</a> y el tratamiento de mis datos personales.
-        </label>
-        {% if form.acepta_privacidad.errors %}<div class="text-danger mt-1" style="font-size:.8rem">{{ form.acepta_privacidad.errors|striptags }}</div>{% endif %}
-      </div>
-
-      <button type="submit" class="btn btn-principal">Crear cuenta</button>
-      <a href="{% url 'web:login' %}" class="btn btn-plano">Ya tengo cuenta</a>
-    </form>
+    {% endif %}{% endfor %}
   </div>
-</div>
+
+  <h2 class="acceso__seccion">Datos de acceso</h2>
+  <div class="row g-3">
+    {% for campo in form %}{% if campo.name in "username,email,password1,password2" %}
+      <div class="col-md-6">
+        <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+        {{ campo }}
+        {% if campo.errors %}<div class="error-campo">{{ campo.errors|striptags }}</div>{% endif %}
+      </div>
+    {% endif %}{% endfor %}
+  </div>
+
+  <div class="form-check mt-4 mb-3">
+    {{ form.acepta_privacidad }}
+    <label class="form-check-label" for="{{ form.acepta_privacidad.id_for_label }}">
+      He leido y acepto la <a href="{% url 'web:privacidad' %}" target="_blank">politica de
+      privacidad</a> y el tratamiento de mis datos personales.
+    </label>
+    {% if form.acepta_privacidad.errors %}<div class="error-campo">{{ form.acepta_privacidad.errors|striptags }}</div>{% endif %}
+  </div>
+
+  <div class="d-flex flex-wrap gap-2">
+    <button type="submit" class="btn btn-principal">Crear cuenta</button>
+    <a href="{% url 'web:login' %}" class="btn btn-plano">Ya tengo cuenta</a>
+  </div>
+</form>
 {% endblock %}

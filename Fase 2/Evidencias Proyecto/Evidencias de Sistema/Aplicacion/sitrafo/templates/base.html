@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1b242b">
   <title>{% block titulo %}SITRAFO{% endblock %}</title>
   <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="any">
   <link rel="icon" href="{% static 'img/favicon-32.png' %}" type="image/png" sizes="32x32">
@@ -51,6 +52,17 @@
     </div>
   </div>
 </nav>
+{% else %}
+{% block barra_publica %}
+<nav class="navbar barra barra--publica" data-bs-theme="dark">
+  <div class="container">
+    <a class="navbar-brand" href="{% url 'web:login' %}">
+      SITRAFO<span>Portal de clientes</span>
+    </a>
+    <a class="btn btn-principal barra__ingresar" href="{% url 'web:login' %}">Ingresar</a>
+  </div>
+</nav>
+{% endblock %}
 {% endif %}
 
 <main class="{% block main_clase %}container py-4{% endblock %} flex-grow-1">

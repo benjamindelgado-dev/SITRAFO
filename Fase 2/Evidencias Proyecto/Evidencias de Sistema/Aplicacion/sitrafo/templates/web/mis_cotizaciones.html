@@ -27,7 +27,7 @@
           <td>
             {{ c.vence_el|date:"d-m-Y" }}
             {% if c.estado.codigo == "emitida" and c.esta_vigente %}
-              <div class="text-secondary" style="font-size:.78rem">quedan {{ c.dias_para_vencer }} dia(s)</div>
+              <div class="texto-nota">quedan {{ c.dias_para_vencer }} dia(s)</div>
             {% endif %}
           </td>
           <td>

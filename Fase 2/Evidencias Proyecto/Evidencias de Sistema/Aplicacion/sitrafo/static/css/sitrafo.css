@@ -410,3 +410,61 @@ table, .cifra, .placa__valor, .metrica__cifra,
   .acceso__marca .nombre { font-size: 2.3rem; }
   .acceso__tarjeta { padding: 1.7rem 1.4rem 1.5rem; }
 }
+
+/* ==========================================================================
+   Portada: variantes para crear cuenta, mantencion y errores
+   ========================================================================== */
+.acceso__columna--ancha { max-width: 680px; }
+.acceso__seccion {
+  font-family: var(--tipo-mono); font-size: .74rem; font-weight: 500;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--cobre);
+  margin: 1.5rem 0 .9rem; padding-bottom: .45rem; border-bottom: 1px solid var(--linea);
+}
+.acceso__tarjeta .guia + form .acceso__seccion:first-of-type { margin-top: .4rem; }
+
+/* Barra superior de las paginas que se ven sin iniciar sesion */
+.barra--publica .container { display: flex; align-items: center; justify-content: space-between; }
+.barra__ingresar { padding: .38rem 1rem; }
+
+/* ==========================================================================
+   Utilidades de texto y cifras (reemplazan los estilos escritos en el HTML)
+   ========================================================================== */
+.texto-nota  { color: var(--acero); font-size: var(--t-xs); }
+.texto-chico { font-size: .85rem; }
+.sin-salto   { white-space: nowrap; }
+.peso-medio  { font-weight: 600; }
+.mayusculas  { text-transform: uppercase; }
+.codigo      { font-family: var(--tipo-mono); font-weight: 500; letter-spacing: .06em; }
+.error-campo { color: var(--falla); font-size: var(--t-xs); margin-top: .25rem; }
+.ayuda-campo { color: var(--acero); font-size: .78rem; margin-top: .25rem; }
+.cifra-grande {
+  font-family: var(--tipo-titulo); font-size: var(--t-xl); font-weight: 700;
+  line-height: 1.1; font-variant-numeric: tabular-nums;
+}
+.cifra-media { font-family: var(--tipo-titulo); font-size: var(--t-m); font-weight: 700; }
+.btn-en-linea { font-size: inherit; }
+.placa__nombre--chico { font-size: var(--t-b); }
+.placa__cuerpo--lectura { max-width: 820px; }
+
+/* Barras de avance */
+.avance--grueso { height: 10px; }
+.avance-fila { min-width: 230px; }
+.avance-pct { min-width: 40px; text-align: right; }
+
+/* Listas simples dentro de una placa (documentos, ordenes, productos): sin
+   la linea de cronologia, que se reserva para historiales y etapas */
+.etapas-ot--lista li { padding-left: 1.1rem; }
+.etapas-ot--lista li::before, .etapas-ot--lista li::after { display: none; }
+.etapas-ot--separada { border-top: 1px solid var(--linea); }
+
+/* Tabla de lineas de una cotizacion */
+.tabla-lineas thead tr, .tabla-lineas tfoot tr { background: #f4f6f4; }
+.tabla-lineas thead th {
+  font-size: .78rem; color: var(--acero); font-weight: 500; border: 0;
+  padding: .6rem 1.1rem;
+}
+.tabla-lineas td, .tabla-lineas tfoot th { font-size: var(--t-s); padding: .7rem 1.1rem; }
+
+/* El relleno puede ser un <span> (Mis pedidos): sin display:block no toma
+   ancho ni alto y la barra se veia vacia aunque hubiera avance */
+.avance__relleno { display: block; }
