@@ -65,19 +65,21 @@ class VentanaPrincipal(QMainWindow):
         disposicion.setSpacing(0)
 
         # -- Menu lateral ---------------------------------------------------
+        # Colores y fuentes en estilos.py (mismo lenguaje que el portal web)
         lateral = QWidget()
-        lateral.setFixedWidth(230)
-        lateral.setStyleSheet("background-color: #1f3864;")
+        lateral.setObjectName("lateral")
+        lateral.setAttribute(Qt.WA_StyledBackground, True)
+        lateral.setFixedWidth(236)
         lateral_layout = QVBoxLayout(lateral)
         lateral_layout.setContentsMargins(0, 0, 0, 0)
         lateral_layout.setSpacing(0)
 
         marca = QLabel("SITRAFO")
-        marca.setAlignment(Qt.AlignCenter)
-        marca.setStyleSheet(
-            "color: white; font-size: 21px; font-weight: bold; padding: 22px 0;"
-        )
+        marca.setObjectName("marcaLateral")
         lateral_layout.addWidget(marca)
+        linea = QLabel("ADMINISTRACION INTERNA")
+        linea.setObjectName("lineaLateral")
+        lateral_layout.addWidget(linea)
 
         self.menu = QListWidget()
         self.menu.setObjectName("menu")
@@ -87,17 +89,12 @@ class VentanaPrincipal(QMainWindow):
         usuario = QLabel(
             f"Sesion: {self.cliente.usuario}\n{', '.join(self.cliente.roles)}"
         )
-        usuario.setAlignment(Qt.AlignCenter)
-        usuario.setStyleSheet("color: #cfe0f5; padding: 14px; font-size: 12px;")
+        usuario.setObjectName("sesionLateral")
         usuario.setWordWrap(True)
         lateral_layout.addWidget(usuario)
 
         salir = QPushButton("Cerrar sesion")
-        salir.setStyleSheet(
-            "QPushButton { background: transparent; color: #cfe0f5; border: 1px solid #4a6ea9;"
-            " margin: 0 18px 18px 18px; padding: 8px; }"
-            "QPushButton:hover { background: #2f5597; color: white; }"
-        )
+        salir.setObjectName("salirLateral")
         salir.clicked.connect(self.cerrar_sesion)
         lateral_layout.addWidget(salir)
 
@@ -192,21 +189,18 @@ class VentanaPrincipal(QMainWindow):
         capa.setSpacing(0)
 
         barra = QWidget()
-        barra.setStyleSheet("background:#1f3864;")
+        barra.setObjectName("barraTaller")
+        barra.setAttribute(Qt.WA_StyledBackground, True)
         capa_barra = QHBoxLayout(barra)
         capa_barra.setContentsMargins(14, 8, 14, 8)
         titulo = QLabel(
             f"SITRAFO · Taller    |    {self.cliente.usuario}"
             f" ({', '.join(self.cliente.roles)})"
         )
-        titulo.setStyleSheet("color:white; font-size:18px; font-weight:bold;")
+        titulo.setObjectName("tituloTaller")
         capa_barra.addWidget(titulo, 1)
         salir = QPushButton("Cerrar sesion")
-        salir.setStyleSheet(
-            "QPushButton { background: transparent; color: white; border: 1px solid #cfe0f5;"
-            " font-size: 16px; padding: 10px 18px; }"
-            "QPushButton:hover { background: #2f5597; }"
-        )
+        salir.setObjectName("salirTaller")
         salir.clicked.connect(self.cerrar_sesion)
         capa_barra.addWidget(salir)
         capa.addWidget(barra)

@@ -567,18 +567,23 @@ class PanelOrdenesTrabajo(PanelBase):
 # ---------------------------------------------------------------------------
 # Vista de taller del operario (CU-OT-04, CU-OT-05)
 # ---------------------------------------------------------------------------
+# Mismos colores del tema (estilos.py): grafito, cobre y placas blancas
 ESTILO_TALLER = """
-QLabel#tarea_titulo { font-size: 22px; font-weight: bold; color: #1f3864; }
-QLabel#tarea_detalle { font-size: 16px; color: #394b59; }
+QLabel#tarea_titulo { font-family: "Archivo"; font-size: 24px; font-weight: 700; color: #1b242b; }
+QLabel#tarea_detalle { font-size: 16px; color: #4a5760; }
 QListWidget#lista_tareas {
-    font-size: 17px; background: white; color: #1a1a1a;
-    border: 1px solid #c9d4e2; border-radius: 6px;
+    font-size: 17px; background: white; color: #1b242b;
+    border: 1px solid #e1e4e0; border-radius: 11px;
 }
-QListWidget#lista_tareas::item { padding: 16px 10px; border-bottom: 1px solid #dde3ea; }
-QListWidget#lista_tareas::item:selected { background: #2f5597; color: white; }
+QListWidget#lista_tareas::item {
+    padding: 16px 12px; border-bottom: 1px solid #e1e4e0; border-left: 4px solid transparent;
+}
+QListWidget#lista_tareas::item:selected {
+    background: #f2e6da; color: #1b242b; border-left: 4px solid #8a4b24;
+}
 QPushButton#grande { font-size: 18px; padding: 18px 20px; min-height: 30px; }
 QDoubleSpinBox#grande, QComboBox#grande { font-size: 18px; padding: 10px; min-height: 32px; }
-QFrame#tarjeta { background: white; border: 1px solid #dde3ea; border-radius: 6px; }
+QFrame#tarjeta { background: white; border: 1px solid #e1e4e0; border-radius: 11px; }
 """
 
 
@@ -667,7 +672,10 @@ class VistaTaller(QWidget):
         derecha.addStretch()
         self.b_terminar = QPushButton("Marcar la tarea como terminada")
         self.b_terminar.setObjectName("grande")
-        self.b_terminar.setStyleSheet("background:#1a7f37;")
+        self.b_terminar.setStyleSheet(
+            "QPushButton { background: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
+            " stop:0 #377b5c, stop:1 #2f6b4f); border-color: #2f6b4f; }"
+            "QPushButton:disabled { background: #c4c9c7; border-color: #c4c9c7; }")
         self.b_terminar.clicked.connect(self._terminar)
         derecha.addWidget(self.b_terminar)
         capa.addWidget(self.tarjeta, 3)

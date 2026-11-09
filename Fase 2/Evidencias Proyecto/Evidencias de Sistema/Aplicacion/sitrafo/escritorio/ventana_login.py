@@ -1,17 +1,24 @@
 """Ventana de acceso a la aplicacion de escritorio."""
 import configuracion_local
 from cliente_api import ClienteAPI, ErrorAPI
+from estilos import recurso
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QGuiApplication, QPixmap
 from PySide6.QtWidgets import (
     QDialog,
-    QFormLayout,
+    QFrame,
+    QHBoxLayout,
     QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
+
+# Tamano del panel con la vista explotada del transformador
+ANCHO_IMAGEN, ALTO_VENTANA = 470, 540
 
 
 class VentanaLogin(QDialog):
@@ -21,58 +28,15 @@ class VentanaLogin(QDialog):
         super().__init__()
         self.cliente = cliente
         self.setWindowTitle("SITRAFO — Acceso")
-        self.setFixedSize(420, 370)
+        self.setFixedSize(ANCHO_IMAGEN + 430, ALTO_VENTANA)
         self._construir()
 
     def _construir(self):
-        contenedor = QVBoxLayout(self)
-        contenedor.setContentsMargins(36, 30, 36, 30)
-        contenedor.setSpacing(6)
-
-        marca = QLabel("SITRAFO")
-        marca.setObjectName("marca")
-        marca.setAlignment(Qt.AlignCenter)
-        contenedor.addWidget(marca)
-
-        subtitulo = QLabel("Administracion interna")
-        subtitulo.setObjectName("subtitulo")
-        subtitulo.setAlignment(Qt.AlignCenter)
-        contenedor.addWidget(subtitulo)
-        contenedor.addSpacing(22)
-
-        formulario = QFormLayout()
-        formulario.setSpacing(10)
-        self.usuario = QLineEdit()
-        self.usuario.setPlaceholderText("nombre de acceso")
-        self.clave = QLineEdit()
-        self.clave.setEchoMode(QLineEdit.Password)
-        self.clave.setPlaceholderText("contrasena")
-        formulario.addRow("Usuario", self.usuario)
-        formulario.addRow("Contrasena", self.clave)
-        contenedor.addLayout(formulario)
-        contenedor.addSpacing(14)
-
-        self.boton = QPushButton("Ingresar")
-        self.boton.clicked.connect(self.ingresar)
-        contenedor.addWidget(self.boton)
-
-        self.mensaje = QLabel("")
-        self.mensaje.setAlignment(Qt.AlignCenter)
-        self.mensaje.setWordWrap(True)
-        self.mensaje.setStyleSheet("color: #b02a37;")
-        contenedor.addWidget(self.mensaje)
-        contenedor.addStretch()
-
-        self.pie = QLabel("")
-        self.pie.setObjectName("subtitulo")
-        self.pie.setAlignment(Qt.AlignCenter)
-        self.pie.setWordWrap(True)
-        self.pie.setStyleSheet("color: #9aa5b1; font-size: 11px;")
-        contenedor.addWidget(self.pie)
-        cambiar = QPushButton("Cambiar servidor")
-        cambiar.setObjectName("secundario")
-        cambiar.clicked.connect(self.cambiar_servidor)
-        contenedor.addWidget(cambiar, alignment=Qt.AlignCenter)
+        contenedor = QHBoxLayout(self)
+        contenedor.setContentsMargins(0, 0, 0, 0)
+        contenedor.setSpacing(0)
+        contenedor.addWidget(self._panel_imagen())
+        contenedor.addWidget(self._panel_formulario(), 1)
         self._mostrar_servidor()
 
         self.clave.returnPressed.connect(self.ingresar)
@@ -82,6 +46,95 @@ class VentanaLogin(QDialog):
             self.clave.setFocus()
         else:
             self.usuario.setFocus()
+
+    def _panel_imagen(self) -> QLabel:
+        """Vista explotada del transformador, la misma imagen del portal web."""
+        imagen = QLabel()
+        imagen.setObjectName("imagenLogin")
+        imagen.setFixedSize(ANCHO_IMAGEN, ALTO_VENTANA)
+        dibujo = QPixmap(recurso("img/login_despiece.jpg"))
+        if not dibujo.isNull():
+            # Se escala a la densidad de la pantalla para que no se vea borroso
+            densidad = QGuiApplication.primaryScreen().devicePixelRatio()
+            dibujo = dibujo.scaled(int(ANCHO_IMAGEN * densidad), int(ALTO_VENTANA * densidad),
+                                   Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+            dibujo.setDevicePixelRatio(densidad)
+            imagen.setPixmap(dibujo)
+
+        capa = QVBoxLayout(imagen)
+        capa.setContentsMargins(34, 30, 34, 30)
+        capa.setSpacing(0)
+        marca = QLabel("SITRAFO")
+        marca.setObjectName("marcaLogin")
+        capa.addWidget(marca)
+        capa.addSpacing(10)
+        filete = QFrame()
+        filete.setObjectName("filete")
+        filete.setFixedSize(46, 3)
+        capa.addWidget(filete)
+        capa.addSpacing(10)
+        linea = QLabel("ADMINISTRACION INTERNA")
+        linea.setObjectName("lineaLogin")
+        capa.addWidget(linea)
+        capa.addStretch()
+        return imagen
+
+    def _panel_formulario(self) -> QWidget:
+        formulario = QWidget()
+        formulario.setObjectName("formularioLogin")
+        formulario.setAttribute(Qt.WA_StyledBackground, True)
+        capa = QVBoxLayout(formulario)
+        capa.setContentsMargins(44, 46, 44, 24)
+        capa.setSpacing(6)
+
+        titulo = QLabel("Iniciar sesion")
+        titulo.setObjectName("tituloLogin")
+        capa.addWidget(titulo)
+        guia = QLabel("Ingrese con su usuario interno de SITRAFO.")
+        guia.setObjectName("subtitulo")
+        guia.setWordWrap(True)
+        capa.addWidget(guia)
+        capa.addSpacing(22)
+
+        etiqueta = QLabel("Usuario")
+        etiqueta.setObjectName("etiquetaLogin")
+        capa.addWidget(etiqueta)
+        self.usuario = QLineEdit()
+        self.usuario.setPlaceholderText("nombre de acceso")
+        capa.addWidget(self.usuario)
+        capa.addSpacing(10)
+
+        etiqueta = QLabel("Contrasena")
+        etiqueta.setObjectName("etiquetaLogin")
+        capa.addWidget(etiqueta)
+        self.clave = QLineEdit()
+        self.clave.setEchoMode(QLineEdit.Password)
+        self.clave.setPlaceholderText("contrasena")
+        capa.addWidget(self.clave)
+        capa.addSpacing(18)
+
+        self.boton = QPushButton("Ingresar")
+        self.boton.setObjectName("botonLogin")
+        self.boton.clicked.connect(self.ingresar)
+        capa.addWidget(self.boton)
+
+        self.mensaje = QLabel("")
+        self.mensaje.setObjectName("mensajeLogin")
+        self.mensaje.setAlignment(Qt.AlignCenter)
+        self.mensaje.setWordWrap(True)
+        capa.addWidget(self.mensaje)
+        capa.addStretch()
+
+        self.pie = QLabel("")
+        self.pie.setObjectName("pieLogin")
+        self.pie.setAlignment(Qt.AlignCenter)
+        self.pie.setWordWrap(True)
+        capa.addWidget(self.pie)
+        cambiar = QPushButton("Cambiar servidor")
+        cambiar.setObjectName("secundario")
+        cambiar.clicked.connect(self.cambiar_servidor)
+        capa.addWidget(cambiar, alignment=Qt.AlignCenter)
+        return formulario
 
     def _mostrar_servidor(self):
         self.pie.setText(f"Servidor: {self.cliente.url_base}")
