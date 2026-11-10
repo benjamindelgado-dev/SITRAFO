@@ -389,3 +389,32 @@ def test_etiqueta_sin_unidad_no_muestra_parentesis(escenario):
     assert str(grupo) == "Grupo de conexion"
     pagina = escenario["client"].get(reverse("web:solicitar")).content.decode()
     assert "Grupo de conexion ()" not in pagina and "Grupo de conexion" in pagina
+
+
+@pytest.mark.django_db
+def test_historial_de_la_cotizacion_oculta_los_pasos_internos(escenario):
+    """El cliente no ve el borrador ni la aprobacion interna del descuento."""
+    from apps.comercial.models import CotizacionHistorial
+
+    futura = datetime.date.today() + datetime.timedelta(days=10)
+    cotizacion = _crear_cotizacion(escenario, futura)
+    borrador = EstadoDocumento.objects.create(
+        tipo_documento="cotizacion", codigo="borrador", nombre="Borrador")
+    aprobacion = EstadoDocumento.objects.create(
+        tipo_documento="cotizacion", codigo="en_aprobacion", nombre="En aprobacion")
+    for anterior, nuevo, nota in (
+        (None, borrador, "Elaborada desde la solicitud."),
+        (borrador, aprobacion, "Descuento de 15% enviado a aprobacion."),
+        (aprobacion, escenario["estado_emitida"], "Aprobada y emitida al cliente."),
+    ):
+        CotizacionHistorial.objects.create(cotizacion=cotizacion, estado_anterior=anterior,
+                                           estado_nuevo=nuevo, usuario=escenario["interno"],
+                                           observacion=nota)
+
+    html = escenario["client"].get(
+        reverse("web:detalle_cotizacion", args=[cotizacion.pk])
+    ).content.decode()
+
+    assert "<strong>Emitida</strong>" in html
+    assert "aprobacion" not in html.lower()
+    assert "Elaborada desde la solicitud" not in html

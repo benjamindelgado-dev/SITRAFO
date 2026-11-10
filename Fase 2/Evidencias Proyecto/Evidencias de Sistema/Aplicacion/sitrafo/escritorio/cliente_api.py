@@ -13,10 +13,14 @@ import requests
 class ErrorAPI(Exception):
     """Error devuelto por la API, con su codigo y su mensaje."""
 
-    def __init__(self, mensaje: str, codigo: int = 0):
+    def __init__(self, mensaje: str, codigo: int = 0, metodo: str = ""):
         super().__init__(mensaje)
         self.mensaje = mensaje
         self.codigo = codigo
+        # Metodo HTTP de la peticion que fallo. Un 403 al leer (GET) significa
+        # que el rol ya no ve la seccion; un 403 al ejecutar una accion es una
+        # regla de negocio (por ejemplo, aprobar una cotizacion propia).
+        self.metodo = metodo
 
 
 class ClienteAPI:
@@ -161,7 +165,11 @@ class ClienteAPI:
         if respuesta.status_code == 401 and not reintentado and self.renovar_token():
             return self._peticion(metodo, ruta, reintentado=True, **kwargs)
 
-        self._verificar(respuesta)
+        try:
+            self._verificar(respuesta)
+        except ErrorAPI as error:
+            error.metodo = metodo.upper()
+            raise
         if respuesta.status_code == 204 or not respuesta.content:
             return None
         return respuesta.json()

@@ -9,6 +9,8 @@ de los servicios.
 from .base import *  # noqa: F403
 
 DEBUG = False
+# Clave propia de las pruebas, con el largo que exige la firma de los JWT
+SECRET_KEY = "clave-de-pruebas-sitrafo-no-usar-fuera-de-la-suite-0123456789"
 ALLOWED_HOSTS = ["*", "testserver"]
 
 DATABASES = {

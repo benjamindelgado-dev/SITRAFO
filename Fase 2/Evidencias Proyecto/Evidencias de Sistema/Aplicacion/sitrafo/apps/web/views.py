@@ -340,13 +340,37 @@ def detalle_cotizacion(request, pk):
     cotizacion = get_object_or_404(
         Cotizacion.objects.exclude(estado__codigo__in=ESTADOS_INTERNOS_COTIZACION)
         .select_related("estado", "solicitud")
-        .prefetch_related("lineas__modelo", "historial__estado_nuevo"),
+        .prefetch_related("lineas__modelo", "historial__estado_nuevo",
+                          "historial__estado_anterior"),
         pk=pk,
         cliente=cliente,
     )
     contexto = _contexto_base(request)
     contexto["cotizacion"] = cotizacion
+    contexto["historial"] = historial_para_cliente(cotizacion)
     return render(request, "web/detalle_cotizacion.html", contexto)
+
+
+def historial_para_cliente(cotizacion) -> list[dict]:
+    """
+    Historial de la cotizacion tal como lo ve el cliente.
+
+    Los pasos internos (borrador, aprobacion por descuento) y sus notas son del
+    area comercial: el cliente ve la cotizacion desde que se le emite.
+    """
+    pasos = []
+    for h in cotizacion.historial.all():
+        if h.estado_nuevo.codigo in ESTADOS_INTERNOS_COTIZACION:
+            continue
+        anterior_visible = (h.estado_anterior is not None and
+                            h.estado_anterior.codigo not in ESTADOS_INTERNOS_COTIZACION)
+        pasos.append({
+            "anterior": h.estado_anterior.nombre if anterior_visible else "",
+            "estado": h.estado_nuevo.nombre,
+            "observacion": h.observacion if anterior_visible else "",
+            "fecha_hora": h.fecha_hora,
+        })
+    return pasos
 
 
 def _cambiar_estado_cotizacion(cotizacion, codigo, usuario, observacion=""):

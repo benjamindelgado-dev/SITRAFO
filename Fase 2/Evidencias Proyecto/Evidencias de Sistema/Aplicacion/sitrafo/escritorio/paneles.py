@@ -76,12 +76,18 @@ class PanelBase(QWidget):
                 tabla.setItem(i, j, item)
 
     def manejar_error(self, error: ErrorAPI):
-        if error.codigo == 403:
-            # Sin permiso no se deja a la vista informacion cargada antes
+        if error.codigo == 403 and getattr(error, "metodo", "") in ("", "GET"):
+            # El rol ya no puede leer la seccion: no se deja a la vista
+            # informacion cargada antes
             for tabla in self.findChildren(QTableWidget):
                 tabla.setRowCount(0)
             QMessageBox.warning(self, "Acceso denegado",
                                 f"{error.mensaje}\n\nSu rol ya no autoriza esta seccion.")
+            return
+        if error.codigo == 403:
+            # Una accion rechazada no quita la seccion: se informa el motivo
+            # que da la API (regla de negocio o permiso puntual) y nada mas
+            QMessageBox.warning(self, "Accion no autorizada", error.mensaje)
             return
         QMessageBox.warning(self, "No se pudo completar la operacion", error.mensaje)
 

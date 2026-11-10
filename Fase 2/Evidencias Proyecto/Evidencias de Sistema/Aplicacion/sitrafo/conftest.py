@@ -14,6 +14,16 @@ from requests.exceptions import ConnectionError as ErrorConexion
 
 
 @pytest.fixture(autouse=True)
+def _cache_limpia():
+    """Cada prueba parte sin datos en cache (por ejemplo, el ultimo intento de
+    actualizar la UF), para que el orden de ejecucion no cambie el resultado."""
+    from django.core.cache import cache
+
+    cache.clear()
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _sin_red_real():
     def bloquear(*args, **kwargs):
         raise ErrorConexion("Red bloqueada en las pruebas")

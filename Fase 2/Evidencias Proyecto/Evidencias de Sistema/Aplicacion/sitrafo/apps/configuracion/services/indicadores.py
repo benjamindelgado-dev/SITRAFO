@@ -9,6 +9,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
+from django.core.cache import cache
 from django.utils import timezone
 
 from apps.pagos.models import IndicadorEconomico
@@ -73,7 +74,11 @@ def valor_uf(fecha: date | None = None) -> tuple[Decimal | None, date | None, bo
     fecha = fecha or timezone.localdate()
     registro = IndicadorEconomico.valor_a(fecha, "UF")
 
-    if registro is None:
+    # Sin registro, o con el de un dia anterior cuando se pide la UF de hoy
+    # (por ejemplo, antes de que corra la tarea diaria), se intenta traer el
+    # valor vigente. Si el servicio no responde se opera con el ultimo conocido.
+    desactualizado = registro is not None and registro.fecha != fecha
+    if registro is None or (desactualizado and _corresponde_actualizar(fecha)):
         resultado = ClienteIndicadores().sincronizar_dia(fecha)
         if resultado["exitoso"]:
             registro = IndicadorEconomico.valor_a(fecha, "UF")
@@ -82,3 +87,17 @@ def valor_uf(fecha: date | None = None) -> tuple[Decimal | None, date | None, bo
         return None, None, False
 
     return registro.valor, registro.fecha, registro.fecha == fecha
+
+
+# Si mindicador no responde, no se vuelve a intentar en cada cotizacion: un
+# reintento cada media hora basta y evita sumar la espera de un servicio caido
+# a cada pantalla que muestra montos en UF.
+INTERVALO_ACTUALIZACION_UF = 30 * 60
+
+
+def _corresponde_actualizar(fecha: date) -> bool:
+    """Solo la UF de hoy se puede traer del servicio, y a lo mas cada 30 min."""
+    if fecha != timezone.localdate():
+        return False
+    return cache.add(f"uf-actualizacion-{fecha.isoformat()}", True,
+                     INTERVALO_ACTUALIZACION_UF)

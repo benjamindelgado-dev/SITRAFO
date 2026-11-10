@@ -38,6 +38,17 @@ class RespuestaServicio:
         return self.exitoso
 
 
+def _motivo_del_proveedor(cuerpo) -> str:
+    """Mensaje de error legible de la respuesta de un servicio externo."""
+    if not isinstance(cuerpo, dict):
+        return ""
+    for clave in ("message", "error_description", "detail", "error"):
+        valor = cuerpo.get(clave)
+        if isinstance(valor, str) and valor.strip():
+            return valor.strip()[:200]
+    return ""
+
+
 class ClienteServicioExterno:
     """
     Base de los clientes de servicios externos.
@@ -133,13 +144,20 @@ class ClienteServicioExterno:
                     )
 
                 ultimo_error = f"HTTP {codigo}"
-                self._registrar(url, metodo, codigo, latencia, False, ultimo_error)
-
                 if 400 <= codigo < 500:
                     try:
                         cuerpo_error = respuesta.json()
                     except ValueError:
                         cuerpo_error = None
+                    # El motivo que da el proveedor (por ejemplo, una clave de
+                    # API invalida) queda en el log para diagnosticar sin
+                    # tener que reproducir la llamada
+                    detalle = _motivo_del_proveedor(cuerpo_error)
+                    if detalle:
+                        ultimo_error = f"HTTP {codigo}: {detalle}"
+                self._registrar(url, metodo, codigo, latencia, False, ultimo_error)
+
+                if 400 <= codigo < 500:
                     break
 
             except RequestException as exc:

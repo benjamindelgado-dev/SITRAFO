@@ -274,7 +274,9 @@ class PanelOrdenesTrabajo(PanelBase):
         self.tareas.itemSelectionChanged.connect(self._habilitar_tarea)
         gt.addWidget(self.tareas)
 
-        acciones_tarea = QHBoxLayout()
+        # Dos filas: planificar (arriba) y registrar avance (abajo). En una sola
+        # fila los ocho botones dejaban sin ancho el recuadro de costo
+        acciones_tarea = QGridLayout()
         self.b_asignar = QPushButton("Asignar responsable")
         self.b_asignar.setObjectName("secundario")
         self.b_asignar.clicked.connect(self._asignar)
@@ -299,14 +301,17 @@ class PanelOrdenesTrabajo(PanelBase):
         self.b_estandar = QPushButton("Cargar tareas estandar")
         self.b_estandar.setObjectName("secundario")
         self.b_estandar.clicked.connect(self._cargar_estandar)
-        for boton in (self.b_agregar, self.b_quitar, self.b_estandar, self.b_asignar,
-                      self.b_horas, self.b_anular, self.b_consumo, self.b_terminar):
-            acciones_tarea.addWidget(boton)
-        acciones_tarea.addStretch()
+        filas = ((self.b_agregar, self.b_quitar, self.b_estandar, self.b_asignar),
+                 (self.b_horas, self.b_anular, self.b_consumo, self.b_terminar))
+        for fila, botones in enumerate(filas):
+            for columna, boton in enumerate(botones):
+                acciones_tarea.addWidget(boton, fila, columna)
+        acciones_tarea.setColumnStretch(len(filas[0]), 1)
         gt.addLayout(acciones_tarea)
         capa.addWidget(grupo_tareas, 3)
 
         grupo_costo = QGroupBox("Costo y cierre")
+        grupo_costo.setMinimumWidth(240)
         gc = QVBoxLayout(grupo_costo)
         self.resumen = QLabel("Seleccione una orden.")
         self.resumen.setWordWrap(True)

@@ -49,10 +49,10 @@
     <div class="placa">
       <div class="placa__cabecera"><span class="placa__codigo">HISTORIAL</span></div>
       <ul class="etapas-ot">
-        {% for h in cotizacion.historial.all %}
+        {% for h in historial %}
           <li>
             <span>
-              {% if h.estado_anterior %}{{ h.estado_anterior.nombre }} a {% endif %}<strong>{{ h.estado_nuevo.nombre }}</strong>
+              {% if h.anterior %}{{ h.anterior }} a {% endif %}<strong>{{ h.estado }}</strong>
               {% if h.observacion %}<div class="texto-nota">{{ h.observacion }}</div>{% endif %}
             </span>
             <span class="texto-nota sin-salto">{{ h.fecha_hora|date:"d-m-Y H:i" }}</span>

@@ -117,6 +117,58 @@ def test_uf_cae_al_ultimo_valor_conocido():
 
 
 @pytest.mark.django_db
+def test_uf_de_un_dia_anterior_se_actualiza_al_pedir_la_de_hoy():
+    """Antes de la tarea diaria, la UF de hoy se trae del servicio."""
+    from django.core.cache import cache
+    from django.utils import timezone
+
+    cache.clear()
+    hoy = timezone.localdate()
+    IndicadorEconomico.objects.create(
+        codigo="UF", fecha=hoy - datetime.timedelta(days=1), valor=Decimal("40100")
+    )
+    datos = {"uf": {"valor": 40150.25, "fecha": f"{hoy.isoformat()}T04:00:00.000Z"}}
+
+    with patch("requests.get", return_value=RespuestaFalsa(datos)):
+        valor, fecha, es_del_dia = valor_uf()
+
+    assert valor == Decimal("40150.25")
+    assert fecha == hoy and es_del_dia is True
+
+
+@pytest.mark.django_db
+def test_uf_desactualizada_no_consulta_el_servicio_en_cada_pedido():
+    """Con el servicio caido no se suma su espera a cada pantalla."""
+    from django.core.cache import cache
+    from django.utils import timezone
+
+    cache.clear()
+    ayer = timezone.localdate() - datetime.timedelta(days=1)
+    IndicadorEconomico.objects.create(codigo="UF", fecha=ayer, valor=Decimal("40100"))
+
+    with patch("requests.get", side_effect=ConnectTimeout("sin conexion")) as llamada:
+        with patch("time.sleep"):
+            primero = valor_uf()
+            segundo = valor_uf()
+
+    llamadas_primera_vez = ClienteIndicadores.max_intentos
+    assert llamada.call_count == llamadas_primera_vez
+    assert primero == segundo == (Decimal("40100"), ayer, False)
+
+
+@pytest.mark.django_db
+def test_error_del_proveedor_queda_en_el_log():
+    """El motivo que da el servicio (clave invalida, etc.) se registra."""
+    cuerpo = {"code": "unauthorized", "message": "Key not found"}
+    with patch("requests.get", return_value=RespuestaFalsa(cuerpo, status_code=401)):
+        respuesta = ClienteIndicadores().obtener()
+
+    assert not respuesta
+    assert respuesta.mensaje_error == "HTTP 401: Key not found"
+    assert LogIntegracion.objects.get().mensaje_error == "HTTP 401: Key not found"
+
+
+@pytest.mark.django_db
 def test_uf_sin_historico_ni_servicio_devuelve_none():
     with patch("requests.get", side_effect=ConnectTimeout("sin conexion")):
         with patch("time.sleep"):

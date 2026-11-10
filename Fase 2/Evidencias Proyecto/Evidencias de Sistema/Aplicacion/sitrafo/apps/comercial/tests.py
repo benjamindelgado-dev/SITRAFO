@@ -173,6 +173,7 @@ def test_cargar_demo_es_repetible_y_emite_el_anticipo():
     from unittest.mock import patch as _patch
 
     from django.core.management import call_command
+    from requests.exceptions import ConnectionError as SinRed
 
     from apps.comercial.models import OrdenCompra
     from apps.pagos.models import DocumentoCobro, IndicadorEconomico
@@ -182,7 +183,9 @@ def test_cargar_demo_es_repetible_y_emite_el_anticipo():
     )
     salida = StringIO()
     call_command("cargar_estados", stdout=salida)
-    with _patch("requests.get", side_effect=AssertionError("sin red en pruebas")):
+    # Sin red: la UF guardada es antigua y el intento de actualizarla falla,
+    # de modo que la demo debe sembrarse igual con el ultimo valor conocido
+    with _patch("requests.get", side_effect=SinRed("sin red en pruebas")):
         call_command("cargar_demo", stdout=salida)
         call_command("cargar_demo", stdout=salida)            # ya cargado: no hace nada
         call_command("cargar_demo", "--forzar", stdout=salida)  # vuelve a sembrar

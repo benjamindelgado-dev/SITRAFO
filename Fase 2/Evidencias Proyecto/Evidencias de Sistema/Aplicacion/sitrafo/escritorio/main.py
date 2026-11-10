@@ -19,13 +19,30 @@ from pathlib import Path
 import configuracion_local
 from cliente_api import ClienteAPI
 from estilos import aplicar_tema
-from PySide6.QtCore import QLocale
+from PySide6.QtCore import QLibraryInfo, QLocale, QTranslator
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QDialog
 from ventana_login import VentanaLogin
 from ventana_principal import VentanaPrincipal
 
 API_POR_DEFECTO = configuracion_local.SERVIDOR_POR_DEFECTO
+
+
+def instalar_traduccion(aplicacion: QApplication) -> QTranslator | None:
+    """
+    Botones y textos propios de Qt en espanol (Aceptar, Cancelar, Si, No).
+
+    Sin esto, los dialogos estandar muestran "OK" o "Cancel" junto a botones
+    propios en espanol. Si la traduccion no esta disponible la aplicacion
+    sigue funcionando en ingles en esos botones.
+    """
+    traductor = QTranslator(aplicacion)
+    ruta = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+    # PyInstaller incluye las traducciones de Qt en el .exe junto a PySide6
+    if traductor.load("qtbase_es", ruta):
+        aplicacion.installTranslator(traductor)
+        return traductor
+    return None
 
 
 def recurso(nombre: str) -> str:
@@ -50,6 +67,7 @@ def main() -> int:
     # Formato chileno en los campos numericos: coma decimal (187,69 UF), igual
     # que en las etiquetas y tablas. Sin esto Qt usa el idioma del equipo.
     QLocale.setDefault(QLocale(QLocale.Language.Spanish, QLocale.Country.Chile))
+    instalar_traduccion(aplicacion)
     aplicar_tema(aplicacion)
     aplicacion.setWindowIcon(QIcon(recurso("sitrafo.ico")))
 
