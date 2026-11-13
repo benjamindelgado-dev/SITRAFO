@@ -15,9 +15,11 @@
   {% endcomment %}
   <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  {% comment %}
+    Las fuentes tambien se sirven desde el proyecto: sin recursos de terceros,
+    la politica de seguridad de contenido (CSP) solo admite el propio sitio.
+  {% endcomment %}
+  <link href="{% static 'css/fuentes.css' %}" rel="stylesheet">
 
   <link href="{% static 'css/sitrafo.css' %}" rel="stylesheet">
 </head>
@@ -89,6 +91,7 @@
 {% endblock %}
 
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/sitrafo.js' %}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

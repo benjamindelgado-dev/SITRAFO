@@ -23,7 +23,7 @@
           <span class="peso-medio">{{ ot.avance_pct|default:0 }}%</span>
         </div>
         <div class="avance avance--grueso">
-          <div class="avance__relleno" style="width: {{ ot.avance_pct|default:0 }}%"></div>
+          <div class="avance__relleno" data-avance="{{ ot.avance_pct|default:0 }}"></div>
         </div>
         <div class="datos mt-3">
           <div class="datos__fila">

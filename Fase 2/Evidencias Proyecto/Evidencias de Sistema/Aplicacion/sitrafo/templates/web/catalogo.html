@@ -28,7 +28,7 @@
   {% for f in filtros %}
     <div class="col-md-3 col-6">
       <label for="filtro-{{ f.codigo }}" class="visually-hidden">{{ f.nombre }}</label>
-      <select id="filtro-{{ f.codigo }}" name="p_{{ f.codigo }}" class="form-select" onchange="this.form.submit()">
+      <select id="filtro-{{ f.codigo }}" name="p_{{ f.codigo }}" class="form-select" data-autoenviar>
         <option value="">{{ f.nombre }}: todas</option>
         {% for v in f.valores %}
           <option value="{{ v }}" {% if v == f.elegido %}selected{% endif %}>{{ v }} {{ f.unidad }}</option>

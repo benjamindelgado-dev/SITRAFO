@@ -48,6 +48,10 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
+# WhiteNoise agrega por defecto «Access-Control-Allow-Origin: *» a los archivos
+# estaticos. El portal no comparte sus archivos con otros dominios, asi que se
+# desactiva (alerta de OWASP ZAP «Configuracion incorrecta Cross-Domain», H-03)
+WHITENOISE_ALLOW_ALL_ORIGINS = False
 
 EMAIL_BACKEND = "apps.configuracion.services.correo.BrevoEmailBackend"
 

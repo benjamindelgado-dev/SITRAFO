@@ -69,7 +69,7 @@
               <a href="{% url 'web:direccion_editar' d.pk %}"
                  class="btn btn-link btn-en-linea p-0 border-0 lh-base align-baseline">Editar</a>
               <form method="post" action="{% url 'web:direccion_eliminar' d.pk %}" class="d-inline m-0"
-                    onsubmit="return confirm('¿Eliminar esta direccion?');">
+                    data-confirmar="¿Eliminar esta direccion?">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-link btn-en-linea p-0 border-0 lh-base align-baseline text-danger">Eliminar</button>
               </form>

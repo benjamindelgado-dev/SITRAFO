@@ -1,6 +1,6 @@
 """Rutas de la API publica de SITRAFO (version 1)."""
 from django.urls import path
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerSplitView
 
 from .views import (
     EstimacionView,
@@ -19,5 +19,6 @@ urlpatterns = [
          name="materiales_reposicion"),
     # Documentacion: esquema OpenAPI y pagina interactiva Swagger
     path("esquema/", SpectacularAPIView.as_view(), name="esquema"),
-    path("docs/", SpectacularSwaggerView.as_view(url_name="api_publica:esquema"), name="docs"),
+    # Vista dividida: el JavaScript de Swagger se sirve aparte y no en linea (CSP)
+    path("docs/", SpectacularSwaggerSplitView.as_view(url_name="api_publica:esquema"), name="docs"),
 ]

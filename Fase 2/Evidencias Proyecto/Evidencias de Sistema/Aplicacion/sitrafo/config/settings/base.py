@@ -68,6 +68,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.common.middleware.PoliticaSeguridadContenidoMiddleware",
     "apps.web.middleware.ModoMantencionMiddleware",
     "apps.web.middleware.CuentaSuspendidaMiddleware",
 ]
@@ -77,6 +78,10 @@ MIDDLEWARE = [
 SESSION_COOKIE_AGE = env.int("SESION_INACTIVIDAD_MINUTOS", default=30) * 60
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# La cookie del token CSRF no la lee ningun script del portal: con HttpOnly un
+# script inyectado tampoco puede leerla (alerta de OWASP ZAP, H-04)
+CSRF_COOKIE_HTTPONLY = True
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"

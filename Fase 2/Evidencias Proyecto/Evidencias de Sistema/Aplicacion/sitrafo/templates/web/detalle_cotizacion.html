@@ -113,7 +113,7 @@
             <form method="post" action="{% url 'web:aceptar_cotizacion' cotizacion.pk %}" class="mb-2">
               {% csrf_token %}
               <button type="submit" class="btn btn-aceptar w-100"
-                      onclick="return confirm('Se emitira la orden de compra. Confirma?')">
+                      data-confirmar="Se emitira la orden de compra. Confirma?">
                 Aceptar la cotizacion
               </button>
             </form>

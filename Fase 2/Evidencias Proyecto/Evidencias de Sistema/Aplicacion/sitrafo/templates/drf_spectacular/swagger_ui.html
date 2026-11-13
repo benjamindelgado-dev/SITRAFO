@@ -1,0 +1,26 @@
+{% load static %}{% comment %}
+  Copia de la plantilla de drf-spectacular 0.30 adaptada a la politica de
+  seguridad de contenido (CSP) del sitio: los estilos que traia en linea pasan
+  a static/css/swagger.css, y el JavaScript de inicio siempre se carga como
+  archivo aparte (se usa SpectacularSwaggerSplitView).
+{% endcomment %}<!DOCTYPE html>
+<html>
+  <head>
+    {% block head %}
+    <title>{{ title|default:"Swagger" }}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% if favicon_href %}<link rel="icon" href="{{ favicon_href }}">{% endif %}
+    <link rel="stylesheet" href="{{ swagger_ui_css }}">
+    <link rel="stylesheet" href="{% static 'css/swagger.css' %}">
+    {% endblock head %}
+  </head>
+  <body>
+    {% block body %}
+    <div id="swagger-ui"></div>
+    <script src="{{ swagger_ui_bundle }}"></script>
+    <script src="{{ swagger_ui_standalone }}"></script>
+    <script src="{{ script_url }}"></script>
+    {% endblock %}
+  </body>
+</html>

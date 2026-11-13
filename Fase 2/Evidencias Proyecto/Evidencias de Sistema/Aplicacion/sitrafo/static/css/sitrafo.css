@@ -253,6 +253,8 @@ table, .cifra, .placa__valor, .metrica__cifra,
    -------------------------------------------------------------------------- */
 .avance { height: 7px; background: var(--ansi-tenue); border-radius: 99px; overflow: hidden; }
 .avance__relleno { height: 100%; background: linear-gradient(90deg, var(--cobre-med), var(--cobre)); }
+/* El ancho lo fija static/js/sitrafo.js desde data-avance (la CSP no admite style en linea) */
+.avance__relleno[data-avance] { width: 0; }
 
 .etapas-ot { list-style: none; margin: 0; padding: 0; }
 .etapas-ot li {
