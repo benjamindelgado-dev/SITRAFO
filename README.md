@@ -28,7 +28,7 @@ Tres componentes sobre un backend común:
 | Componente | Tecnología | Para quién |
 |---|---|---|
 | API REST | Django, Django REST Framework, PostgreSQL | Único punto de acceso a los datos |
-| Aplicación web | Django, Bootstrap 5, htmx | Clientes |
+| Aplicación web | Django, Bootstrap 5 | Clientes |
 | Aplicación de escritorio | PySide6 (SITRAFO.exe) | Personal interno, por rol |
 
 **Regla de arquitectura:** la aplicación de escritorio nunca accede directo a la base de datos; toda operación pasa por la API REST autenticada, igual que la web.
@@ -67,7 +67,7 @@ Fase 2/
       Aplicacion/sitrafo/   Código de la aplicación (API, web y escritorio)
       Base de Datos/        Esquema, datos de demostración y diccionario de datos
       Pruebas de Calidad/   Plan de pruebas PPR-01, informes PRU-01 y QA-01 y sus evidencias
-Fase 3/   Cierre y defensa
+Fase 3/   Cierre y defensa: plan de pruebas PPR-01 v2.1, manuales de usuario e instalación, releases y retrospectiva final
 render.yaml   Despliegue en Render (web, tareas diarias y base de datos)
 ```
 
@@ -92,7 +92,7 @@ La web queda en http://localhost:8000 y la API pública en http://localhost:8000
 
 ## Pruebas
 
-- 291 pruebas automatizadas (pytest), 55 de ellas de las APIs propias, con 93 % de cobertura.
+- 308 pruebas automatizadas (pytest), 55 de ellas de las APIs propias, con 93 % de cobertura (13-11-2026).
 - GitHub Actions ejecuta ruff, la revisión de migraciones y las pruebas en cada cambio; Render publica una versión solo si la integración continua termina en verde.
 - Seguridad con OWASP ZAP, prueba de carga y pruebas de interfaz con Selenium: informes PRU-01 (producción) y QA-01 (réplica local).
 
@@ -102,16 +102,17 @@ docker compose exec web pytest
 
 ## Metodología
 
-Scrum, en cuatro sprints:
+Scrum, en cinco sprints (0 a 4):
 
 | Sprint | Período | Objetivo |
 |---|---|---|
 | 0 | Fase 1 | Análisis, arquitectura, backlog y preparación técnica |
 | 1 | 14 al 26 de septiembre | Las 14 historias del sistema |
 | 2 | 29 de septiembre al 15 de octubre | Despliegue, documentación y pruebas de calidad |
-| 3 | 16 al 31 de octubre | APIs propias, verificación y cierre de la Fase 2 |
+| 3 | 16 al 30 de octubre | APIs propias, verificación y cierre de la Fase 2 |
+| 4 | 31 de octubre al 27 de noviembre | Cierre del proyecto en la Fase 3: SonarQube, rediseño visual, correcciones, plan de pruebas, manuales, releases y retrospectiva final |
 
-Los artefactos (Product Backlog, Sprint Backlog, Burndown, actas y registro de dailies) están en `Fase 2/Evidencias Proyecto/Evidencias de documentación/2. Metodología Scrum`.
+Los artefactos (Product Backlog, Sprint Backlog, Burndown, actas y registro de dailies) están en `Fase 2/Evidencias Proyecto/Evidencias de documentación/2. Metodología Scrum`. La pila del Sprint 4 se gestionó en el tablero de Trello del equipo, y sus evidencias están en `Fase 3/Evidencias Grupales`.
 
 ## Equipo
 

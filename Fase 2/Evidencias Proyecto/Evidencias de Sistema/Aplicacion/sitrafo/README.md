@@ -18,7 +18,7 @@ Tres componentes sobre un backend comun:
 
 1. **API REST** — Django + Django REST Framework sobre PostgreSQL. Unico punto de acceso a los datos.
 2. **Aplicacion de escritorio** — Python + PySide6, para administracion interna.
-3. **Aplicacion web** — Django + Bootstrap 5 + htmx, orientada al cliente.
+3. **Aplicacion web** — Django + Bootstrap 5, orientada al cliente.
 
 **Regla no negociable:** la aplicacion de escritorio nunca accede directamente a la
 base de datos. Siempre lo hace a traves de la API REST, igual que la web.
@@ -546,7 +546,7 @@ docker compose exec web pytest --cov-fail-under=70
 docker compose exec web pytest
 ```
 
-291 pruebas automatizadas con 93% de cobertura sobre `apps/` (25-10-2026), por
+308 pruebas automatizadas con 93% de cobertura sobre `apps/` (13-11-2026), por
 encima del 70% exigido por RNF-13. Las llamadas a servicios externos (incluido PayPal) se
 simulan con dobles de prueba.
 
